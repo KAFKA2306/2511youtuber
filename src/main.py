@@ -19,14 +19,11 @@ def create_run_id() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def estimate_max_chars_per_line(resolution: str) -> int:
-    try:
-        width_part = resolution.lower().split("x")[0].strip()
-        width = int(width_part)
-    except (ValueError, IndexError):
-        return 24
-
-    return max(12, min(40, max(width // 70, 16)))
+def estimate_max_chars_per_line(resolution: str, width_per_char_pixels: int, min_visual_width: int, max_visual_width: int) -> int:
+    width_part = resolution.lower().split("x", 1)[0].strip()
+    width = int(width_part)
+    base = int(width / width_per_char_pixels)
+    return max(min_visual_width, min(max_visual_width, base))
 
 
 def main():
@@ -67,7 +64,12 @@ def main():
         SubtitleFormatter(
             run_id=run_id,
             run_dir=run_dir,
-            max_chars_per_line=estimate_max_chars_per_line(config.steps.video.resolution),
+            max_chars_per_line=estimate_max_chars_per_line(
+                config.steps.video.resolution,
+                config.steps.subtitle.width_per_char_pixels,
+                config.steps.subtitle.min_visual_width,
+                config.steps.subtitle.max_visual_width,
+            ),
         ),
         VideoRenderer(
             run_id=run_id,

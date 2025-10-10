@@ -22,7 +22,7 @@ class TestWorkflowIntegration:
             NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, query="テスト", count=2),
             ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir),
             AudioSynthesizer(run_id=test_run_id, run_dir=temp_run_dir),
-            SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir),
+            SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24),
             VideoRenderer(run_id=test_run_id, run_dir=temp_run_dir),
             MetadataAnalyzer(
                 run_id=test_run_id,

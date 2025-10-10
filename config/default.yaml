@@ -16,6 +16,11 @@ steps:
     sample_rate: 24000
     format: "wav"
 
+  subtitle:
+    width_per_char_pixels: 70
+    min_visual_width: 16
+    max_visual_width: 40
+
   video:
     resolution: "1920x1080"
     fps: 25

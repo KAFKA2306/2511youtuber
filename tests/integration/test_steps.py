@@ -106,7 +106,7 @@ class TestSubtitleFormatterIntegration:
         dummy_audio = Sine(440).to_audio_segment(duration=5000)
         dummy_audio.export(audio_path, format="wav")
 
-        step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir)
+        step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
         output_path = step.run({
             "generate_script": script_output_path,
             "synthesize_audio": audio_path
@@ -122,7 +122,7 @@ class TestSubtitleFormatterIntegration:
         assert "こんにちは" in content
 
     def test_timestamp_calculation(self, temp_run_dir, test_run_id):
-        step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir)
+        step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
 
         from src.models import Script, ScriptSegment
         script = Script(segments=[

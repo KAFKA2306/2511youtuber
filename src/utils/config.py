@@ -45,6 +45,12 @@ class VideoStepConfig(BaseModel):
     effects: list[VideoEffectConfig] = Field(default_factory=list)
 
 
+class SubtitleStepConfig(BaseModel):
+    width_per_char_pixels: int
+    min_visual_width: int
+    max_visual_width: int
+
+
 class ThumbnailStepConfig(BaseModel):
     enabled: bool = True
     width: int
@@ -81,6 +87,7 @@ class StepsConfig(BaseModel):
     news: NewsStepConfig
     script: ScriptStepConfig
     audio: AudioStepConfig
+    subtitle: SubtitleStepConfig
     video: VideoStepConfig
     thumbnail: ThumbnailStepConfig
     metadata: MetadataStepConfig

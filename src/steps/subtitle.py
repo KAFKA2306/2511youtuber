@@ -18,10 +18,10 @@ class SubtitleFormatter(Step):
         run_id: str,
         run_dir: Path,
         *,
-        max_chars_per_line: int = 24,
+        max_chars_per_line: int,
     ):
         super().__init__(run_id, run_dir)
-        self.max_chars_per_line = max(8, max_chars_per_line)
+        self.max_chars_per_line = max_chars_per_line
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         script_path = inputs.get("generate_script")
@@ -70,7 +70,6 @@ class SubtitleFormatter(Step):
         segments = script.segments
         gap = 0.0
         if len(segments) > 1:
-            # Reserve a small buffer between segments so timestamps don't overlap
             gap = min(0.2, audio_duration * 0.02)
             available_duration = audio_duration - gap * (len(segments) - 1)
             if available_duration <= 0:
