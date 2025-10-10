@@ -1,0 +1,17 @@
+{
+  "title": "世界の金融市場が急変",
+  "description": "世界の市場動向をわかりやすくまとめたサンプルデータです。",
+  "tags": ["金融ニュース", "世界経済"],
+  "analysis": {
+    "segments": 5,
+    "duration_estimate": 420,
+    "keyword_density": {
+      "金融": {"count": 5, "density": 0.021},
+      "経済": {"count": 3, "density": 0.015}
+    }
+  },
+  "recommendations": [
+    "サムネイルでは主要キーワードを強調してください。",
+    "視聴者にメリットを明確に伝える見出しを追加してください。"
+  ]
+}

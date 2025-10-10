@@ -15,6 +15,9 @@ class TestConfig:
         assert config.steps.script.min_duration == 300
         assert config.steps.audio.sample_rate == 24000
         assert config.steps.video.fps == 25
+        assert config.steps.video.effects[0].type == "ken_burns"
+        assert config.steps.thumbnail.enabled is True
+        assert config.steps.thumbnail.width == 1280
         assert config.steps.metadata.min_keyword_density == 0.01
         assert config.steps.youtube.enabled is True
 

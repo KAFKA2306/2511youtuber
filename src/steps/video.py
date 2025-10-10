@@ -12,6 +12,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     imageio_ffmpeg = None
 
+from src.providers.video_effects import VideoEffectContext, VideoEffectPipeline
 from src.steps.base import Step
 
 
@@ -19,7 +20,7 @@ class VideoRenderer(Step):
     name = "render_video"
     output_filename = "video.mp4"
 
-    def __init__(self, run_id: str, run_dir: Path, video_config: Dict = None):
+    def __init__(self, run_id: str, run_dir: Path, video_config: Dict | None = None):
         super().__init__(run_id, run_dir)
         self.video_config = video_config or {}
         self.resolution = self.video_config.get("resolution", "1920x1080")
@@ -27,6 +28,7 @@ class VideoRenderer(Step):
         self.codec = self.video_config.get("codec", "libx264")
         self.preset = self.video_config.get("preset", "medium")
         self.crf = self.video_config.get("crf", 23)
+        self.effect_pipeline = VideoEffectPipeline.from_config(self.video_config.get("effects"))
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         audio_path = inputs.get("synthesize_audio")
@@ -55,6 +57,13 @@ class VideoRenderer(Step):
             f'color=c=0x193d5a:size={width}x{height}:duration={audio_duration}:rate={self.fps}',
             f='lavfi'
         )
+
+        effect_context = VideoEffectContext(
+            duration_seconds=audio_duration,
+            fps=self.fps,
+            resolution=(width, height),
+        )
+        video_stream = self.effect_pipeline.apply(video_stream, effect_context)
 
         subtitle_path_str = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
 

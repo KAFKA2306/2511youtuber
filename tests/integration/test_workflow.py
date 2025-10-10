@@ -9,6 +9,7 @@ from src.steps.audio import AudioSynthesizer
 from src.steps.subtitle import SubtitleFormatter
 from src.steps.video import VideoRenderer
 from src.steps.metadata import MetadataAnalyzer
+from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.youtube import YouTubeUploader
 from src.steps.base import Step
 from src.models import WorkflowState
@@ -32,6 +33,23 @@ class TestWorkflowIntegration:
                     "max_title_length": 60,
                     "max_description_length": 3500,
                     "default_tags": ["金融ニュース"],
+                },
+            ),
+            ThumbnailGenerator(
+                run_id=test_run_id,
+                run_dir=temp_run_dir,
+                thumbnail_config={
+                    "width": 640,
+                    "height": 360,
+                    "background_color": "#1a2238",
+                    "title_color": "#FFFFFF",
+                    "subtitle_color": "#FFD166",
+                    "accent_color": "#EF476F",
+                    "padding": 48,
+                    "max_lines": 3,
+                    "max_chars_per_line": 12,
+                    "title_font_size": 72,
+                    "subtitle_font_size": 40,
                 },
             ),
             YouTubeUploader(
@@ -63,6 +81,8 @@ class TestWorkflowIntegration:
         if "render_video" in result.outputs:
             assert "analyze_metadata" in result.outputs
             assert (run_path / "metadata.json").exists()
+            if "generate_thumbnail" in result.outputs:
+                assert (run_path / "thumbnail.png").exists()
             if "upload_youtube" in result.outputs:
                 assert (run_path / "youtube.json").exists()
 
