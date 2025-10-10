@@ -36,9 +36,9 @@ class VOICEVOXProvider(Provider):
             self._ensure_server()
 
     def _ensure_server(self) -> None:
-        script_path = Path(self.manager_script)
+        script_path = Path(self.manager_script).expanduser()
         if not script_path.is_absolute():
-            script_path = (Path(__file__).resolve().parents[2] / script_path).resolve()
+            script_path = (Path.cwd() / script_path).resolve()
         key = str(script_path)
         if self._bootstrapped.get(key):
             return

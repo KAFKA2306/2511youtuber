@@ -82,7 +82,7 @@ providers:
     voicevox:
       enabled: true
       url: "http://localhost:50021"
-      manager_script: "../scripts/voicevox_manager.sh"
+      manager_script: "scripts/voicevox_manager.sh"
       auto_start: true
       query_timeout: 10
       synthesis_timeout: 30

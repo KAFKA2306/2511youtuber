@@ -29,7 +29,7 @@ class TestConfig:
         assert config.providers.llm.gemini.model == "gemini/gemini-2.5-flash-preview-09-2025"
         assert config.providers.tts.voicevox.enabled is True
         assert config.providers.tts.voicevox.speakers["田中"] == 11
-        assert config.providers.tts.voicevox.manager_script == "../scripts/voicevox_manager.sh"
+        assert config.providers.tts.voicevox.manager_script == "scripts/voicevox_manager.sh"
         assert config.providers.tts.voicevox.auto_start is True
         assert config.providers.tts.voicevox.query_timeout == 10
         assert config.providers.tts.voicevox.synthesis_timeout == 30
