@@ -12,13 +12,21 @@ from src.steps.metadata import MetadataAnalyzer
 from src.steps.youtube import YouTubeUploader
 from src.utils.config import Config
 from src.utils.logger import get_logger
-
-
 logger = get_logger(__name__)
 
 
 def create_run_id() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def estimate_max_chars_per_line(resolution: str) -> int:
+    try:
+        width_part = resolution.lower().split("x")[0].strip()
+        width = int(width_part)
+    except (ValueError, IndexError):
+        return 24
+
+    return max(12, min(40, width // 60))
 
 
 def main():
@@ -58,7 +66,8 @@ def main():
         ),
         SubtitleFormatter(
             run_id=run_id,
-            run_dir=run_dir
+            run_dir=run_dir,
+            max_chars_per_line=estimate_max_chars_per_line(config.steps.video.resolution),
         ),
         VideoRenderer(
             run_id=run_id,

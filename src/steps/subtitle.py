@@ -1,14 +1,27 @@
 import json
+import textwrap
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
+
 from pydub import AudioSegment
-from src.steps.base import Step
+
 from src.models import Script
+from src.steps.base import Step
 
 
 class SubtitleFormatter(Step):
     name = "prepare_subtitles"
     output_filename = "subtitles.srt"
+
+    def __init__(
+        self,
+        run_id: str,
+        run_dir: Path,
+        *,
+        max_chars_per_line: int = 24,
+    ):
+        super().__init__(run_id, run_dir)
+        self.max_chars_per_line = max(8, max_chars_per_line)
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         script_path = inputs.get("generate_script")
@@ -90,7 +103,7 @@ class SubtitleFormatter(Step):
         return timestamps
 
     def _generate_srt(self, timestamps: list[Dict]) -> str:
-        srt_lines = []
+        srt_lines: List[str] = []
 
         for i, ts in enumerate(timestamps, start=1):
             start_time = self._format_timestamp(ts["start"])
@@ -98,7 +111,7 @@ class SubtitleFormatter(Step):
 
             srt_lines.append(f"{i}")
             srt_lines.append(f"{start_time} --> {end_time}")
-            srt_lines.append(ts["text"])
+            srt_lines.extend(self._wrap_text(ts["text"]))
             srt_lines.append("")
 
         return "\n".join(srt_lines)
@@ -109,3 +122,25 @@ class SubtitleFormatter(Step):
         secs = int(seconds % 60)
         millis = int((seconds % 1) * 1000)
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+    def _wrap_text(self, text: str) -> List[str]:
+        wrapped_lines: List[str] = []
+
+        for raw_line in text.split("\n"):
+            line = raw_line.strip()
+            if not line:
+                wrapped_lines.append("")
+                continue
+
+            segments = textwrap.wrap(
+                line,
+                width=self.max_chars_per_line,
+                break_long_words=True,
+                break_on_hyphens=False,
+            )
+            if not segments:
+                wrapped_lines.append("")
+                continue
+            wrapped_lines.extend(segments)
+
+        return wrapped_lines or [""]

@@ -137,6 +137,37 @@ class TestSubtitleFormatterIntegration:
         assert timestamps[1]["end"] == 10.0
         assert timestamps[0]["end"] < timestamps[1]["start"]
 
+    def test_wraps_long_lines(self, temp_run_dir, test_run_id, sample_script_path):
+        from pydub import AudioSegment
+        from pydub.generators import Sine
+
+        run_path = temp_run_dir / test_run_id
+        run_path.mkdir(parents=True, exist_ok=True)
+
+        script_output_path = run_path / "script.json"
+        shutil.copy(sample_script_path, script_output_path)
+
+        audio_path = run_path / "audio.wav"
+        dummy_audio = Sine(440).to_audio_segment(duration=5000)
+        dummy_audio.export(audio_path, format="wav")
+
+        step = SubtitleFormatter(
+            run_id=test_run_id,
+            run_dir=temp_run_dir,
+            max_chars_per_line=10,
+        )
+        output_path = step.run({
+            "generate_script": script_output_path,
+            "synthesize_audio": audio_path
+        })
+
+        with open(output_path, encoding="utf-8") as f:
+            for line in f:
+                text_line = line.strip()
+                if not text_line or text_line.isdigit() or "-->" in text_line:
+                    continue
+                assert len(text_line) <= 10
+
 
 @pytest.mark.integration
 class TestMetadataAnalyzerIntegration:
