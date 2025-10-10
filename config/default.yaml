@@ -86,6 +86,8 @@ providers:
       auto_start: true
       query_timeout: 10
       synthesis_timeout: 30
+      startup_timeout_seconds: 60
+      startup_poll_interval_seconds: 2
       speakers:
         田中: 11
         鈴木: 8

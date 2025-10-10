@@ -1,6 +1,7 @@
 import requests
 import pyttsx3
 import subprocess
+import time
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
@@ -25,6 +26,8 @@ class VOICEVOXProvider(Provider):
         auto_start: bool = False,
         query_timeout: float = 10.0,
         synthesis_timeout: float = 30.0,
+        startup_timeout_seconds: float = 60.0,
+        startup_poll_interval_seconds: float = 2.0,
     ):
         self.url = url.rstrip("/")
         self.speakers = dict(speakers)
@@ -32,8 +35,12 @@ class VOICEVOXProvider(Provider):
         self.auto_start = auto_start
         self.query_timeout = query_timeout
         self.synthesis_timeout = synthesis_timeout
+        self.startup_timeout_seconds = startup_timeout_seconds
+        self.startup_poll_interval_seconds = startup_poll_interval_seconds
         if self.auto_start and self.manager_script:
             self._ensure_server()
+        self._ready = False
+        self._wait_for_server()
 
     def _ensure_server(self) -> None:
         script_path = Path(self.manager_script).expanduser()
@@ -52,10 +59,30 @@ class VOICEVOXProvider(Provider):
             return next(iter(self.speakers.values()))
         return 3
 
+    def _wait_for_server(self) -> None:
+        if self._ready:
+            return
+        deadline = time.monotonic() + self.startup_timeout_seconds
+        while time.monotonic() < deadline:
+            try:
+                response = requests.get(f"{self.url}/version", timeout=self.query_timeout)
+                if response.status_code == 200:
+                    self._ready = True
+                    return
+            except requests.RequestException:
+                pass
+            time.sleep(self.startup_poll_interval_seconds)
+        raise RuntimeError("VOICEVOX server not healthy")
+
     def is_available(self) -> bool:
-        return requests.get(f"{self.url}/version", timeout=self.query_timeout).status_code == 200
+        try:
+            self._wait_for_server()
+            return True
+        except Exception:
+            return False
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
+        self._wait_for_server()
         speaker_id = self._speaker_id(speaker)
         query = requests.post(
             f"{self.url}/audio_query",
