@@ -1,4 +1,5 @@
 import json
+import re
 import textwrap
 import yaml
 from pathlib import Path
@@ -107,6 +108,17 @@ class ScriptGenerator(Step):
 
         if cleaned.startswith("```") and cleaned.endswith("```"):
             cleaned = cleaned[3:-3]
+            cleaned = cleaned.lstrip()
+
+            first_line, separator, remainder = cleaned.partition("\n")
+            if separator:
+                candidate = first_line.strip()
+                if candidate and re.fullmatch(r"[a-zA-Z0-9_+\-.]+", candidate):
+                    cleaned = remainder.lstrip("\n")
+                else:
+                    cleaned = first_line + separator + remainder
+
+            cleaned = cleaned.strip()
 
         wrappers = [
             ('"""', '"""'),
