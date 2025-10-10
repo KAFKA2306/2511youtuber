@@ -23,6 +23,27 @@ steps:
     preset: "medium"
     crf: 23
 
+  metadata:
+    target_keywords:
+      - "金融"
+      - "経済"
+      - "投資"
+    min_keyword_density: 0.01
+    max_title_length: 60
+    max_description_length: 3500
+    default_tags:
+      - "金融ニュース"
+      - "日本経済"
+
+  youtube:
+    enabled: true
+    dry_run: true
+    default_visibility: "unlisted"
+    category_id: 24
+    default_tags:
+      - "金融"
+      - "ニュース"
+
 providers:
   llm:
     gemini:
@@ -52,6 +73,7 @@ providers:
   news:
     dummy:
       enabled: true
+
 
 logging:
   level: "INFO"

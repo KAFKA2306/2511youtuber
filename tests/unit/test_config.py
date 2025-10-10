@@ -15,6 +15,8 @@ class TestConfig:
         assert config.steps.script.min_duration == 300
         assert config.steps.audio.sample_rate == 24000
         assert config.steps.video.fps == 25
+        assert config.steps.metadata.min_keyword_density == 0.01
+        assert config.steps.youtube.enabled is True
 
     def test_providers_config(self):
         config = Config.load()

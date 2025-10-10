@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import yaml
 from dotenv import load_dotenv
 
@@ -36,11 +36,29 @@ class VideoStepConfig(BaseModel):
     crf: int
 
 
+class MetadataStepConfig(BaseModel):
+    target_keywords: list[str]
+    min_keyword_density: float
+    max_title_length: int
+    max_description_length: int
+    default_tags: list[str] = Field(default_factory=list)
+
+
+class YouTubeStepConfig(BaseModel):
+    enabled: bool = True
+    dry_run: bool = True
+    default_visibility: str
+    category_id: int
+    default_tags: list[str] = Field(default_factory=list)
+
+
 class StepsConfig(BaseModel):
     news: NewsStepConfig
     script: ScriptStepConfig
     audio: AudioStepConfig
     video: VideoStepConfig
+    metadata: MetadataStepConfig
+    youtube: YouTubeStepConfig
 
 
 class GeminiProviderConfig(BaseModel):

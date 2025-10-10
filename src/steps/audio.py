@@ -37,6 +37,13 @@ class AudioSynthesizer(Step):
             audio = tts_chain.execute(text=segment.text, speaker=segment.speaker)
             audio_segments.append(audio)
 
+        if not audio_segments:
+            self.logger.warning(
+                "Script contains no segments; generating silent fallback audio",
+                duration_ms=1000,
+            )
+            audio_segments.append(AudioSegment.silent(duration=1000))
+
         combined_audio = sum(audio_segments[1:], audio_segments[0])
 
         output_path = self.get_output_path()
