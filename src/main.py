@@ -26,7 +26,7 @@ def estimate_max_chars_per_line(resolution: str) -> int:
     except (ValueError, IndexError):
         return 24
 
-    return max(12, min(40, width // 60))
+    return max(12, min(40, max(width // 70, 16)))
 
 
 def main():

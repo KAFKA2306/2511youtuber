@@ -1,5 +1,5 @@
 import json
-import textwrap
+import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
@@ -132,15 +132,35 @@ class SubtitleFormatter(Step):
                 wrapped_lines.append("")
                 continue
 
-            segments = textwrap.wrap(
-                line,
-                width=self.max_chars_per_line,
-                break_long_words=True,
-                break_on_hyphens=False,
-            )
-            if not segments:
-                wrapped_lines.append("")
-                continue
-            wrapped_lines.extend(segments)
+            wrapped_lines.extend(self._wrap_visual_line(line, self.max_chars_per_line))
 
         return wrapped_lines or [""]
+
+    def _wrap_visual_line(self, line: str, limit: int) -> List[str]:
+        if not line:
+            return [""]
+
+        segments: List[str] = []
+        current = []
+        current_width = 0
+
+        for char in line:
+            width = self._char_width(char)
+            if current and current_width + width > limit:
+                segments.append("".join(current))
+                current = [char]
+                current_width = width
+            else:
+                current.append(char)
+                current_width += width
+
+        if current:
+            segments.append("".join(current))
+
+        return segments or [""]
+
+    def _char_width(self, char: str) -> int:
+        east = unicodedata.east_asian_width(char)
+        if east in ("F", "W"):
+            return 2
+        return 1

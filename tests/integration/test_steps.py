@@ -161,12 +161,23 @@ class TestSubtitleFormatterIntegration:
             "synthesize_audio": audio_path
         })
 
+        import unicodedata
+
+        def visual_width(value: str) -> int:
+            width = 0
+            for ch in value:
+                if unicodedata.east_asian_width(ch) in ("F", "W"):
+                    width += 2
+                else:
+                    width += 1
+            return width
+
         with open(output_path, encoding="utf-8") as f:
             for line in f:
                 text_line = line.strip()
                 if not text_line or text_line.isdigit() or "-->" in text_line:
                     continue
-                assert len(text_line) <= 10
+                assert visual_width(text_line) <= 10
 
 
 @pytest.mark.integration
