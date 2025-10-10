@@ -22,5 +22,10 @@ def sample_script_path():
 
 
 @pytest.fixture
+def sample_metadata_path():
+    return Path(__file__).parent / "fixtures" / "sample_metadata.json"
+
+
+@pytest.fixture
 def test_run_id():
     return "test_20251010_120000"

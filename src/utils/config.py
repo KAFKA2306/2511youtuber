@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Dict, Any
-from pydantic import BaseModel, Field
+from typing import Dict
+
 import yaml
 from dotenv import load_dotenv
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.utils.secrets import load_secret_values
 
@@ -28,12 +31,35 @@ class AudioStepConfig(BaseModel):
     format: str
 
 
+class VideoEffectConfig(BaseModel):
+    type: str
+    enabled: bool = True
+    model_config = ConfigDict(extra="allow")
+
+
 class VideoStepConfig(BaseModel):
     resolution: str
     fps: int
     codec: str
     preset: str
     crf: int
+    effects: list[VideoEffectConfig] = Field(default_factory=list)
+
+
+class ThumbnailStepConfig(BaseModel):
+    enabled: bool = True
+    width: int
+    height: int
+    background_color: str
+    title_color: str
+    subtitle_color: str
+    accent_color: str
+    padding: int = 80
+    max_lines: int = 3
+    max_chars_per_line: int = 12
+    title_font_size: int = 96
+    subtitle_font_size: int = 56
+    font_path: str | None = None
 
 
 class MetadataStepConfig(BaseModel):
@@ -57,6 +83,7 @@ class StepsConfig(BaseModel):
     script: ScriptStepConfig
     audio: AudioStepConfig
     video: VideoStepConfig
+    thumbnail: ThumbnailStepConfig
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
 

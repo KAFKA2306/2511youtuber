@@ -7,6 +7,7 @@ from src.steps.script import ScriptGenerator
 from src.steps.audio import AudioSynthesizer
 from src.steps.subtitle import SubtitleFormatter
 from src.steps.video import VideoRenderer
+from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.metadata import MetadataAnalyzer
 from src.steps.youtube import YouTubeUploader
 from src.utils.config import Config
@@ -66,7 +67,8 @@ def main():
                 "fps": config.steps.video.fps,
                 "codec": config.steps.video.codec,
                 "preset": config.steps.video.preset,
-                "crf": config.steps.video.crf
+                "crf": config.steps.video.crf,
+                "effects": [effect.model_dump() for effect in config.steps.video.effects],
             }
         ),
         MetadataAnalyzer(
@@ -75,6 +77,15 @@ def main():
             metadata_config=config.steps.metadata.model_dump()
         )
     ]
+
+    if config.steps.thumbnail.enabled:
+        steps.append(
+            ThumbnailGenerator(
+                run_id=run_id,
+                run_dir=run_dir,
+                thumbnail_config=config.steps.thumbnail.model_dump()
+            )
+        )
 
     if config.steps.youtube.enabled:
         steps.append(

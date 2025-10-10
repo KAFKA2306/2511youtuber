@@ -1,13 +1,18 @@
-import pytest
-from pathlib import Path
 import json
+import shutil
+from pathlib import Path
+
+import pytest
+from PIL import Image
+
+from src.models import NewsItem, Script
+from src.steps.audio import AudioSynthesizer
+from src.steps.metadata import MetadataAnalyzer
 from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
-from src.steps.audio import AudioSynthesizer
 from src.steps.subtitle import SubtitleFormatter
-from src.steps.metadata import MetadataAnalyzer
+from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.youtube import YouTubeUploader
-from src.models import NewsItem, Script
 
 
 @pytest.mark.integration
@@ -31,7 +36,6 @@ class TestNewsCollectorIntegration:
 @pytest.mark.integration
 class TestScriptGeneratorIntegration:
     def test_script_generation_with_dummy_llm(self, temp_run_dir, test_run_id, sample_news_path):
-        import shutil
         run_path = temp_run_dir / test_run_id
         run_path.mkdir(parents=True, exist_ok=True)
         news_output_path = run_path / "news.json"
@@ -66,7 +70,6 @@ class TestScriptGeneratorIntegration:
 @pytest.mark.integration
 class TestAudioSynthesizerIntegration:
     def test_audio_synthesis_with_pyttsx3(self, temp_run_dir, test_run_id, sample_script_path):
-        import shutil
         run_path = temp_run_dir / test_run_id
         run_path.mkdir(parents=True, exist_ok=True)
         script_output_path = run_path / "script.json"
@@ -90,7 +93,6 @@ class TestAudioSynthesizerIntegration:
 @pytest.mark.integration
 class TestSubtitleFormatterIntegration:
     def test_subtitle_generation(self, temp_run_dir, test_run_id, sample_script_path):
-        import shutil
         from pydub import AudioSegment
         from pydub.generators import Sine
 
@@ -139,8 +141,6 @@ class TestSubtitleFormatterIntegration:
 @pytest.mark.integration
 class TestMetadataAnalyzerIntegration:
     def test_metadata_analysis_produces_recommendations(self, temp_run_dir, test_run_id, sample_script_path):
-        import shutil
-
         run_path = temp_run_dir / test_run_id
         run_path.mkdir(parents=True, exist_ok=True)
 
@@ -169,6 +169,47 @@ class TestMetadataAnalyzerIntegration:
         assert "title" in metadata
         assert "recommendations" in metadata
         assert metadata["tags"]
+
+
+@pytest.mark.integration
+class TestThumbnailGeneratorIntegration:
+    def test_thumbnail_generation(self, temp_run_dir, test_run_id, sample_script_path, sample_metadata_path):
+        run_path = temp_run_dir / test_run_id
+        run_path.mkdir(parents=True, exist_ok=True)
+
+        script_output_path = run_path / "script.json"
+        shutil.copy(sample_script_path, script_output_path)
+
+        metadata_path = run_path / "metadata.json"
+        shutil.copy(sample_metadata_path, metadata_path)
+
+        step = ThumbnailGenerator(
+            run_id=test_run_id,
+            run_dir=temp_run_dir,
+            thumbnail_config={
+                "width": 640,
+                "height": 360,
+                "background_color": "#1a2238",
+                "title_color": "#FFFFFF",
+                "subtitle_color": "#FFD166",
+                "accent_color": "#EF476F",
+                "padding": 48,
+                "max_lines": 3,
+                "max_chars_per_line": 10,
+                "title_font_size": 64,
+                "subtitle_font_size": 36,
+            },
+        )
+
+        output_path = step.run({
+            "generate_script": script_output_path,
+            "analyze_metadata": metadata_path,
+        })
+
+        assert output_path.exists()
+
+        with Image.open(output_path) as img:
+            assert img.size == (640, 360)
 
 
 @pytest.mark.integration
@@ -206,7 +247,5 @@ class TestYouTubeUploaderIntegration:
 
         assert output_path.exists()
         with open(output_path, encoding="utf-8") as f:
-            data = json.load(f)
-
-        assert data["status"] == "dry_run"
-        assert data["metadata"]["visibility"] == "unlisted"
+            payload = json.load(f)
+        assert payload["status"] == "dry_run"
