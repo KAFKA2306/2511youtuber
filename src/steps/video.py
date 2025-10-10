@@ -1,7 +1,17 @@
+from __future__ import annotations
+
+import shutil
 from pathlib import Path
 from typing import Dict
-from pydub import AudioSegment
+
 import ffmpeg
+from pydub import AudioSegment
+
+try:
+    import imageio_ffmpeg  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    imageio_ffmpeg = None
+
 from src.steps.base import Step
 
 
@@ -66,7 +76,12 @@ class VideoRenderer(Step):
         ).overwrite_output()
 
         try:
-            ffmpeg.run(output, capture_stdout=True, capture_stderr=True)
+            ffmpeg.run(
+                output,
+                cmd=self._resolve_ffmpeg_binary(),
+                capture_stdout=True,
+                capture_stderr=True,
+            )
         except ffmpeg.Error as e:
             self.logger.error(
                 f"FFmpeg failed",
@@ -81,3 +96,21 @@ class VideoRenderer(Step):
     def _get_audio_duration(self, audio_path: Path) -> float:
         audio = AudioSegment.from_wav(audio_path)
         return len(audio) / 1000.0
+
+    def _resolve_ffmpeg_binary(self) -> str | None:
+        """Return the ffmpeg binary path, using bundled fallbacks when available."""
+
+        system_binary = shutil.which("ffmpeg")
+        if system_binary:
+            return system_binary
+
+        if imageio_ffmpeg is not None:  # pragma: no branch - simple guard
+            try:
+                return imageio_ffmpeg.get_ffmpeg_exe()
+            except Exception as exc:  # pragma: no cover - defensive
+                self.logger.warning("Failed to load bundled ffmpeg", error=str(exc))
+
+        raise FileNotFoundError(
+            "FFmpeg executable not found. Install ffmpeg or add it to PATH, or "
+            "ensure imageio-ffmpeg is available."
+        )
