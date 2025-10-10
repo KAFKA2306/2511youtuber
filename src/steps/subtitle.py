@@ -54,19 +54,38 @@ class SubtitleFormatter(Step):
         if total_chars == 0:
             return []
 
+        segments = script.segments
+        gap = 0.0
+        if len(segments) > 1:
+            # Reserve a small buffer between segments so timestamps don't overlap
+            gap = min(0.2, audio_duration * 0.02)
+            available_duration = audio_duration - gap * (len(segments) - 1)
+            if available_duration <= 0:
+                gap = 0.0
+                available_duration = audio_duration
+        else:
+            available_duration = audio_duration
+
         current_time = 0.0
         timestamps = []
 
-        for segment in script.segments:
+        for index, segment in enumerate(segments):
             char_ratio = len(segment.text) / total_chars
-            duration = audio_duration * char_ratio
+            duration = available_duration * char_ratio if available_duration > 0 else 0.0
+
+            end_time = current_time + duration
+            if index == len(segments) - 1:
+                end_time = audio_duration
 
             timestamps.append({
                 "start": current_time,
-                "end": current_time + duration,
+                "end": end_time,
                 "text": segment.text
             })
-            current_time += duration
+
+            current_time = end_time
+            if index < len(segments) - 1:
+                current_time += gap
 
         return timestamps
 

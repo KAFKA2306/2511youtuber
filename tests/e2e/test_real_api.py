@@ -1,23 +1,27 @@
 import pytest
-import os
 from pathlib import Path
 from src.providers.llm import GeminiProvider
 from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
+from src.utils.secrets import load_secret_values
 from src.workflow import WorkflowOrchestrator
 
 
 @pytest.mark.e2e
 class TestRealGeminiAPI:
+    @staticmethod
+    def _has_real_gemini_key() -> bool:
+        return bool(load_secret_values("GEMINI_API_KEY"))
+
     def test_gemini_api_availability(self):
-        if not os.getenv("GEMINI_API_KEY"):
+        if not self._has_real_gemini_key():
             pytest.skip("GEMINI_API_KEY not set")
 
         provider = GeminiProvider()
         assert provider.is_available()
 
     def test_gemini_script_generation(self):
-        if not os.getenv("GEMINI_API_KEY"):
+        if not self._has_real_gemini_key():
             pytest.skip("GEMINI_API_KEY not set")
 
         provider = GeminiProvider()
@@ -46,7 +50,7 @@ segments:
         assert "segments" in response or "田中" in response
 
     def test_full_workflow_with_real_gemini(self, temp_run_dir, test_run_id):
-        if not os.getenv("GEMINI_API_KEY"):
+        if not self._has_real_gemini_key():
             pytest.skip("GEMINI_API_KEY not set")
 
         steps = [

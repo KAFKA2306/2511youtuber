@@ -1,11 +1,11 @@
-import os
-import yaml
-import json
-from typing import Dict, Any
 from pathlib import Path
+
+import litellm
+import yaml
+
 from src.providers.base import Provider
 from src.utils.logger import get_logger
-import litellm
+from src.utils.secrets import load_secret_values
 
 
 logger = get_logger(__name__)
@@ -15,24 +15,25 @@ class GeminiProvider(Provider):
     name = "gemini"
     priority = 1
 
-    def __init__(self, model: str = "gemini/gemini-1.5-flash", temperature: float = 0.7, max_tokens: int = 4000):
-        self.model = model
+    def __init__(self, model: str = "gemini/gemini-2.5-flash-preview-09-2025", temperature: float = 0.7, max_tokens: int = 4000):
+        self.configured_model = model
+        self.model = self._normalise_model_name(model)
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.api_keys = self._get_api_keys()
         self.current_key_index = 0
 
     def _get_api_keys(self) -> list[str]:
-        keys = []
-        for i in range(1, 10):
-            key_name = f"GEMINI_API_KEY{'_' + str(i) if i > 1 else ''}"
-            key = os.getenv(key_name)
-            if key:
-                keys.append(key)
-        return keys
+        return load_secret_values("GEMINI_API_KEY")
 
     def is_available(self) -> bool:
         return len(self.api_keys) > 0
+
+    @staticmethod
+    def _normalise_model_name(model: str) -> str:
+        if "/" in model:
+            return model
+        return f"gemini/{model}" if not model.startswith("gemini/") else model
 
     def execute(self, prompt: str, **kwargs) -> str:
         if not self.api_keys:
@@ -42,7 +43,12 @@ class GeminiProvider(Provider):
             api_key = self.api_keys[self.current_key_index]
 
             try:
-                logger.info(f"Calling Gemini API", model=self.model, key_index=self.current_key_index)
+                logger.info(
+                    "Calling Gemini API",
+                    model=self.model,
+                    configured_model=self.configured_model,
+                    key_index=self.current_key_index,
+                )
 
                 response = litellm.completion(
                     model=self.model,
@@ -53,7 +59,12 @@ class GeminiProvider(Provider):
                 )
 
                 content = response.choices[0].message.content
-                logger.info(f"Gemini API succeeded", response_length=len(content))
+                logger.info(
+                    "Gemini API succeeded",
+                    response_length=len(content),
+                    model=self.model,
+                    configured_model=self.configured_model,
+                )
                 return content
 
             except Exception as e:
