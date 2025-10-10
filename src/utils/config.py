@@ -3,7 +3,8 @@ from typing import Dict, Any
 from pydantic import BaseModel
 import yaml
 from dotenv import load_dotenv
-import os
+
+from src.utils.secrets import load_secret_values
 
 
 class WorkflowConfig(BaseModel):
@@ -112,10 +113,4 @@ class Config(BaseModel):
         return cls(**data)
 
     def get_gemini_api_keys(self) -> list[str]:
-        keys = []
-        for i in range(1, 10):
-            key_name = f"GEMINI_API_KEY{'_' + str(i) if i > 1 else ''}"
-            key = os.getenv(key_name)
-            if key:
-                keys.append(key)
-        return keys
+        return load_secret_values("GEMINI_API_KEY")

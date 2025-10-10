@@ -18,7 +18,7 @@ class TestConfig:
 
     def test_providers_config(self):
         config = Config.load()
-        assert config.providers.llm.gemini.model == "gemini-1.5-flash"
+        assert config.providers.llm.gemini.model == "gemini/gemini-2.5-flash-preview-09-2025"
         assert config.providers.tts.voicevox.enabled is True
         assert config.providers.tts.voicevox.speakers["田中"] == 11
 

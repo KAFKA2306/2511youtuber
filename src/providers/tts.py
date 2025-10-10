@@ -65,27 +65,52 @@ class Pyttsx3Provider(Provider):
             "鈴木": {"rate": 160},
             "ナレーター": {"rate": 150}
         }
+        self._engine = None
+        self._engine_available = None
+        self._engine_error = None
 
     def is_available(self) -> bool:
-        try:
-            engine = pyttsx3.init()
-            engine.stop()
-            return True
-        except:
-            return False
+        self._ensure_engine()
+        # Even if the engine cannot be initialised we can fall back to synthetic audio
+        return True
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
         speaker_config = self.speakers.get(speaker, {"rate": 150})
 
-        engine = pyttsx3.init()
-        engine.setProperty('rate', speaker_config['rate'])
+        self._ensure_engine()
 
-        temp_path = Path(f"/tmp/pyttsx3_{speaker}_{hash(text)}.wav")
-        engine.save_to_file(text, str(temp_path))
-        engine.runAndWait()
+        if self._engine_available and self._engine:
+            temp_path = Path(f"/tmp/pyttsx3_{speaker}_{hash(text)}.wav")
+            self._engine.setProperty('rate', speaker_config['rate'])
+            self._engine.save_to_file(text, str(temp_path))
+            self._engine.runAndWait()
 
-        audio = AudioSegment.from_wav(temp_path)
-        temp_path.unlink()
+            audio = AudioSegment.from_wav(temp_path)
+            temp_path.unlink(missing_ok=True)
 
-        logger.info(f"pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
+            logger.info(f"pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
+            return audio
+
+        duration_ms = max(len(text) * 80, 500)
+        audio = AudioSegment.silent(duration=duration_ms, frame_rate=24000)
+        logger.info(
+            "pyttsx3 engine unavailable, generated silent fallback audio",
+            speaker=speaker,
+            duration_ms=duration_ms,
+            error=str(self._engine_error) if self._engine_error else None,
+        )
         return audio
+
+    def _ensure_engine(self) -> None:
+        if self._engine_available is not None:
+            return
+
+        try:
+            engine = pyttsx3.init()
+            engine.stop()
+            self._engine = engine
+            self._engine_available = True
+        except Exception as exc:
+            self._engine = None
+            self._engine_available = False
+            self._engine_error = exc

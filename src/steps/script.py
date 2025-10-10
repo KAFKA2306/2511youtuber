@@ -1,4 +1,5 @@
 import json
+import textwrap
 import yaml
 from pathlib import Path
 from typing import Dict
@@ -64,21 +65,23 @@ class ScriptGenerator(Step):
         return template.format(news_items=news_text)
 
     def _parse_and_validate(self, raw: str, max_depth: int = 3) -> Script:
-        raw = raw.strip()
-
-        if raw.startswith("```"):
-            lines = raw.split("\n")
-            raw = "\n".join([line for line in lines if not line.strip().startswith("```")])
+        raw = textwrap.dedent(raw).strip()
 
         for attempt in range(max_depth):
+            raw = self._strip_wrappers(raw)
+            raw = textwrap.dedent(raw).strip()
+
+            data = None
             try:
                 data = yaml.safe_load(raw)
             except yaml.YAMLError as e:
                 self.logger.warning(f"YAML parse failed, trying JSON", error=str(e))
+
+            if data is None:
                 try:
                     data = json.loads(raw)
                 except json.JSONDecodeError:
-                    raise ValueError(f"Cannot parse as YAML or JSON: {raw[:200]}")
+                    data = None
 
             if isinstance(data, dict):
                 script = Script(**data)
@@ -94,6 +97,28 @@ class ScriptGenerator(Step):
                 raw = data
                 continue
 
-            raise ValueError(f"Unexpected data type: {type(data)}")
+            if data is not None:
+                raise ValueError(f"Unexpected data type: {type(data)}")
 
-        raise ValueError(f"Max recursion depth exceeded while parsing LLM output")
+        raise ValueError("Max recursion depth exceeded while parsing LLM output")
+
+    def _strip_wrappers(self, raw: str) -> str:
+        cleaned = raw.strip()
+
+        if cleaned.startswith("```") and cleaned.endswith("```"):
+            cleaned = cleaned[3:-3]
+
+        wrappers = [
+            ('"""', '"""'),
+            ("'''", "'''"),
+            ('"', '"'),
+            ("'", "'")
+        ]
+
+        for prefix, suffix in wrappers:
+            if cleaned.startswith(prefix) and cleaned.endswith(suffix) and len(cleaned) >= len(prefix) + len(suffix):
+                cleaned = cleaned[len(prefix):-len(suffix)]
+                cleaned = cleaned.strip()
+                break
+
+        return cleaned
