@@ -108,6 +108,10 @@ class VOICEVOXProviderConfig(BaseModel):
     enabled: bool
     url: str
     speakers: Dict[str, int]
+    manager_script: str | None = None
+    auto_start: bool = False
+    query_timeout: float = 10.0
+    synthesis_timeout: float = 30.0
 
 
 class Pyttsx3SpeakerConfig(BaseModel):

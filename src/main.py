@@ -53,8 +53,12 @@ def main():
             run_dir=run_dir,
             voicevox_config={
                 "url": config.providers.tts.voicevox.url,
-                "speakers": config.providers.tts.voicevox.speakers
-            },
+                "speakers": dict(config.providers.tts.voicevox.speakers),
+                "manager_script": config.providers.tts.voicevox.manager_script,
+                "auto_start": config.providers.tts.voicevox.auto_start,
+                "query_timeout": config.providers.tts.voicevox.query_timeout,
+                "synthesis_timeout": config.providers.tts.voicevox.synthesis_timeout,
+            } if config.providers.tts.voicevox.enabled else {},
             pyttsx3_config={
                 "speakers": {
                     k: v.model_dump() for k, v in config.providers.tts.pyttsx3.speakers.items()

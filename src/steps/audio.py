@@ -25,10 +25,11 @@ class AudioSynthesizer(Step):
         script = self._load_script(Path(script_path))
         self.logger.info(f"Loaded script", segments=len(script.segments))
 
-        tts_chain = ProviderChain([
-            VOICEVOXProvider(**self.voicevox_config),
-            Pyttsx3Provider(**self.pyttsx3_config)
-        ])
+        providers = []
+        if self.voicevox_config:
+            providers.append(VOICEVOXProvider(**self.voicevox_config))
+        providers.append(Pyttsx3Provider(**self.pyttsx3_config))
+        tts_chain = ProviderChain(providers)
 
         audio_segments = []
         for i, segment in enumerate(script.segments):

@@ -82,6 +82,10 @@ providers:
     voicevox:
       enabled: true
       url: "http://localhost:50021"
+      manager_script: "../scripts/voicevox_manager.sh"
+      auto_start: true
+      query_timeout: 10
+      synthesis_timeout: 30
       speakers:
         田中: 11
         鈴木: 8

@@ -1,5 +1,7 @@
 import requests
 import pyttsx3
+import subprocess
+from io import BytesIO
 from pathlib import Path
 from typing import Dict
 from pydub import AudioSegment
@@ -13,46 +15,62 @@ logger = get_logger(__name__)
 class VOICEVOXProvider(Provider):
     name = "voicevox"
     priority = 1
+    _bootstrapped: Dict[str, bool] = {}
 
-    def __init__(self, url: str = "http://localhost:50021", speakers: Dict[str, int] = None):
-        self.url = url
-        self.speakers = speakers or {"田中": 11, "鈴木": 8, "ナレーター": 3}
+    def __init__(
+        self,
+        url: str,
+        speakers: Dict[str, int],
+        manager_script: str | None = None,
+        auto_start: bool = False,
+        query_timeout: float = 10.0,
+        synthesis_timeout: float = 30.0,
+    ):
+        self.url = url.rstrip("/")
+        self.speakers = dict(speakers)
+        self.manager_script = manager_script
+        self.auto_start = auto_start
+        self.query_timeout = query_timeout
+        self.synthesis_timeout = synthesis_timeout
+        if self.auto_start and self.manager_script:
+            self._ensure_server()
+
+    def _ensure_server(self) -> None:
+        script_path = Path(self.manager_script)
+        if not script_path.is_absolute():
+            script_path = (Path(__file__).resolve().parents[2] / script_path).resolve()
+        key = str(script_path)
+        if self._bootstrapped.get(key):
+            return
+        subprocess.run([str(script_path), "start"], check=True)
+        self._bootstrapped[key] = True
+
+    def _speaker_id(self, speaker: str) -> int:
+        if speaker in self.speakers:
+            return self.speakers[speaker]
+        if self.speakers:
+            return next(iter(self.speakers.values()))
+        return 3
 
     def is_available(self) -> bool:
-        try:
-            response = requests.get(f"{self.url}/version", timeout=2)
-            return response.status_code == 200
-        except:
-            return False
+        return requests.get(f"{self.url}/version", timeout=self.query_timeout).status_code == 200
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
-        speaker_id = self.speakers.get(speaker, 3)
-
-        query_response = requests.post(
+        speaker_id = self._speaker_id(speaker)
+        query = requests.post(
             f"{self.url}/audio_query",
             params={"text": text, "speaker": speaker_id},
-            timeout=10
+            timeout=self.query_timeout,
         )
-        query_response.raise_for_status()
-        query_data = query_response.json()
-
-        synthesis_response = requests.post(
+        query.raise_for_status()
+        synthesis = requests.post(
             f"{self.url}/synthesis",
             params={"speaker": speaker_id},
-            json=query_data,
-            timeout=30
+            json=query.json(),
+            timeout=self.synthesis_timeout,
         )
-        synthesis_response.raise_for_status()
-
-        temp_path = Path(f"/tmp/voicevox_{speaker}_{hash(text)}.wav")
-        with open(temp_path, "wb") as f:
-            f.write(synthesis_response.content)
-
-        audio = AudioSegment.from_wav(temp_path)
-        temp_path.unlink()
-
-        logger.info(f"VOICEVOX synthesis completed", speaker=speaker, duration_ms=len(audio))
-        return audio
+        synthesis.raise_for_status()
+        return AudioSegment.from_file(BytesIO(synthesis.content), format="wav")
 
 
 class Pyttsx3Provider(Provider):

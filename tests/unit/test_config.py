@@ -14,6 +14,9 @@ class TestConfig:
         assert config.steps.news.count == 3
         assert config.steps.script.min_duration == 300
         assert config.steps.audio.sample_rate == 24000
+        assert config.steps.subtitle.width_per_char_pixels == 70
+        assert config.steps.subtitle.min_visual_width == 16
+        assert config.steps.subtitle.max_visual_width == 40
         assert config.steps.video.fps == 25
         assert config.steps.video.effects[0].type == "ken_burns"
         assert config.steps.thumbnail.enabled is True
@@ -26,6 +29,10 @@ class TestConfig:
         assert config.providers.llm.gemini.model == "gemini/gemini-2.5-flash-preview-09-2025"
         assert config.providers.tts.voicevox.enabled is True
         assert config.providers.tts.voicevox.speakers["田中"] == 11
+        assert config.providers.tts.voicevox.manager_script == "../scripts/voicevox_manager.sh"
+        assert config.providers.tts.voicevox.auto_start is True
+        assert config.providers.tts.voicevox.query_timeout == 10
+        assert config.providers.tts.voicevox.synthesis_timeout == 30
 
     def test_logging_config(self):
         config = Config.load()
