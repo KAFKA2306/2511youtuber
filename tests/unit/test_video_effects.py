@@ -31,7 +31,7 @@ class TestVideoEffectPipeline:
         call = stream.filter.call_args
         assert call.args[0] == "zoompan"
         assert call.kwargs["z"] == "min(zoom+0.01,1.3)"
-        assert call.kwargs["d"] == 12
+        assert call.kwargs["d"] == 1
         assert call.kwargs["s"] == "1280x720"
         assert "min(on/287,1)" in call.kwargs["x"]
         assert "ih/2 - (ih/zoom/2)" == call.kwargs["y"]

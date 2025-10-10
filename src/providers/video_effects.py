@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Sequence, Tuple, Type
 
@@ -90,7 +91,7 @@ class KenBurnsEffect(VideoEffect):
         self.pan_mode = pan_mode
 
     def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:
-        frames = max(int(context.fps * self.hold_frame_factor), 1)
+        frames = max(int(math.ceil(self.hold_frame_factor)), 1)
         x_expr, y_expr = self._resolve_pan_expressions(context)
 
         return stream.filter(
