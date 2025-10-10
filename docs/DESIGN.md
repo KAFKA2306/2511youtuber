@@ -656,11 +656,11 @@ def retry(max_attempts: int = 3, backoff: float = 2.0):
 
 ### 7.3 フォールバック戦略
 
-| コンポーネント | 優先順位1 | 優先順位2 | 優先順位3 |
-|--------------|----------|----------|----------|
-| ニュース収集 | Perplexity | NewsAPI | ダミーニュース |
-| LLM | Gemini | - | ダミースクリプト |
-| TTS | VOICEVOX | pyttsx3 | - |
+| コンポーネント | 優先順位1 | 優先順位2 |
+|--------------|----------|----------|
+| ニュース収集 | Perplexity | NewsAPI |
+| LLM | Gemini | - |
+| TTS | VOICEVOX | pyttsx3 |
 
 ---
 

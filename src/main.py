@@ -36,7 +36,8 @@ def main():
             run_id=run_id,
             run_dir=run_dir,
             query=config.steps.news.query,
-            count=config.steps.news.count
+            count=config.steps.news.count,
+            providers_config=config.providers.news,
         ),
         ScriptGenerator(
             run_id=run_id,

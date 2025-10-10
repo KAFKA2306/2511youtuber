@@ -93,8 +93,13 @@ providers:
           rate: 150
 
   news:
-    dummy:
+    perplexity:
       enabled: true
+      model: "sonar"
+      temperature: 0.2
+      max_tokens: 2048
+    dummy:
+      enabled: false
 
 
 logging:

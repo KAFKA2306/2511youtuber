@@ -118,12 +118,20 @@ class TTSProvidersConfig(BaseModel):
     pyttsx3: Pyttsx3ProviderConfig
 
 
+class PerplexityNewsProviderConfig(BaseModel):
+    enabled: bool = False
+    model: str = "sonar"
+    temperature: float = 0.2
+    max_tokens: int = 2048
+
+
 class DummyNewsProviderConfig(BaseModel):
-    enabled: bool
+    enabled: bool = False
 
 
 class NewsProvidersConfig(BaseModel):
-    dummy: DummyNewsProviderConfig
+    perplexity: PerplexityNewsProviderConfig | None = None
+    dummy: DummyNewsProviderConfig | None = None
 
 
 class ProvidersConfig(BaseModel):

@@ -84,6 +84,7 @@ class ScriptGenerator(Step):
                     data = None
 
             if isinstance(data, dict):
+                data = self._normalise_segments_data(data)
                 script = Script(**data)
 
                 purity = script.japanese_purity()
@@ -96,6 +97,13 @@ class ScriptGenerator(Step):
                 self.logger.info(f"Recursively unwrapping string", attempt=attempt)
                 raw = data
                 continue
+
+            if data is None:
+                extracted = self._extract_segment_block(raw)
+                if extracted and extracted != raw:
+                    self.logger.info("Extracted YAML segment block from LLM output", attempt=attempt)
+                    raw = extracted
+                    continue
 
             if data is not None:
                 raise ValueError(f"Unexpected data type: {type(data)}")
@@ -122,3 +130,40 @@ class ScriptGenerator(Step):
                 break
 
         return cleaned
+
+    def _extract_segment_block(self, raw: str) -> str | None:
+        marker = "segments:"
+        if marker not in raw:
+            return None
+
+        start = raw.index(marker)
+        candidate = raw[start:]
+        candidate = candidate.strip()
+
+        if "```" in candidate:
+            candidate = candidate.split("```", 1)[0].strip()
+
+        return candidate if candidate else None
+
+    def _normalise_segments_data(self, data: dict) -> dict:
+        segments = data.get("segments")
+        if not isinstance(segments, list):
+            return data
+
+        for segment in segments:
+            if not isinstance(segment, dict):
+                continue
+            text = segment.get("text")
+            if isinstance(text, str):
+                segment["text"] = self._to_full_width(text)
+
+        return data
+
+    def _to_full_width(self, text: str) -> str:
+        converted = []
+        for char in text:
+            if "!" <= char <= "~":
+                converted.append(chr(ord(char) + 0xFEE0))
+            else:
+                converted.append(char)
+        return "".join(converted)

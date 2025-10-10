@@ -13,7 +13,9 @@ def is_japanese_char(char: str) -> bool:
         (0x3040 <= code <= 0x309F) or
         (0x30A0 <= code <= 0x30FF) or
         (0x4E00 <= code <= 0x9FFF) or
-        (0x3000 <= code <= 0x303F)
+        (0x3000 <= code <= 0x303F) or
+        (0xFF01 <= code <= 0xFF60) or
+        (0xFFE0 <= code <= 0xFFE6)
     )
 
 

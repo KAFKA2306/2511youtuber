@@ -18,7 +18,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
+*lock
 .env
 .venv
 env/
