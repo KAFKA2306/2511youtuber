@@ -7,6 +7,8 @@ from src.steps.script import ScriptGenerator
 from src.steps.audio import AudioSynthesizer
 from src.steps.subtitle import SubtitleFormatter
 from src.steps.video import VideoRenderer
+from src.steps.metadata import MetadataAnalyzer
+from src.steps.youtube import YouTubeUploader
 from src.utils.config import Config
 from src.utils.logger import get_logger
 
@@ -66,8 +68,22 @@ def main():
                 "preset": config.steps.video.preset,
                 "crf": config.steps.video.crf
             }
+        ),
+        MetadataAnalyzer(
+            run_id=run_id,
+            run_dir=run_dir,
+            metadata_config=config.steps.metadata.model_dump()
         )
     ]
+
+    if config.steps.youtube.enabled:
+        steps.append(
+            YouTubeUploader(
+                run_id=run_id,
+                run_dir=run_dir,
+                youtube_config=config.steps.youtube.model_dump()
+            )
+        )
 
     orchestrator = WorkflowOrchestrator(run_id=run_id, steps=steps, run_dir=run_dir)
 
@@ -90,7 +106,7 @@ def main():
     elif result.status == "partial":
         print(f"\n⚠️  Workflow completed with errors")
         print(f"Run ID: {run_id}")
-        print(f"Completed steps: {len(result.outputs)}/5")
+        print(f"Completed steps: {len(result.outputs)}/{len(steps)}")
         print(f"Errors: {result.errors}")
         return 1
     else:
