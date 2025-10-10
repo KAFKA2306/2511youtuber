@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict
 
 import yaml
-from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.utils.secrets import load_secret_values
@@ -160,8 +159,6 @@ class Config(BaseModel):
 
         with open(config_path) as f:
             data = yaml.safe_load(f)
-
-        load_dotenv(Path(__file__).parent.parent.parent / "config" / ".env")
 
         return cls(**data)
 

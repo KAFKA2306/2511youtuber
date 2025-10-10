@@ -5,6 +5,10 @@ import os
 from pathlib import Path
 from typing import Iterable, List, Set
 
+_ENV_FILE_PATHS = [
+    Path(__file__).resolve().parents[2] / "config" / ".env",
+]
+
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_SECRET_DIRS = [
@@ -157,4 +161,36 @@ def load_secret_values(
                     for secret in _read_secret_file(file_path):
                         _add(secret)
 
+    # 3. Parse shared .env files when no values have been discovered yet
+    if not values:
+        for env_path in _ENV_FILE_PATHS:
+            if not env_path.is_file():
+                continue
+            entries = _read_env_mapping(env_path)
+            for index in range(1, max_keys + 1):
+                suffix = f"_{index}" if index > 1 else ""
+                key = f"{env_prefix}{suffix}"
+                _add(entries.get(key))
+
     return values
+
+
+def _read_env_mapping(path: Path) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return mapping
+
+    for line in content.splitlines():
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if key and value and key not in mapping:
+            mapping[key] = value
+
+    return mapping
