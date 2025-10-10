@@ -1,27 +1,31 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/` houses the v2 pipeline: `main.py` drives the CLI, `workflow.py` orchestrates the five steps, and `steps/` and `providers/` keep responsibilities isolated; assets and prompts live in `config/` while shared docs are in `docs/`.
-- `tests/` mirrors runtime boundaries with `unit/`, `integration/`, and `e2e/` suites plus reusable fixtures; keep new tests in the matching tier.
-- `core/` is the zero-base rebuild: start work there when exploring the minimalist architecture—`src/` and `docs/` inside it must remain self-contained so old and new stacks can coexist.
+- `src/` contains the v2 pipeline: `main.py` powers the CLI entrypoint, `workflow.py` sequences the five steps, and `steps/` plus `providers/` isolate per-step behavior; shared contracts live in `src/models.py`.
+- `config/` stores prompts and assets, `docs/` captures reference material, and `tests/` mirrors runtime seams with `unit/`, `integration/`, `e2e/`, and reusable fixtures under `tests/fixtures/`.
 
 ## Build, Test, and Development Commands
-- Install once with `python -m pip install -e .[dev]` to get runtime plus Ruff, pytest, and coverage extras.
-- Run fast feedback with `pytest tests/unit -m unit -v`; add `--cov=src --cov-report=term-missing` before submitting substantial changes.
-- Exercise integrations via `pytest tests/integration -v` and full regression with `pytest -v`; mark slow Gemini runs with `-m e2e` only when the key in `.env` is configured.
-- Launch the MVP locally using `python -m src.main --config config/default.yaml`; when iterating on the new minimalist stack, point to `core/src/main.py` explicitly.
+- Install tooling once with `uv sync`; it provisions runtime deps plus Ruff, pytest, and coverage extras.
+- Run fast feedback via `uv run pytest tests/unit -m unit -v`; pair with `--cov=src --cov-report=term-missing` before shipping substantial work.
+- Validate orchestration with `uv run pytest tests/integration -v`; run the full regression suite using `uv run pytest -v` and target Gemini-backed flows with `-m e2e` when the `.env` key is configured.
+- Launch the CLI using `uv run python -m src.main --config config/default.yaml`; use `uv run python src/main.py` when iterating on the minimalist stack.
 
 ## Coding Style & Naming Conventions
-- Python 3.11, 4-space indentation, type hints everywhere; modules and functions use `snake_case`, classes use `PascalCase`.
-- Keep logic in small, composable functions; favor data classes or Pydantic models for shared contracts in `src/models.py`.
-- Format and lint with `ruff check src tests` (add `core/src` when that code matures). Do not add inline comments or defensive error handling inside the `core` rebuild—success-path logic only.
+- Python 3.11, four-space indentation, and type hints everywhere; modules and functions use `snake_case`, classes use `PascalCase`, constants stay uppercase.
+- Favor small, composable functions and data classes or Pydantic models in `src/models.py`; keep success-path logic only.
+- Keep implementations minimal per the docs: keep files short, isolate concerns across modules, avoid adding comments, no error handling. No mockups—let the real pipeline seams carry the behavior.
+- Format and lint with `uv run ruff check src tests` (add `src` as that code stabilizes).
 
 ## Testing Guidelines
-- Mirror runtime seams: unit tests for pure logic, integration tests for step orchestration, e2e for Gemini-backed runs.
-- Store deterministic Gemini fixtures under `tests/fixtures/` and update them whenever prompts change.
-- New modules in `core/` must ship with unit tests that assert artifact paths and Gemini post-processing stay stable.
+- Co-locate pure logic tests in `tests/unit`, orchestration cases in `tests/integration`, and cross-service flows in `tests/e2e`.
+- Name tests with intent (`test_handles_empty_script`) and refresh fixtures in `tests/fixtures/` whenever prompts or Gemini payloads change.
+- Test files must use REAL gemini API keys to verify REAL LLM Output syntax errors.
 
 ## Commit & Pull Request Guidelines
-- Follow the existing history: short, imperative commit titles (`Add lightweight Pillow stub for tests`).
-- Each PR needs a concise summary, linked issues, and evidence of test results; include sample artifacts or screenshots when touching rendering code.
-- Tag the DRI for the affected module (`Workflow`, `Gemini Script`, `Audio`, `Video`, `Quality`) to keep ownership clear.
+- Follow existing history: short, imperative commit titles such as `Add lightweight pillow stub for tests`.
+- Each PR should include a crisp summary, linked issues, evidence of test runs, and sample artifacts or screenshots when modifying rendering.
+- Tag the relevant DRI (`Workflow`, `Gemini Script`, `Audio`, `Video`, `Quality`) to keep ownership visible.
+
+## Security & Configuration Tips
+- Keep secrets in `.env` and never commit API keys; rotate Gemini credentials if the file changes hands.
+- Review `config/default.yaml` before public demos to ensure no experimental providers are enabled.
