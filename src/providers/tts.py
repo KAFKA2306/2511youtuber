@@ -2,6 +2,7 @@ import requests
 import pyttsx3
 import subprocess
 import time
+from contextlib import suppress
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
@@ -64,22 +65,17 @@ class VOICEVOXProvider(Provider):
             return
         deadline = time.monotonic() + self.startup_timeout_seconds
         while time.monotonic() < deadline:
-            try:
+            with suppress(requests.RequestException):
                 response = requests.get(f"{self.url}/version", timeout=self.query_timeout)
                 if response.status_code == 200:
                     self._ready = True
                     return
-            except requests.RequestException:
-                pass
             time.sleep(self.startup_poll_interval_seconds)
         raise RuntimeError("VOICEVOX server not healthy")
 
     def is_available(self) -> bool:
-        try:
-            self._wait_for_server()
-            return True
-        except Exception:
-            return False
+        self._wait_for_server()
+        return True
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
         self._wait_for_server()
