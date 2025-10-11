@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg ニュース OR 日本経済新聞 株ニュース OR ロイター 株ニュース"
+    query: "bloomberg ニュース OR 日本経済新聞 株ニュース OR ロイター 株ニュース OR kafkafinantialgroup OR CNBC ニュース"
 
   script:
     min_duration: 300

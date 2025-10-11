@@ -230,7 +230,7 @@ cp config/.env.example config/.env
 uv run python -m src.main
 
 # または
-python src/main.py
+python src.main.py
 ```
 
 ### 3. 出力確認
@@ -320,3 +320,21 @@ APIが利用できない場合、自動的に代替プロバイダに切り替�
 
 **現時点で基本的なワークフローは完全に動作可能です。**
 # 2511youtuber
+
+## Automation
+
+This project can be run automatically using a cron job. The following cron job will run the script at 7:00, 12:00, and 17:00 every day:
+
+```bash
+0 7,12,17 * * * cd /home/kafka/projects/2510youtuber/youtube-ai-v2 && /home/kafka/.local/bin/uv run python -m src.main --config config/default.yaml >> /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log 2>&1
+```
+
+This will execute the main script and log all output to `/home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log`.
+
+### How to check the execution status
+
+You can monitor the `cron.log` file to check the status of the automatic runs:
+
+```bash
+tail -f /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log
+```
