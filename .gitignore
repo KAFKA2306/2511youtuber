@@ -14,7 +14,9 @@ lib64/
 parts/
 sdist/
 var/
-assets/
+assets/**
+!assets/fonts/
+!assets/fonts/**
 logs/
 wheels/
 *.egg-info/
