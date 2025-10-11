@@ -81,7 +81,7 @@ providers:
   tts:
     voicevox:
       enabled: true
-      url: "http://localhost:50021"
+      url: "http://localhost:50121"
       manager_script: "scripts/voicevox_manager.sh"
       auto_start: true
       query_timeout: 10
