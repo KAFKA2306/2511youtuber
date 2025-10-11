@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from src.providers.base import ProviderChain
+from src.providers.base import execute_with_fallback
 from src.providers.news import PerplexityNewsProvider
 from src.steps.base import Step
 from src.utils.config import NewsProvidersConfig
@@ -26,25 +26,16 @@ class NewsCollector(Step):
         self.providers_config = providers_config
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
-        self.logger.info("Collecting news", query=self.query, count=self.count)
-
-        providers = ProviderChain(self._build_providers())
-
-        news_items = providers.execute(query=self.query, count=self.count)
-
+        news_items = execute_with_fallback(self._build_providers(), query=self.query, count=self.count)
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
-
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
-
-        self.logger.info("News collected", count=len(news_items), output_path=str(output_path))
         return output_path
 
     def _build_providers(self) -> List[PerplexityNewsProvider]:
         providers: List[PerplexityNewsProvider] = []
         config = self.providers_config
-
         if config and config.perplexity and config.perplexity.enabled:
             providers.append(
                 PerplexityNewsProvider(
@@ -53,5 +44,4 @@ class NewsCollector(Step):
                     max_tokens=config.perplexity.max_tokens,
                 )
             )
-
-        return providers
+        return providers or [PerplexityNewsProvider()]

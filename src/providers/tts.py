@@ -7,15 +7,9 @@ import pyttsx3
 import requests
 from pydub import AudioSegment
 
-from src.providers.base import Provider
-from src.utils.logger import get_logger
 
-logger = get_logger(__name__)
-
-
-class VOICEVOXProvider(Provider):
+class VOICEVOXProvider:
     name = "voicevox"
-    priority = 1
     _bootstrapped: Dict[str, bool] = {}
 
     def __init__(
@@ -65,11 +59,10 @@ class VOICEVOXProvider(Provider):
         return AudioSegment.from_file(BytesIO(synthesis.content), format="wav")
 
 
-class Pyttsx3Provider(Provider):
+class Pyttsx3Provider:
     name = "pyttsx3"
-    priority = 2
 
-    def __init__(self, speakers: Dict[str, Dict] = None):
+    def __init__(self, speakers: Dict[str, Dict] | None = None):
         self.speakers = speakers or {
             "春日部つむぎ": {"rate": 140},
             "ずんだもん": {"rate": 160},
@@ -89,7 +82,6 @@ class Pyttsx3Provider(Provider):
         self._engine.runAndWait()
         audio = AudioSegment.from_wav(temp_path)
         temp_path.unlink(missing_ok=True)
-        logger.info("pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
         return audio
 
     def _ensure_engine(self) -> None:

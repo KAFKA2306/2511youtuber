@@ -56,10 +56,4 @@ class YouTubeUploader(Step):
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(upload_result, f, ensure_ascii=False, indent=2)
 
-        self.logger.info(
-            "YouTube upload step completed",
-            video_id=upload_result.get("video_id"),
-            status=upload_result.get("status"),
-        )
-
         return output_path

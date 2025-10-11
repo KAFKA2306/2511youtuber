@@ -80,13 +80,6 @@ class MetadataAnalyzer(Step):
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
 
-        self.logger.info(
-            "Metadata analysis completed",
-            title_length=len(title),
-            tags=len(tags),
-            recommendations=len(recommendations),
-        )
-
         return output_path
 
     def _load_script(self, path: Path) -> Script:

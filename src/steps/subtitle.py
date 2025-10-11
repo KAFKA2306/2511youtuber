@@ -35,8 +35,6 @@ class SubtitleFormatter(Step):
         script = self._load_script(Path(script_path))
         audio_duration = self._get_audio_duration(Path(audio_path))
 
-        self.logger.info("Generating subtitles", segments=len(script.segments), audio_duration_seconds=audio_duration)
-
         timestamps = self._calculate_timestamps(script, audio_duration)
         srt_content = self._generate_srt(timestamps)
 
@@ -46,7 +44,6 @@ class SubtitleFormatter(Step):
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(srt_content)
 
-        self.logger.info("Subtitles generated", output_path=str(output_path))
         return output_path
 
     def _load_script(self, script_path: Path) -> Script:
