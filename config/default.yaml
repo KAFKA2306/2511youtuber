@@ -64,7 +64,7 @@ steps:
     max_chars_per_line: 12
     title_font_size: 96
     subtitle_font_size: 56
-    font_path: "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"
+    font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
     overlays:
       - name: "character"
         enabled: true
