@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List
 
+import yaml
+
 from src.models import Script
+from src.providers.llm import GeminiProvider, load_prompt_template
 from src.steps.base import Step
 
 
@@ -23,29 +27,50 @@ class MetadataAnalyzer(Step):
         metadata_config = metadata_config or {}
         self.target_keywords: List[str] = list(metadata_config.get("target_keywords", []))
         self.min_keyword_density: float = float(metadata_config.get("min_keyword_density", 0.01))
-        self.max_title_length: int = int(metadata_config.get("max_title_length", 60))
-        self.max_description_length: int = int(metadata_config.get("max_description_length", 3500))
+        self.max_title_length: int = int(metadata_config.get("max_title_length", 50))
+        self.max_description_length: int = int(metadata_config.get("max_description_length", 5000))
         self.default_tags: List[str] = list(metadata_config.get("default_tags", []))
+        self.use_llm: bool = bool(metadata_config.get("use_llm", True))
+        self.llm_provider: GeminiProvider | None = None
+
+        if self.use_llm:
+            model = metadata_config.get("llm_model", "gemini/gemini-2.5-flash-preview-09-2025")
+            self.llm_provider = GeminiProvider(model=model, temperature=0.7)
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         script_path = inputs.get("generate_script")
+        news_path = inputs.get("collect_news")
+
         if not script_path or not Path(script_path).exists():
             raise ValueError("Script file not found for metadata analysis")
 
         script = self._load_script(Path(script_path))
         full_text = "".join(segment.text for segment in script.segments)
 
+        news_items = []
+        if news_path and Path(news_path).exists():
+            news_items = self._load_news(Path(news_path))
+
+        if self.use_llm and self.llm_provider and self.llm_provider.is_available():
+            llm_metadata = self._generate_metadata_with_llm(news_items, script)
+            title = llm_metadata.get("title", "")
+            description = llm_metadata.get("description", "")
+            tags = llm_metadata.get("tags", [])
+            category_id = llm_metadata.get("category_id", 25)
+        else:
+            title = self._build_title(script)
+            description = self._build_description(script)
+            tags = self._build_tags_from_script(script)
+            category_id = 25
+
         keyword_report = self._analyze_keywords(full_text)
         recommendations = self._build_recommendations(keyword_report)
 
-        title = self._build_title(script)
-        description = self._build_description(script)
-        tags = self._build_tags(keyword_report)
-
         output = {
-            "title": title,
-            "description": description,
-            "tags": tags,
+            "title": title[: self.max_title_length],
+            "description": description[: self.max_description_length],
+            "tags": tags[:30],
+            "category_id": category_id,
             "analysis": {
                 "segments": len(script.segments),
                 "duration_estimate": script.total_duration_estimate,
@@ -62,6 +87,7 @@ class MetadataAnalyzer(Step):
 
         self.logger.info(
             "Metadata analysis completed",
+            title_length=len(title),
             tags=len(tags),
             recommendations=len(recommendations),
         )
@@ -72,6 +98,51 @@ class MetadataAnalyzer(Step):
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return Script(**data)
+
+    def _load_news(self, path: Path) -> List[Dict]:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    def _generate_metadata_with_llm(self, news_items: List[Dict], script: Script) -> Dict:
+        prompt_template = load_prompt_template("metadata_generation")
+
+        news_summary = self._format_news_for_prompt(news_items)
+        script_excerpt = self._format_script_for_prompt(script)
+
+        prompt = prompt_template.format(news_items=news_summary, script_excerpt=script_excerpt)
+
+        response = self.llm_provider.execute(prompt)
+        metadata = self._parse_llm_response(response)
+
+        return metadata
+
+    def _format_news_for_prompt(self, news_items: List[Dict]) -> str:
+        if not news_items:
+            return "ニュースデータなし"
+
+        lines = []
+        for i, item in enumerate(news_items[:3], 1):
+            title = item.get("title", "無題")
+            summary = item.get("summary", "")[:200]
+            lines.append(f"{i}. {title}\n   {summary}")
+
+        return "\n\n".join(lines)
+
+    def _format_script_for_prompt(self, script: Script) -> str:
+        excerpts = []
+        for segment in script.segments[:5]:
+            excerpts.append(f"{segment.speaker}: {segment.text}")
+
+        return "\n".join(excerpts)
+
+    def _parse_llm_response(self, response: str) -> Dict:
+        match = re.search(r"```(?:yaml|yml)\n(.*?)```", response, re.DOTALL)
+        yaml_str = match.group(1) if match else response
+
+        metadata = yaml.safe_load(yaml_str)
+        if not isinstance(metadata, dict):
+            raise ValueError("Metadata YAML must be a mapping")
+        return metadata
 
     def _analyze_keywords(self, text: str) -> Dict[str, Dict[str, float]]:
         if not text:
@@ -94,9 +165,7 @@ class MetadataAnalyzer(Step):
         recommendations: List[str] = []
         for keyword, data in keyword_report.items():
             if data["density"] < self.min_keyword_density:
-                recommendations.append(
-                    f"キーワード『{keyword}』の含有率が低いため、原稿で強調してください。"
-                )
+                recommendations.append(f"キーワード『{keyword}』の含有率が低いため、原稿で強調してください。")
         if not recommendations:
             recommendations.append("主要キーワードの密度は目標値を満たしています。")
         return recommendations
@@ -118,10 +187,13 @@ class MetadataAnalyzer(Step):
             description = description[: self.max_description_length - 1] + "…"
         return description
 
-    def _build_tags(self, keyword_report: Dict[str, Dict[str, float]]) -> List[str]:
+    def _build_tags_from_script(self, script: Script) -> List[str]:
         tags = list(self.default_tags)
-        for keyword, data in keyword_report.items():
-            if data["count"] > 0:
+        full_text = "".join(segment.text for segment in script.segments)
+
+        keywords = ["金融", "経済", "ニュース", "投資", "株価", "市場", "速報"]
+        for keyword in keywords:
+            if keyword in full_text:
                 tags.append(keyword)
 
         seen = set()
@@ -131,4 +203,3 @@ class MetadataAnalyzer(Step):
                 unique_tags.append(tag)
                 seen.add(tag)
         return unique_tags[:30]
-

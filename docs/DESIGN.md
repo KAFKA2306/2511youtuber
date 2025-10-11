@@ -803,7 +803,6 @@ dev = [
 | 5. プロバイダ基底クラス | providers/base.py | 2h | - |
 | 6. Geminiプロバイダ | providers/llm.py | 3h | 5 |
 | 7. VOICEVOXプロバイダ | providers/tts.py | 3h | 5 |
-| 8. ダミープロバイダ | providers/news.py | 1h | 5 |
 | 9. ステップ基底クラス | steps/base.py | 2h | - |
 | 10. NewsCollector | steps/news.py | 2h | 8,9 |
 | 11. ScriptGenerator | steps/script.py | 4h | 6,9 |
@@ -852,24 +851,116 @@ dev = [
 
 ## 13. Phase 2以降の拡張計画
 
-### 13.1 Phase 2: YouTube統合（+1週間）
+### 13.1 Phase 2: YouTube統合（実装完了）
 
-```python
-# src/steps/youtube.py
-class YouTubeUploader(Step):
-    name = "upload_youtube"
-    is_required = False  # 失敗してもワークフローは成功扱い
+**Status**: ✅ 完了（2025-10-11）
 
-    def execute(self, inputs: Dict[str, Path]) -> Path:
-        video_path = inputs["video.mp4"]
-        youtube_client = YouTubeClient()
-        video_id = youtube_client.upload(video_path, title="...", description="...")
+**実装内容**:
 
-        output_path = self.get_output_path(self.run_id)
-        with open(output_path, "w") as f:
-            json.dump({"video_id": video_id}, f)
+1. **MetadataAnalyzer強化**（`src/steps/metadata.py`）
+   - Gemini LLMによる高品質なメタデータ生成
+   - YouTube最適化されたタイトル生成（50文字以内、数値含む、WOW要素）
+   - CTR/視聴維持率向上を狙った説明文生成
+   - フォールバック: LLM失敗時はルールベース生成
+   ```python
+   metadata:
+     use_llm: true  # Gemini使用
+     llm_model: "gemini/gemini-2.5-flash-preview-09-2025"
+     max_title_length: 50
+     max_description_length: 5000
+   ```
 
-        return output_path
+2. **YouTube OAuth認証**（`src/providers/youtube.py`）
+   - OAuth 2.0フロー実装（InstalledAppFlow）
+   - 認証トークンの永続化（token.pickle）
+   - 自動リフレッシュ対応
+   - 環境変数からクライアントID/SECRET読み込み
+   ```bash
+   YOUTUBE_CLIENT_ID=...
+   YOUTUBE_CLIENT_SECRET=...
+   YOUTUBE_PROJECT_ID=...
+   ```
+
+3. **YouTubeUploader実装**（`src/steps/youtube.py`）
+   ```python
+   class YouTubeUploader(Step):
+       name = "upload_youtube"
+       is_required = False
+
+       def execute(self, inputs: Dict[str, Path]) -> Path:
+           video_path = inputs["render_video"]
+           metadata_path = inputs["analyze_metadata"]
+
+           youtube_client = YouTubeClient(dry_run=config.dry_run)
+           result = youtube_client.upload(video_path, metadata)
+
+           return output_path  # youtube.json
+   ```
+
+4. **ThumbnailGenerator実装**（`src/steps/thumbnail.py`）
+   - PIL/Pillowベースのサムネイル生成
+   - v2レイアウト（左: キャッチコピー、右: アイコン）
+   - モバイル最適化（コントラスト+35%、彩度+25%）
+   - WOWキーワード検出（暴落/急騰/速報等）
+
+**ワークフロー拡張**:
+```
+Step 1: NewsCollector     → news.json
+Step 2: ScriptGenerator   → script.json
+Step 3: AudioSynthesizer  → audio.wav
+Step 4: SubtitleFormatter → subtitles.srt
+Step 5: VideoRenderer     → video.mp4
+Step 6: MetadataAnalyzer  → metadata.json  ← NEW
+Step 7: ThumbnailGenerator→ thumbnail.png  ← NEW
+Step 8: YouTubeUploader   → youtube.json   ← NEW
+```
+
+**設定ファイル変更**（`config/default.yaml`）:
+```yaml
+steps:
+  metadata:
+    enabled: true
+    use_llm: true
+
+  thumbnail:
+    enabled: true
+
+  youtube:
+    enabled: true
+    dry_run: true  # 本番投稿時: false
+    default_visibility: "unlisted"
+    category_id: 25  # News & Politics
+```
+
+**Promptファイル追加**（`config/prompts.yaml`）:
+- `metadata_generation`: YouTube SEO最適化プロンプト
+  - タイトル要件: 50文字、数値必須、緊急性演出
+  - 説明文要件: 500-1000文字、ハッシュタグ5-10個
+  - タグ要件: 15-20個、検索性重視
+
+**認証情報統合**（`config/.env`）:
+```bash
+# 既存
+GEMINI_API_KEY=...
+PERPLEXITY_API_KEY=...
+
+# Phase 2追加
+YOUTUBE_CLIENT_ID=...
+YOUTUBE_CLIENT_SECRET=...
+YOUTUBE_PROJECT_ID=...
+```
+
+**使用方法**:
+```bash
+# 1. 初回OAuth認証（ブラウザで承認）
+uv run python src/main.py
+
+# 2. dry_run=trueで動作確認
+# config/default.yaml: youtube.dry_run: true
+
+# 3. 本番投稿
+# config/default.yaml: youtube.dry_run: false
+uv run python src/main.py
 ```
 
 ### 13.2 Phase 3: 映像エフェクト（+1週間）

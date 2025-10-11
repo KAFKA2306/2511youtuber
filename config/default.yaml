@@ -52,7 +52,7 @@ steps:
         pan_mode: "center"
 
   thumbnail:
-    enabled: false
+    enabled: true
     width: 1280
     height: 720
     background_color: "#193d5a"
@@ -67,26 +67,36 @@ steps:
     font_path: null
 
   metadata:
-    enabled: false
+    enabled: true
+    use_llm: true
+    llm_model: "gemini/gemini-2.5-flash-preview-09-2025"
     target_keywords:
       - "金融"
       - "経済"
       - "投資"
+      - "株価"
+      - "円安"
+      - "円高"
     min_keyword_density: 0.01
-    max_title_length: 60
-    max_description_length: 3500
+    max_title_length: 50
+    max_description_length: 5000
     default_tags:
       - "金融ニュース"
       - "日本経済"
+      - "経済解説"
+      - "投資"
 
   youtube:
-    enabled: false
+    enabled: true
     dry_run: true
     default_visibility: "unlisted"
-    category_id: 24
+    category_id: 25
+    max_title_length: 100
+    max_description_length: 5000
     default_tags:
       - "金融"
       - "ニュース"
+      - "経済"
 
 providers:
   llm:

@@ -58,4 +58,3 @@ class YouTubeUploader(Step):
         )
 
         return output_path
-
