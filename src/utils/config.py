@@ -63,6 +63,25 @@ class SubtitleStepConfig(BaseModel):
     max_visual_width: int
 
 
+class ThumbnailOverlayOffsetConfig(BaseModel):
+    top: int | None = None
+    right: int | None = None
+    bottom: int | None = None
+    left: int | None = None
+
+
+class ThumbnailOverlayConfig(BaseModel):
+    name: str | None = None
+    enabled: bool = True
+    image_path: str
+    anchor: str = "bottom_right"
+    height_ratio: float | None = None
+    width_ratio: float | None = None
+    height: int | None = None
+    width: int | None = None
+    offset: ThumbnailOverlayOffsetConfig | None = None
+
+
 class ThumbnailStepConfig(BaseModel):
     enabled: bool = False
     width: int
@@ -77,6 +96,8 @@ class ThumbnailStepConfig(BaseModel):
     title_font_size: int = 96
     subtitle_font_size: int = 56
     font_path: str | None = None
+    overlays: list[ThumbnailOverlayConfig] = Field(default_factory=list)
+    model_config = ConfigDict(extra="allow")
 
 
 class MetadataStepConfig(BaseModel):

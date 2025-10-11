@@ -32,10 +32,12 @@ class ThumbnailGenerator(Step):
         self.title_font_size = int(cfg.get("title_font_size", 96))
         self.subtitle_font_size = int(cfg.get("subtitle_font_size", 56))
         self.font_path = cfg.get("font_path")
-        self.icon_path = cfg.get("icon_path")
-        self.icon_size = int(cfg.get("icon_size", 100))
-        self.icon_position = str(cfg.get("icon_position", "bottom_right"))
-        self.icon_margin = int(cfg.get("icon_margin", 40))
+        overlays_cfg = cfg.get("overlays") or []
+        self.overlays: List[Dict] = []
+        for overlay_cfg in overlays_cfg:
+            normalized = self._normalize_overlay_config(overlay_cfg)
+            if normalized:
+                self.overlays.append(normalized)
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         if not self.enabled:
@@ -102,10 +104,8 @@ class ThumbnailGenerator(Step):
                 draw.text((text_x, callout_y), text, font=callout_font, fill=self.subtitle_color)
                 callout_y += callout_font_size + 12
 
-        if self.icon_path:
-            icon_composite = self._overlay_icon(image)
-            if icon_composite:
-                image = icon_composite
+        if self.overlays:
+            image = self._apply_overlays(image)
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -211,35 +211,95 @@ class ThumbnailGenerator(Step):
         self.logger.warning("Falling back to default PIL font; consider configuring thumbnail.font_path")
         return ImageFont.load_default()
 
-    def _overlay_icon(self, base_image: Image.Image) -> Image.Image | None:
-        icon_path = Path(self.icon_path)
-        if not icon_path.exists():
-            self.logger.warning("Icon file not found", icon_path=str(icon_path))
+    def _normalize_overlay_config(self, data: Dict) -> Dict | None:
+        if not isinstance(data, dict):
             return None
+        path = data.get("image_path") or data.get("path")
+        if not path:
+            return None
+        overlay: Dict = {
+            "enabled": bool(data.get("enabled", True)),
+            "path": str(path),
+            "anchor": str(data.get("anchor", "bottom_right")),
+        }
+        if "height_ratio" in data and data["height_ratio"] is not None:
+            overlay["height_ratio"] = float(data["height_ratio"])
+        if "width_ratio" in data and data["width_ratio"] is not None:
+            overlay["width_ratio"] = float(data["width_ratio"])
+        if "height" in data and data["height"] is not None:
+            overlay["height"] = int(data["height"])
+        if "width" in data and data["width"] is not None:
+            overlay["width"] = int(data["width"])
+        offsets = data.get("offset") or {}
+        if isinstance(offsets, dict):
+            overlay["offset"] = {
+                "top": int(offsets.get("top", 0) or 0),
+                "right": int(offsets.get("right", 0) or 0),
+                "bottom": int(offsets.get("bottom", 0) or 0),
+                "left": int(offsets.get("left", 0) or 0),
+            }
+        return overlay
 
-        icon = Image.open(str(icon_path)).convert("RGBA")
-        icon = icon.resize((self.icon_size, self.icon_size), Image.Resampling.LANCZOS)
-
-        x, y = self._calculate_icon_position()
-
+    def _apply_overlays(self, base_image: Image.Image) -> Image.Image:
         result = base_image.convert("RGBA")
-        result.paste(icon, (x, y), icon)
+        applied = False
+        for overlay in self.overlays:
+            if not overlay.get("enabled", True):
+                continue
+            path = Path(overlay["path"])
+            if not path.exists():
+                self.logger.warning("Overlay file not found", overlay=str(path))
+                continue
+            with Image.open(path) as overlay_image:
+                overlay_rgba = overlay_image.convert("RGBA")
+            resized = self._resize_overlay(overlay_rgba, overlay)
+            position = self._calculate_overlay_position(resized.size, overlay)
+            result.paste(resized, position, resized)
+            applied = True
+        if not applied:
+            return base_image
         return result.convert("RGB")
 
-    def _calculate_icon_position(self) -> tuple[int, int]:
-        if self.icon_position == "bottom_right":
-            x = self.width - self.icon_size - self.icon_margin
-            y = self.height - self.icon_size - self.icon_margin
-        elif self.icon_position == "bottom_left":
-            x = self.icon_margin
-            y = self.height - self.icon_size - self.icon_margin
-        elif self.icon_position == "top_right":
-            x = self.width - self.icon_size - self.icon_margin
-            y = self.icon_margin
-        elif self.icon_position == "top_left":
-            x = self.icon_margin
-            y = self.icon_margin
+    def _resize_overlay(self, overlay_image: Image.Image, overlay: Dict) -> Image.Image:
+        width, height = overlay_image.size
+        target_width = overlay.get("width")
+        target_height = overlay.get("height")
+        height_ratio = overlay.get("height_ratio")
+        width_ratio = overlay.get("width_ratio")
+        if height_ratio:
+            target_height = int(self.height * float(height_ratio))
+        if width_ratio:
+            target_width = int(self.width * float(width_ratio))
+        if target_height and not target_width:
+            scale = target_height / height
+            target_width = int(width * scale)
+        if target_width and not target_height:
+            scale = target_width / width
+            target_height = int(height * scale)
+        if not target_width or not target_height:
+            return overlay_image
+        target_width = max(1, int(target_width))
+        target_height = max(1, int(target_height))
+        return overlay_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+    def _calculate_overlay_position(self, overlay_size: tuple[int, int], overlay: Dict) -> tuple[int, int]:
+        overlay_width, overlay_height = overlay_size
+        anchor = overlay.get("anchor", "bottom_right")
+        offsets = overlay.get("offset") or {}
+        top = int(offsets.get("top", 0))
+        right = int(offsets.get("right", 0))
+        bottom = int(offsets.get("bottom", 0))
+        left = int(offsets.get("left", 0))
+        if anchor == "top_left":
+            x = left
+            y = top
+        elif anchor == "top_right":
+            x = self.width - overlay_width - right
+            y = top
+        elif anchor == "bottom_left":
+            x = left
+            y = self.height - overlay_height - bottom
         else:
-            x = self.width - self.icon_size - self.icon_margin
-            y = self.height - self.icon_size - self.icon_margin
-        return x, y
+            x = self.width - overlay_width - right
+            y = self.height - overlay_height - bottom
+        return int(x), int(y)

@@ -1,102 +1,57 @@
 #!/usr/bin/env python3
+import json
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+
+from PIL import Image, ImageDraw
+
+from src.steps.thumbnail import ThumbnailGenerator
+from src.utils.config import Config
 
 
-def create_test_thumbnail_with_character():
-    """サムネイルにキャラクター画像を合成するテスト"""
+def ensure_character_asset(path: Path) -> None:
+    if path.exists():
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGBA", (2048, 4096), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((512, 256, 1536, 1280), fill=(239, 71, 111, 255))
+    draw.rectangle((768, 1280, 1280, 3584), fill=(25, 61, 90, 255))
+    image.save(path)
 
-    # 設定
-    thumbnail_width = 1280
-    thumbnail_height = 720
-    bg_color = "#193d5a"
 
-    # キャラクター画像パス (ユーザーがアップロードした画像を使用)
-    character_image_path = Path("assets/春日部つむぎ立ち絵_公式_v2.0/春日部つむぎ立ち絵_公式_v2.0.png")
+def prepare_script(path: Path) -> Path:
+    data = {
+        "segments": [
+            {"speaker": "春日部つむぎ", "text": "本日のマーケットトピックをお届けします。"},
+            {"speaker": "ずんだもん", "text": "注目の指標と為替の動きをチェックします。"},
+            {"speaker": "玄野武宏", "text": "投資家が押さえるべきポイントを整理します。"},
+        ],
+        "total_duration_estimate": 180.0,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    return path
 
-    # 出力パス
-    output_path = Path("output/test_character_thumbnail.png")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 1. ベースサムネイル作成
-    thumbnail = Image.new("RGB", (thumbnail_width, thumbnail_height), color=bg_color)
-    draw = ImageDraw.Draw(thumbnail)
-
-    # アクセントバーを追加
-    accent_color = "#EF476F"
-    draw.rectangle([(0, 0), (12, thumbnail_height)], fill=accent_color)
-
-    # タイトルテキストを追加
-    title_text = "金融ニュース速報"
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf", 96)
-        subtitle_font = ImageFont.truetype("/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf", 56)
-    except:
-        font = ImageFont.load_default()
-        subtitle_font = ImageFont.load_default()
-
-    draw.text((100, 80), title_text, font=font, fill="#FFFFFF")
-    draw.text((100, 200), "最新の経済トレンドを解説", font=subtitle_font, fill="#FFD166")
-
-    # 2. キャラクター画像を読み込んで合成
-    if character_image_path.exists():
-        character = Image.open(character_image_path).convert("RGBA")
-
-        # キャラクターサイズ調整（サムネイル高さの80%に設定）
-        target_height = int(thumbnail_height * 0.85)
-        aspect_ratio = character.width / character.height
-        target_width = int(target_height * aspect_ratio)
-
-        character_resized = character.resize(
-            (target_width, target_height),
-            Image.Resampling.LANCZOS
-        )
-
-        # 配置位置を計算（右下に配置）
-        char_x = thumbnail_width - target_width - 20
-        char_y = thumbnail_height - target_height
-
-        # RGBAモードに変換して合成
-        thumbnail_rgba = thumbnail.convert("RGBA")
-
-        # アルファチャンネルを使って透過部分を保持しながら合成
-        thumbnail_rgba.paste(character_resized, (char_x, char_y), character_resized)
-
-        # RGB に戻す
-        thumbnail = thumbnail_rgba.convert("RGB")
-
-        print(f"✓ キャラクター画像を合成しました")
-        print(f"  - 元サイズ: {character.size}")
-        print(f"  - リサイズ後: {character_resized.size}")
-        print(f"  - 配置位置: ({char_x}, {char_y})")
-    else:
-        print(f"⚠ キャラクター画像が見つかりません: {character_image_path}")
-
-    # 3. ロゴアイコンを追加（既存の機能）
-    icon_path = Path("assets/icon2510youtuber-mini.png")
-    if icon_path.exists():
-        icon = Image.open(icon_path).convert("RGBA")
-        icon_size = 100
-        icon = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-
-        icon_x = thumbnail_width - icon_size - 40
-        icon_y = thumbnail_height - icon_size - 40
-
-        thumbnail_rgba = thumbnail.convert("RGBA")
-        thumbnail_rgba.paste(icon, (icon_x, icon_y), icon)
-        thumbnail = thumbnail_rgba.convert("RGB")
-
-        print(f"✓ ロゴアイコンを追加しました")
-
-    # 4. 保存
-    thumbnail.save(output_path, format="PNG", quality=95)
-    print(f"\n✓ サムネイルを保存しました: {output_path}")
-    print(f"  サイズ: {thumbnail.size}")
-
+def run_thumbnail_test() -> Path:
+    config = Config.load("config/default.yaml")
+    thumbnail_config = config.steps.thumbnail.model_dump()
+    overlays = thumbnail_config.get("overlays") or []
+    for overlay in overlays:
+        if not overlay.get("enabled", True):
+            continue
+        overlay_path = overlay.get("image_path") or overlay.get("path")
+        if overlay_path:
+            ensure_character_asset(Path(overlay_path))
+    run_dir = Path("output")
+    run_id = "thumbnail_test"
+    script_path = prepare_script(run_dir / run_id / "script.json")
+    step = ThumbnailGenerator(run_id=run_id, run_dir=run_dir, thumbnail_config=thumbnail_config)
+    output_path = step.run({"generate_script": script_path})
     return output_path
 
 
 if __name__ == "__main__":
-    result = create_test_thumbnail_with_character()
-    print(f"\n完成したサムネイルを確認してください:")
-    print(f"  {result.absolute()}")
+    result = run_thumbnail_test()
+    print("generated", result)
