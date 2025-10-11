@@ -65,10 +65,23 @@ steps:
     title_font_size: 96
     subtitle_font_size: 56
     font_path: "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"
-    icon_path: "assets/icon2510youtuber-mini.png"
-    icon_size: 100
-    icon_position: "bottom_right"
-    icon_margin: 40
+    overlays:
+      - name: "character"
+        enabled: true
+        image_path: "assets/春日部つむぎ立ち絵_公式_v2.0/春日部つむぎ立ち絵_公式_v1.1.1.png"
+        anchor: "bottom_right"
+        height_ratio: 0.85
+        offset:
+          right: 20
+          bottom: 0
+      - name: "logo"
+        enabled: false
+        image_path: "assets/icon2510youtuber-mini.png"
+        anchor: "bottom_right"
+        height: 100
+        offset:
+          right: 40
+          bottom: 40
 
   metadata:
     enabled: true
