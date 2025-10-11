@@ -3,6 +3,7 @@ from pathlib import Path
 from src.providers.llm import GeminiProvider
 from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
+from src.utils.config import Config
 from src.utils.secrets import load_secret_values
 from src.workflow import WorkflowOrchestrator
 
@@ -26,7 +27,12 @@ class TestRealGeminiAPI:
 
         provider = GeminiProvider()
 
-        prompt = """
+        speakers = Config.load().steps.script.speakers
+        analyst = speakers.analyst.name
+        reporter = speakers.reporter.name
+        narrator = speakers.narrator.name
+
+        prompt = f"""
 以下のニュースから対話形式のスクリプトを生成してください。
 
 ニュース:
@@ -36,10 +42,12 @@ class TestRealGeminiAPI:
 出力形式（YAML）:
 ```yaml
 segments:
-  - speaker: 田中
+  - speaker: {analyst}
     text: こんにちは
-  - speaker: 鈴木
+  - speaker: {reporter}
     text: よろしくお願いします
+  - speaker: {narrator}
+    text: それでは始めましょう
 ```
 """
 
@@ -47,15 +55,17 @@ segments:
 
         assert response is not None
         assert len(response) > 50
-        assert "segments" in response or "田中" in response
+        assert "segments" in response or analyst in response
 
     def test_full_workflow_with_real_gemini(self, temp_run_dir, test_run_id):
         if not self._has_real_gemini_key():
             pytest.skip("GEMINI_API_KEY not set")
 
+        speakers = Config.load().steps.script.speakers
+
         steps = [
             NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, count=2),
-            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir)
+            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)
         ]
 
         orchestrator = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)

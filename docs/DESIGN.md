@@ -289,41 +289,23 @@ class ScriptGenerator(Step):
             data = yaml.safe_load(data)
 
         script = Script(**data)
-
-        if script.japanese_purity() < 1.0:
-            raise ValueError(f"Japanese purity {script.japanese_purity()} < 1.0")
-
         return script
 ```
 
 **LLM出力パース戦略**（前プロジェクトの失敗を回避）:
 1. YAML → JSON → 再帰的YAML の3段階フォールバック
-2. 日本語純度検証（英単語混入を拒否）:オンオフの機能や、読み上げに使われると困る記号を除去する機能などをオプション的に検討する
-3. 構造検証（Pydanticで型チェック）
+2. 構造検証（Pydanticで型チェック）
 
 **データモデル**:
 ```python
 class ScriptSegment(BaseModel):
-    speaker: Literal["田中", "鈴木", "ナレーター"]
+    speaker: str
     text: str
 
-    @validator("text")
-    def validate_japanese(cls, v):
-        if not is_pure_japanese(v):
-            raise ValueError("Non-Japanese characters detected")
-        return v
 
 class Script(BaseModel):
     segments: List[ScriptSegment]
     total_duration_estimate: float
-
-    def japanese_purity(self) -> float:
-        total_chars = sum(len(seg.text) for seg in self.segments)
-        japanese_chars = sum(
-            len([c for c in seg.text if is_japanese_char(c)])
-            for seg in self.segments
-        )
-        return japanese_chars / total_chars if total_chars > 0 else 0.0
 ```
 
 ### 4.3 Step 3: AudioSynthesizer
@@ -362,20 +344,31 @@ class AudioSynthesizer(Step):
 **話者マッピング**（設定ファイル駆動）:
 ```yaml
 # config/default.yaml
-tts:
-　#### 読み上げスピードも定義する。基本的に1.6倍速で読み上げる設定にしておく。
+steps:
+  script:
+    speakers:
+      analyst:
+        name: 春日部つむぎ
+        aliases: [春日部つむぎ, つむぎ]
+      reporter:
+        name: ずんだもん
+        aliases: [ずんだもん]
+      narrator:
+        name: 玄野武宏
+        aliases: [玄野武宏, ナレーション, ナレーター]
 
+tts:
   voicevox:
     speakers:
-      田中: 11  # 玄野武宏（男性）
-      鈴木: 8   # 春日部つむぎ（女性）
-      ナレーター: 3  # ずんだもん
+      春日部つむぎ: 3
+      ずんだもん: 1
+      玄野武宏: 11
 
   pyttsx3:
     speakers:
-      田中: {rate: 140, pitch: 50}
-      鈴木: {rate: 160, pitch: 80}
-      ナレーター: {rate: 150, pitch: 60}
+      春日部つむぎ: {rate: 140}
+      ずんだもん: {rate: 160}
+      玄野武宏: {rate: 150}
 
 ```
 
@@ -555,16 +548,16 @@ providers:
       enabled: true
       url: "http://localhost:50021"
       speakers:
-        田中: 11
-        鈴木: 8
-        ナレーター: 3
+        春日部つむぎ: 3
+        ずんだもん: 1
+        玄野武宏: 11
 
     pyttsx3:
       enabled: true
       speakers:
-        田中: {rate: 140}
-        鈴木: {rate: 160}
-        ナレーター: {rate: 150}
+        春日部つむぎ: {rate: 140}
+        ずんだもん: {rate: 160}
+        玄野武宏: {rate: 150}
 
   news:
     perplexity:
@@ -677,8 +670,7 @@ def retry(max_attempts: int = 3, backoff: float = 2.0):
   "message": "Script generation completed",
   "metadata": {
     "duration_sec": 12.5,
-    "segment_count": 15,
-    "japanese_purity": 1.0
+    "segment_count": 15
   }
 }
 ```
@@ -704,22 +696,22 @@ def test_parse_yaml_output():
     generator = ScriptGenerator()
     raw = """
     segments:
-      - speaker: 田中
+      - speaker: 春日部つむぎ
         text: こんにちは
     """
     script = generator._parse_and_validate(raw)
     assert len(script.segments) == 1
-    assert script.segments[0].speaker == "田中"
+    assert script.segments[0].speaker == "春日部つむぎ"
 
 def test_reject_non_japanese():
     generator = ScriptGenerator()
     raw = """
     segments:
-      - speaker: 田中
+      - speaker: 春日部つむぎ
         text: Hello world
     """
-    with pytest.raises(ValidationError):
-        generator._parse_and_validate(raw)
+    script = generator._parse_and_validate(raw)
+    assert script.segments[0].text == "Hello world"
 ```
 
 ### 9.2 統合テスト
@@ -846,7 +838,7 @@ dev = [
 
 ### 12.2 品質指標
 
-- [ ] 日本語純度: 100%（英単語ゼロ）
+- [ ] スクリプト可読性: レビュー満足度80%以上
 - [ ] 動画生成成功: FFmpegエラーなし
 - [ ] 音声品質: 3話者明確に区別可能
 

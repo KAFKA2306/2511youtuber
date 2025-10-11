@@ -11,6 +11,22 @@ steps:
     min_duration: 300
     max_duration: 600
     target_wow_score: 6.0
+    speakers:
+      analyst:
+        name: "春日部つむぎ"
+        aliases:
+          - "春日部つむぎ"
+          - "つむぎ"
+      reporter:
+        name: "ずんだもん"
+        aliases:
+          - "ずんだもん"
+      narrator:
+        name: "玄野武宏"
+        aliases:
+          - "玄野武宏"
+          - "ナレーション"
+          - "ナレーター"
 
   audio:
     sample_rate: 24000
@@ -36,7 +52,7 @@ steps:
         pan_mode: "center"
 
   thumbnail:
-    enabled: true
+    enabled: false
     width: 1280
     height: 720
     background_color: "#193d5a"
@@ -51,6 +67,7 @@ steps:
     font_path: null
 
   metadata:
+    enabled: false
     target_keywords:
       - "金融"
       - "経済"
@@ -63,7 +80,7 @@ steps:
       - "日本経済"
 
   youtube:
-    enabled: true
+    enabled: false
     dry_run: true
     default_visibility: "unlisted"
     category_id: 24
@@ -83,20 +100,20 @@ providers:
       enabled: true
       url: "http://localhost:50121"
       manager_script: "scripts/voicevox_manager.sh"
-      auto_start: true
+      auto_start: false
       speakers:
-        田中: 11
-        鈴木: 8
-        ナレーター: 3
+        春日部つむぎ: 3
+        ずんだもん: 1
+        玄野武宏: 11
 
     pyttsx3:
       enabled: true
       speakers:
-        田中:
+        春日部つむぎ:
           rate: 140
-        鈴木:
+        ずんだもん:
           rate: 160
-        ナレーター:
+        玄野武宏:
           rate: 150
 
   news:

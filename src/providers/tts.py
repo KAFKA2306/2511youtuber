@@ -79,9 +79,9 @@ class Pyttsx3Provider(Provider):
 
     def __init__(self, speakers: Dict[str, Dict] = None):
         self.speakers = speakers or {
-            "田中": {"rate": 140},
-            "鈴木": {"rate": 160},
-            "ナレーター": {"rate": 150}
+            "春日部つむぎ": {"rate": 140},
+            "ずんだもん": {"rate": 160},
+            "玄野武宏": {"rate": 150}
         }
         self._engine = None
         self._engine_available = None

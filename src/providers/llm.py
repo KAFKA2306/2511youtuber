@@ -81,31 +81,37 @@ class DummyLLMProvider(Provider):
     name = "dummy_llm"
     priority = 999
 
+    def __init__(self, speakers: list[str]):
+        if len(speakers) < 3:
+            raise ValueError("Speakers list must contain at least three names")
+        self.speakers = speakers
+
     def is_available(self) -> bool:
         return True
 
     def execute(self, prompt: str, **kwargs) -> str:
         logger.warning("Using dummy LLM provider - returning mock script")
-        return """segments:
-  - speaker: 田中
+        analyst, reporter, narrator = self.speakers[:3]
+        return f"""segments:
+  - speaker: {analyst}
     text: こんにちは、今日は金融ニュースをお届けします。
-  - speaker: 鈴木
+  - speaker: {reporter}
     text: よろしくお願いします。
-  - speaker: ナレーター
+  - speaker: {narrator}
     text: それでは始めましょう。
-  - speaker: 田中
+  - speaker: {analyst}
     text: 本日の主要なニュースは経済成長に関するものです。
-  - speaker: 鈴木
+  - speaker: {reporter}
     text: 具体的にはどのような内容でしょうか。
-  - speaker: 田中
+  - speaker: {analyst}
     text: 成長率が前年比で三パーセント上昇しました。
-  - speaker: 鈴木
+  - speaker: {reporter}
     text: それは良いニュースですね。
-  - speaker: ナレーター
+  - speaker: {narrator}
     text: 詳しく見ていきましょう。
-  - speaker: 田中
+  - speaker: {analyst}
     text: この成長は多くの要因によるものです。
-  - speaker: 鈴木
+  - speaker: {reporter}
     text: なるほど、ありがとうございました。
 """
 

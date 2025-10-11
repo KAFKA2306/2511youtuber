@@ -1,5 +1,9 @@
 import json
 
+import pytest
+
+pytestmark = pytest.mark.unit
+
 from src.steps.metadata import MetadataAnalyzer
 
 
@@ -33,4 +37,3 @@ class TestMetadataAnalyzerUnit:
         density = metadata["analysis"]["keyword_density"]
         assert set(density.keys()) == {"金融", "経済"}
         assert metadata["tags"][0] == "金融ニュース"
-

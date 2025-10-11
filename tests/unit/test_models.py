@@ -1,61 +1,19 @@
 import pytest
-from src.models import ScriptSegment, Script, is_pure_japanese, NewsItem, WorkflowState
-from pathlib import Path
+from src.models import ScriptSegment, Script, NewsItem, WorkflowState
 from datetime import datetime
 
-
-class TestJapaneseValidation:
-    def test_pure_japanese_hiragana(self):
-        assert is_pure_japanese("こんにちは")
-
-    def test_pure_japanese_katakana(self):
-        assert is_pure_japanese("カタカナ")
-
-    def test_pure_japanese_kanji(self):
-        assert is_pure_japanese("日本語")
-
-    def test_pure_japanese_mixed(self):
-        assert is_pure_japanese("日本語のテスト文章です。")
-
-    def test_pure_japanese_with_punctuation(self):
-        assert is_pure_japanese("こんにちは！今日は良い天気ですね。")
-
-    def test_pure_japanese_with_numbers(self):
-        assert is_pure_japanese("2025年10月10日")
-
-    def test_not_pure_japanese_english(self):
-        assert not is_pure_japanese("Hello world")
-
-    def test_not_pure_japanese_mixed(self):
-        assert not is_pure_japanese("日本語とEnglish")
+pytestmark = pytest.mark.unit
 
 
 class TestScriptSegment:
     def test_valid_segment(self):
-        segment = ScriptSegment(speaker="田中", text="こんにちは")
-        assert segment.speaker == "田中"
+        segment = ScriptSegment(speaker="春日部つむぎ", text="こんにちは")
+        assert segment.speaker == "春日部つむぎ"
         assert segment.text == "こんにちは"
 
-    def test_reject_english_text(self):
-        with pytest.raises(ValueError, match="Non-Japanese"):
-            ScriptSegment(speaker="田中", text="Hello world")
-
-    def test_reject_mixed_text(self):
-        with pytest.raises(ValueError, match="Non-Japanese"):
-            ScriptSegment(speaker="鈴木", text="日本語とEnglish")
-
-
-class TestScript:
-    def test_japanese_purity_100(self):
-        script = Script(segments=[
-            ScriptSegment(speaker="田中", text="こんにちは"),
-            ScriptSegment(speaker="鈴木", text="今日は良い天気ですね"),
-        ])
-        assert script.japanese_purity() == 1.0
-
-    def test_empty_script_purity(self):
-        script = Script(segments=[])
-        assert script.japanese_purity() == 0.0
+    def test_accepts_non_japanese_text(self):
+        segment = ScriptSegment(speaker="ずんだもん", text="Hello world")
+        assert segment.text == "Hello world"
 
 
 class TestNewsItem:

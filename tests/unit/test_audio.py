@@ -3,6 +3,8 @@ import json
 import pytest
 from pydub import AudioSegment
 
+pytestmark = pytest.mark.unit
+
 from src.steps.audio import AudioSynthesizer
 
 
@@ -24,4 +26,3 @@ class TestAudioSynthesizerUnit:
 
         audio = AudioSegment.from_wav(output_path)
         assert audio.duration_seconds == pytest.approx(1.0, abs=0.05)
-

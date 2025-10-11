@@ -13,14 +13,16 @@ from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.youtube import YouTubeUploader
 from src.steps.base import Step
 from src.models import WorkflowState
+from src.utils.config import Config
 
 
 @pytest.mark.integration
 class TestWorkflowIntegration:
     def test_full_workflow_with_dummy_providers(self, temp_run_dir, test_run_id):
+        speakers_config = Config.load().steps.script.speakers
         steps = [
             NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, query="テスト", count=2),
-            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir),
+            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers_config),
             AudioSynthesizer(run_id=test_run_id, run_dir=temp_run_dir),
             SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24),
             VideoRenderer(run_id=test_run_id, run_dir=temp_run_dir),
@@ -87,9 +89,10 @@ class TestWorkflowIntegration:
                 assert (run_path / "youtube.json").exists()
 
     def test_checkpoint_resume(self, temp_run_dir, test_run_id):
+        speakers_config = Config.load().steps.script.speakers
         steps = [
             NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, query="テスト", count=2),
-            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir)
+            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers_config)
         ]
 
         orchestrator1 = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)

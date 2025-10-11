@@ -2,6 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from src.providers.video_effects import (
     KenBurnsEffect,
     VideoEffectContext,

@@ -61,7 +61,6 @@ class PerplexityNewsProvider(Provider):
                             },
                         ],
                     },
-                    timeout=60,
                 )
                 response.raise_for_status()
                 data = response.json()

@@ -1,6 +1,8 @@
 import pytest
 from src.providers.base import Provider, ProviderChain, AllProvidersFailedError
 
+pytestmark = pytest.mark.unit
+
 
 class MockProvider(Provider):
     def __init__(self, name: str, priority: int, available: bool = True, should_fail: bool = False):

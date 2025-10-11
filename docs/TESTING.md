@@ -111,17 +111,12 @@ pytest tests/unit/test_models.py::TestScriptSegment::test_valid_segment -v
 - `test_all_providers_fail` - 全失敗時のエラー
 - `test_priority_ordering` - 優先順位ソート
 
-### test_error_cases.py (15テスト)
+### test_error_cases.py (8テスト)
 
 **スクリプトパースエラー**:
 - `test_malformed_yaml` - 不正なYAML
 - `test_json_fallback_on_yaml_error` - YAML→JSONフォールバック
 - `test_max_recursion_depth` - 再帰深度制限
-
-**日本語純度検証**:
-- `test_reject_english_in_script` - 英語拒否
-- `test_reject_mixed_language` - 混在拒否
-- `test_accept_pure_japanese_with_numbers` - 数字許可
 
 **プロバイダエラー**:
 - `test_all_providers_fail` - 全プロバイダ失敗

@@ -1,38 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Dict, Any
-from pydantic import BaseModel, Field, field_validator
-import re
-
-
-def is_japanese_char(char: str) -> bool:
-    if not char:
-        return False
-    code = ord(char[0])
-    return (
-        (0x3040 <= code <= 0x309F) or
-        (0x30A0 <= code <= 0x30FF) or
-        (0x4E00 <= code <= 0x9FFF) or
-        (0x3000 <= code <= 0x303F) or
-        (0xFF01 <= code <= 0xFF60) or
-        (0xFFE0 <= code <= 0xFFE6)
-    )
-
-
-def is_pure_japanese(text: str) -> bool:
-    text = text.strip()
-    if not text:
-        return True
-
-    allowed_chars = set("、。！？「」『』（）・ー\n\r\t ")
-    for char in text:
-        if char in allowed_chars:
-            continue
-        if char.isdigit():
-            continue
-        if not is_japanese_char(char):
-            return False
-    return True
+from pydantic import BaseModel, Field
 
 
 class NewsItem(BaseModel):
@@ -43,34 +12,13 @@ class NewsItem(BaseModel):
 
 
 class ScriptSegment(BaseModel):
-    speaker: Literal["田中", "鈴木", "ナレーター"]
+    speaker: str
     text: str
-
-    @field_validator("text")
-    @classmethod
-    def validate_japanese(cls, v: str) -> str:
-        if not is_pure_japanese(v):
-            raise ValueError(f"Non-Japanese characters detected: {v}")
-        return v
 
 
 class Script(BaseModel):
     segments: List[ScriptSegment]
     total_duration_estimate: float = 0.0
-
-    def japanese_purity(self) -> float:
-        if not self.segments:
-            return 0.0
-
-        total_chars = sum(len(seg.text) for seg in self.segments)
-        if total_chars == 0:
-            return 0.0
-
-        japanese_chars = sum(
-            len([c for c in seg.text if is_japanese_char(c) or c in "、。！？「」『』（）・ー "])
-            for seg in self.segments
-        )
-        return japanese_chars / total_chars
 
 
 class WorkflowState(BaseModel):

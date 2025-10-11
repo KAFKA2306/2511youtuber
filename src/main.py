@@ -46,7 +46,8 @@ def main():
         ),
         ScriptGenerator(
             run_id=run_id,
-            run_dir=run_dir
+            run_dir=run_dir,
+            speakers_config=config.steps.script.speakers
         ),
         AudioSynthesizer(
             run_id=run_id,
@@ -56,8 +57,6 @@ def main():
                 "speakers": dict(config.providers.tts.voicevox.speakers),
                 "manager_script": config.providers.tts.voicevox.manager_script,
                 "auto_start": config.providers.tts.voicevox.auto_start,
-                "query_timeout": config.providers.tts.voicevox.query_timeout,
-                "synthesis_timeout": config.providers.tts.voicevox.synthesis_timeout,
             } if config.providers.tts.voicevox.enabled else {},
             pyttsx3_config={
                 "speakers": {
@@ -87,12 +86,17 @@ def main():
                 "effects": [effect.model_dump() for effect in config.steps.video.effects],
             }
         ),
-        MetadataAnalyzer(
-            run_id=run_id,
-            run_dir=run_dir,
-            metadata_config=config.steps.metadata.model_dump()
-        )
     ]
+
+    metadata_config = config.steps.metadata.model_dump()
+    if metadata_config.get("enabled", False):
+        steps.append(
+            MetadataAnalyzer(
+                run_id=run_id,
+                run_dir=run_dir,
+                metadata_config=metadata_config
+            )
+        )
 
     if config.steps.thumbnail.enabled:
         steps.append(
@@ -103,7 +107,7 @@ def main():
             )
         )
 
-    if config.steps.youtube.enabled:
+    if config.steps.youtube.enabled and metadata_config.get("enabled", False):
         steps.append(
             YouTubeUploader(
                 run_id=run_id,

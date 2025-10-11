@@ -19,10 +19,22 @@ class NewsStepConfig(BaseModel):
     query: str
 
 
+class SpeakerProfileConfig(BaseModel):
+    name: str
+    aliases: list[str] = Field(default_factory=list)
+
+
+class ScriptSpeakersConfig(BaseModel):
+    analyst: SpeakerProfileConfig
+    reporter: SpeakerProfileConfig
+    narrator: SpeakerProfileConfig
+
+
 class ScriptStepConfig(BaseModel):
     min_duration: int
     max_duration: int
     target_wow_score: float
+    speakers: ScriptSpeakersConfig
 
 
 class AudioStepConfig(BaseModel):
@@ -52,7 +64,7 @@ class SubtitleStepConfig(BaseModel):
 
 
 class ThumbnailStepConfig(BaseModel):
-    enabled: bool = True
+    enabled: bool = False
     width: int
     height: int
     background_color: str
@@ -68,6 +80,7 @@ class ThumbnailStepConfig(BaseModel):
 
 
 class MetadataStepConfig(BaseModel):
+    enabled: bool = False
     target_keywords: list[str]
     min_keyword_density: float
     max_title_length: int
@@ -76,7 +89,7 @@ class MetadataStepConfig(BaseModel):
 
 
 class YouTubeStepConfig(BaseModel):
-    enabled: bool = True
+    enabled: bool = False
     dry_run: bool = True
     default_visibility: str
     category_id: int

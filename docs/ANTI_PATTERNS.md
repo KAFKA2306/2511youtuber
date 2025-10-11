@@ -355,11 +355,11 @@ def test_yaml_recursive_wrapping():
     """LLMが時々YAMLを文字列内に埋め込むケース"""
     text = '''
     "segments:
-      - speaker: 田中
+      - speaker: 春日部つむぎ
         text: こんにちは"
     '''
     result = parse_llm_output(text)
-    assert result["segments"][0]["speaker"] == "田中"
+    assert result["segments"][0]["speaker"] == "春日部つむぎ"
 ```
 
 **教訓**:
@@ -539,8 +539,8 @@ class Pyttsx3Provider(TTSProvider):
 ```python
 # app/tts/providers.py
 VOICEVOX_SPEAKERS = {
-    "田中": 11,  # ハードコーディング
-    "鈴木": 8,
+    "春日部つむぎ": 11,  # ハードコーディング
+    "ずんだもん": 8,
 }
 
 # app/video.py
@@ -563,8 +563,8 @@ VIDEO_HEIGHT = 1080
 tts:
   voicevox:
     speakers:
-      田中: 11
-      鈴木: 8
+      春日部つむぎ: 11
+      ずんだもん: 8
 
 video:
   resolution: "1920x1080"
@@ -688,7 +688,7 @@ llm = GeminiProvider()
 script = llm.generate(
     prompt="""
     以下のニュースから5-10分の対話形式スクリプトを生成してください。
-    話者: 田中、鈴木、ナレーター
+    話者: 春日部つむぎ、ずんだもん、玄野武宏
     日本語のみ使用してください。
     """,
     temperature=0.7
