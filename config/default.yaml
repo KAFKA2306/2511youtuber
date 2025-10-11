@@ -64,7 +64,11 @@ steps:
     max_chars_per_line: 12
     title_font_size: 96
     subtitle_font_size: 56
-    font_path: null
+    font_path: "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"
+    icon_path: "assets/icon2510youtuber-mini.png"
+    icon_size: 100
+    icon_position: "bottom_right"
+    icon_margin: 40
 
   metadata:
     enabled: true

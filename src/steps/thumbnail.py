@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from PIL import Image, ImageDraw, ImageFont
+
 from src.models import Script
 from src.steps.base import Step
 
@@ -31,6 +32,10 @@ class ThumbnailGenerator(Step):
         self.title_font_size = int(cfg.get("title_font_size", 96))
         self.subtitle_font_size = int(cfg.get("subtitle_font_size", 56))
         self.font_path = cfg.get("font_path")
+        self.icon_path = cfg.get("icon_path")
+        self.icon_size = int(cfg.get("icon_size", 100))
+        self.icon_position = str(cfg.get("icon_position", "bottom_right"))
+        self.icon_margin = int(cfg.get("icon_margin", 40))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         if not self.enabled:
@@ -96,6 +101,11 @@ class ThumbnailGenerator(Step):
                 text = f"・{callout}"
                 draw.text((text_x, callout_y), text, font=callout_font, fill=self.subtitle_color)
                 callout_y += callout_font_size + 12
+
+        if self.icon_path:
+            icon_composite = self._overlay_icon(image)
+            if icon_composite:
+                image = icon_composite
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -181,6 +191,8 @@ class ThumbnailGenerator(Step):
     def _load_font(self, size: int) -> ImageFont.ImageFont:
         candidates = [self.font_path] if self.font_path else []
         candidates += [
+            "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+            "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
             "NotoSansCJKjp-Bold.otf",
             "NotoSansJP-Bold.otf",
             "NotoSans-Bold.ttf",
@@ -194,7 +206,40 @@ class ThumbnailGenerator(Step):
                 continue
             try:
                 return ImageFont.truetype(candidate, size)
-            except (OSError, IOError):  # pragma: no cover - depends on environment
+            except (OSError, IOError):
                 continue
         self.logger.warning("Falling back to default PIL font; consider configuring thumbnail.font_path")
         return ImageFont.load_default()
+
+    def _overlay_icon(self, base_image: Image.Image) -> Image.Image | None:
+        icon_path = Path(self.icon_path)
+        if not icon_path.exists():
+            self.logger.warning("Icon file not found", icon_path=str(icon_path))
+            return None
+
+        icon = Image.open(str(icon_path)).convert("RGBA")
+        icon = icon.resize((self.icon_size, self.icon_size), Image.Resampling.LANCZOS)
+
+        x, y = self._calculate_icon_position()
+
+        result = base_image.convert("RGBA")
+        result.paste(icon, (x, y), icon)
+        return result.convert("RGB")
+
+    def _calculate_icon_position(self) -> tuple[int, int]:
+        if self.icon_position == "bottom_right":
+            x = self.width - self.icon_size - self.icon_margin
+            y = self.height - self.icon_size - self.icon_margin
+        elif self.icon_position == "bottom_left":
+            x = self.icon_margin
+            y = self.height - self.icon_size - self.icon_margin
+        elif self.icon_position == "top_right":
+            x = self.width - self.icon_size - self.icon_margin
+            y = self.icon_margin
+        elif self.icon_position == "top_left":
+            x = self.icon_margin
+            y = self.icon_margin
+        else:
+            x = self.width - self.icon_size - self.icon_margin
+            y = self.height - self.icon_size - self.icon_margin
+        return x, y
