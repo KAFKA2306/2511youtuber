@@ -31,10 +31,6 @@ class TestConfig:
         assert config.providers.tts.voicevox.speakers["田中"] == 11
         assert config.providers.tts.voicevox.manager_script == "scripts/voicevox_manager.sh"
         assert config.providers.tts.voicevox.auto_start is True
-        assert config.providers.tts.voicevox.query_timeout == 10
-        assert config.providers.tts.voicevox.synthesis_timeout == 30
-        assert config.providers.tts.voicevox.startup_timeout_seconds == 60
-        assert config.providers.tts.voicevox.startup_poll_interval_seconds == 2
 
     def test_logging_config(self):
         config = Config.load()

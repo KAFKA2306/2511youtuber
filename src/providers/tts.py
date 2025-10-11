@@ -1,8 +1,6 @@
 import requests
 import pyttsx3
 import subprocess
-import time
-from contextlib import suppress
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
@@ -25,23 +23,13 @@ class VOICEVOXProvider(Provider):
         speakers: Dict[str, int],
         manager_script: str | None = None,
         auto_start: bool = False,
-        query_timeout: float = 10.0,
-        synthesis_timeout: float = 30.0,
-        startup_timeout_seconds: float = 60.0,
-        startup_poll_interval_seconds: float = 2.0,
     ):
         self.url = url.rstrip("/")
         self.speakers = dict(speakers)
         self.manager_script = manager_script
         self.auto_start = auto_start
-        self.query_timeout = query_timeout
-        self.synthesis_timeout = synthesis_timeout
-        self.startup_timeout_seconds = startup_timeout_seconds
-        self.startup_poll_interval_seconds = startup_poll_interval_seconds
         if self.auto_start and self.manager_script:
             self._ensure_server()
-        self._ready = False
-        self._wait_for_server()
 
     def _ensure_server(self) -> None:
         script_path = Path(self.manager_script).expanduser()
@@ -60,42 +48,26 @@ class VOICEVOXProvider(Provider):
             return next(iter(self.speakers.values()))
         return 3
 
-    def _wait_for_server(self) -> None:
-        if self._ready:
-            return
-        deadline = time.monotonic() + self.startup_timeout_seconds
-        while time.monotonic() < deadline:
-            if self._ping_server():
-                self._ready = True
-                return
-            time.sleep(self.startup_poll_interval_seconds)
-        raise RuntimeError("VOICEVOX server not healthy")
-
-    def _ping_server(self) -> bool:
-        with suppress(requests.RequestException):
-            response = requests.get(f"{self.url}/version", timeout=self.query_timeout)
-            return response.status_code == 200
-        return False
-
     def is_available(self) -> bool:
-        if self._ready:
-            return True
-        return self._ping_server()
+        try:
+            response = requests.get(f"{self.url}/version")
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
-        self._wait_for_server()
+        if not self.is_available():
+            raise RuntimeError("VOICEVOX server not available")
         speaker_id = self._speaker_id(speaker)
         query = requests.post(
             f"{self.url}/audio_query",
             params={"text": text, "speaker": speaker_id},
-            timeout=self.query_timeout,
         )
         query.raise_for_status()
         synthesis = requests.post(
             f"{self.url}/synthesis",
             params={"speaker": speaker_id},
             json=query.json(),
-            timeout=self.synthesis_timeout,
         )
         synthesis.raise_for_status()
         return AudioSegment.from_file(BytesIO(synthesis.content), format="wav")
