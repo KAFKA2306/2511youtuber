@@ -1,4 +1,6 @@
 import subprocess
+import unicodedata
+from difflib import get_close_matches
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List
@@ -28,14 +30,17 @@ class VOICEVOXProvider:
             self._ensure_server()
 
     def _build_alias_ids(self, aliases: Dict[str, List[str]]) -> Dict[str, int]:
-        mapping = {name: speaker_id for name, speaker_id in self.speakers.items()}
+        mapping: Dict[str, int] = {}
+        for name, speaker_id in self.speakers.items():
+            normalised = self._normalise_key(name)
+            mapping[normalised] = speaker_id
         for canonical, alias_list in aliases.items():
             speaker_id = self.speakers.get(canonical)
             if speaker_id is None:
                 continue
             for alias in alias_list:
-                mapping[alias] = speaker_id
-        return {key.strip(): value for key, value in mapping.items()}
+                mapping[self._normalise_key(alias)] = speaker_id
+        return mapping
 
     def _ensure_server(self) -> None:
         script_path = Path(self.manager_script).expanduser()
@@ -48,13 +53,20 @@ class VOICEVOXProvider:
         self._bootstrapped[key] = True
 
     def _speaker_id(self, speaker: str) -> int:
-        key = speaker.strip()
+        key = self._normalise_key(speaker)
         if key in self.alias_ids:
             return self.alias_ids[key]
         for alias, speaker_id in self.alias_ids.items():
             if key.startswith(alias):
                 return speaker_id
+        matches = get_close_matches(key, list(self.alias_ids.keys()), n=1, cutoff=0.75)
+        if matches:
+            return self.alias_ids[matches[0]]
         return self.alias_ids[key]
+
+    def _normalise_key(self, value: str) -> str:
+        key = unicodedata.normalize("NFKC", str(value or "")).strip()
+        return key
 
     def is_available(self) -> bool:
         response = requests.get(f"{self.url}/version")

@@ -23,6 +23,7 @@ class ScriptGenerator(Step):
             else dict(speakers_config)
         )
         self.speakers = self._extract_speakers(data)
+        self.previous_topics_note, self.previous_next_hint = self._load_previous_context(run_dir)
         self.provider = GeminiProvider()
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
@@ -54,6 +55,9 @@ class ScriptGenerator(Step):
             f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items
         )
         side_theme = self._pick_side_theme(news_items)
+        recent_topics_note = self.previous_topics_note or "直近テーマ情報なし"
+        next_theme_note = self.previous_next_hint or "視聴者に次回リクエストをさらっと促す"
+
         return template.format(
             news_items=news_text,
             analyst_name=self.speakers["analyst"],
@@ -61,7 +65,54 @@ class ScriptGenerator(Step):
             narrator_name=self.speakers["narrator"],
             side_theme=side_theme[0],
             side_theme_summary=side_theme[1],
+            recent_topics_note=recent_topics_note,
+            next_theme_note=next_theme_note,
         )
+
+    def _load_previous_context(self, run_dir: Path) -> tuple[str, str]:
+        base = Path(run_dir)
+        if not base.exists():
+            return "", ""
+        candidates = sorted(
+            [p for p in base.iterdir() if p.is_dir() and p.name != self.run_id],
+            reverse=True,
+        )
+        for candidate in candidates:
+            script_path = candidate / "script.json"
+            if not script_path.exists():
+                continue
+            try:
+                with open(script_path, encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                continue
+            segments = data.get("segments") or []
+            if not segments:
+                continue
+            recent_bits: list[str] = []
+            for segment in segments:
+                text = self._summarise_text(segment.get("text", ""))
+                if text:
+                    recent_bits.append(text)
+                if len(recent_bits) >= 3:
+                    break
+            recent_summary = " / ".join(recent_bits[:3])[:220]
+            trailing = ""
+            for segment in reversed(segments):
+                text = self._summarise_text(segment.get("text", ""))
+                if text:
+                    trailing = text[:160]
+                    break
+            return recent_summary, trailing
+        return "", ""
+
+    def _summarise_text(self, value: str) -> str:
+        text = str(value or "").replace("\n", " ").strip()
+        if not text:
+            return ""
+        if "。" in text:
+            text = text.split("。", 1)[0] + "。"
+        return text
 
     def _parse_and_validate(self, raw: str, *, max_depth: int = 6) -> Script:
         data = self._coerce_to_mapping(raw.strip(), max_depth=max_depth)
