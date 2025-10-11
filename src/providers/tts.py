@@ -65,17 +65,22 @@ class VOICEVOXProvider(Provider):
             return
         deadline = time.monotonic() + self.startup_timeout_seconds
         while time.monotonic() < deadline:
-            with suppress(requests.RequestException):
-                response = requests.get(f"{self.url}/version", timeout=self.query_timeout)
-                if response.status_code == 200:
-                    self._ready = True
-                    return
+            if self._ping_server():
+                self._ready = True
+                return
             time.sleep(self.startup_poll_interval_seconds)
         raise RuntimeError("VOICEVOX server not healthy")
 
+    def _ping_server(self) -> bool:
+        with suppress(requests.RequestException):
+            response = requests.get(f"{self.url}/version", timeout=self.query_timeout)
+            return response.status_code == 200
+        return False
+
     def is_available(self) -> bool:
-        self._wait_for_server()
-        return True
+        if self._ready:
+            return True
+        return self._ping_server()
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
         self._wait_for_server()
