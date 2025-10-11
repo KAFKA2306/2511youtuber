@@ -145,18 +145,8 @@ class VOICEVOXProviderConfig(BaseModel):
     auto_start: bool = False
 
 
-class Pyttsx3SpeakerConfig(BaseModel):
-    rate: int
-
-
-class Pyttsx3ProviderConfig(BaseModel):
-    enabled: bool
-    speakers: Dict[str, Pyttsx3SpeakerConfig]
-
-
 class TTSProvidersConfig(BaseModel):
     voicevox: VOICEVOXProviderConfig
-    pyttsx3: Pyttsx3ProviderConfig
 
 
 class PerplexityNewsProviderConfig(BaseModel):

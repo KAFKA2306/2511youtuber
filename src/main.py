@@ -38,7 +38,7 @@ def main():
     run_id = create_run_id()
     run_dir = Path(config.workflow.default_run_dir)
 
-    logger.info("Initializing workflow", run_id=run_id)
+    logger.info("Initializing workflow run_id=%s", run_id)
 
     steps = [
         NewsCollector(
@@ -57,10 +57,15 @@ def main():
                 "speakers": dict(config.providers.tts.voicevox.speakers),
                 "manager_script": config.providers.tts.voicevox.manager_script,
                 "auto_start": config.providers.tts.voicevox.auto_start,
-            }
-            if config.providers.tts.voicevox.enabled
-            else {},
-            pyttsx3_config={"speakers": {k: v.model_dump() for k, v in config.providers.tts.pyttsx3.speakers.items()}},
+            },
+            speaker_aliases={
+                profile.name: profile.aliases
+                for profile in (
+                    config.steps.script.speakers.analyst,
+                    config.steps.script.speakers.reporter,
+                    config.steps.script.speakers.narrator,
+                )
+            },
         ),
         SubtitleFormatter(
             run_id=run_id,
@@ -103,11 +108,11 @@ def main():
     result = orchestrator.execute()
 
     logger.info(
-        "Workflow finished",
-        status=result.status,
-        duration_seconds=result.duration_seconds,
-        outputs=result.outputs,
-        errors=result.errors,
+        "Workflow finished status=%s duration_seconds=%.2f outputs=%s errors=%s",
+        result.status,
+        result.duration_seconds,
+        result.outputs,
+        result.errors,
     )
 
     if result.status == "success":

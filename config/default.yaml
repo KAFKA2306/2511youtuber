@@ -128,19 +128,9 @@ providers:
       manager_script: "scripts/voicevox_manager.sh"
       auto_start: false
       speakers:
-        春日部つむぎ: 3
+        春日部つむぎ: 8
         ずんだもん: 1
         玄野武宏: 11
-
-    pyttsx3:
-      enabled: true
-      speakers:
-        春日部つむぎ:
-          rate: 150
-        ずんだもん:
-          rate: 150
-        玄野武宏:
-          rate: 150
 
   news:
     perplexity:

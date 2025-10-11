@@ -77,19 +77,42 @@ class TestScriptGeneratorIntegration:
 
 @pytest.mark.integration
 class TestAudioSynthesizerIntegration:
-    def test_audio_synthesis_with_pyttsx3(self, temp_run_dir, test_run_id, sample_script_path):
+    def test_audio_synthesis_combines_segments(self, temp_run_dir, test_run_id, sample_script_path):
         run_path = temp_run_dir / test_run_id
         run_path.mkdir(parents=True, exist_ok=True)
         script_output_path = run_path / "script.json"
         shutil.copy(sample_script_path, script_output_path)
+        with open(script_output_path, encoding="utf-8") as f:
+            data = json.load(f)
+        data["segments"][0]["speaker"] = "玄野武宏（ナレーション）"
+        data["segments"][1]["speaker"] = "つむぎ"
+        with open(script_output_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
+        config = Config.load()
+        speaker_profiles = (
+            config.steps.script.speakers.analyst,
+            config.steps.script.speakers.reporter,
+            config.steps.script.speakers.narrator,
+        )
         step = AudioSynthesizer(
             run_id=test_run_id,
             run_dir=temp_run_dir,
-            pyttsx3_config={
-                "speakers": {"春日部つむぎ": {"rate": 140}, "ずんだもん": {"rate": 160}, "玄野武宏": {"rate": 150}}
+            voicevox_config={
+                "url": config.providers.tts.voicevox.url,
+                "speakers": dict(config.providers.tts.voicevox.speakers),
+                "manager_script": None,
+                "auto_start": False,
             },
+            speaker_aliases={profile.name: profile.aliases for profile in speaker_profiles},
         )
+        from pydub.generators import Sine
+
+        def fake_execute(text, speaker, **_):
+            base = 400 if "玄野" in speaker else 440
+            return Sine(base).to_audio_segment(duration=200)
+
+        step.provider.execute = fake_execute
         output_path = step.run({"generate_script": script_output_path})
 
         assert output_path.exists()

@@ -34,7 +34,7 @@ class TestConfig:
         config = Config.load()
         assert config.providers.llm.gemini.model == "gemini/gemini-2.5-flash-preview-09-2025"
         assert config.providers.tts.voicevox.enabled is True
-        assert config.providers.tts.voicevox.speakers["春日部つむぎ"] == 3
+        assert config.providers.tts.voicevox.speakers["春日部つむぎ"] == 8
         assert config.providers.tts.voicevox.speakers["ずんだもん"] == 1
         assert config.providers.tts.voicevox.speakers["玄野武宏"] == 11
         assert config.providers.tts.voicevox.manager_script == "scripts/voicevox_manager.sh"

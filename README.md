@@ -109,7 +109,7 @@ youtube-ai-v2/
    (Gemini + 日本語純度検証)
 
 3. AudioSynthesizer   → audio.wav
-   (VOICEVOX → pyttsx3)
+   (VOICEVOX)
 
 4. SubtitleFormatter  → subtitles.srt
    (文字数比率で時刻配分)
@@ -192,7 +192,7 @@ youtube-ai-v2/
 
 ### 禁止事項
 
-- ❌ エラーハンドリングの削除（旧プロジェクトのアンチパターン4）
+- ❌ エラーハンドリング
 - ❌ テストなしリファクタリング（旧プロジェクトのアンチパターン8）
 - ❌ 設定のハードコーディング（旧プロジェクトのアンチパターン13）
 - ❌ API仕様未確認のまま実装（旧プロジェクトのアンチパターン6）
@@ -289,13 +289,9 @@ python src/main.py
 
 APIが利用できない場合、自動的に代替プロバイダに切り替わります:
 
-- **TTS**: VOICEVOX → pyttsx3
-- **LLM**: Gemini → DummyLLM（テスト用）
-- **News**: DummyNews（常に利用可能）
-
-### 日本語純度100%保証
-
-スクリプトに英単語が混入した場合、自動的に拒否されます。
+- **TTS**: VOICEVOX
+- **LLM**: Gemini
+- **News**: perplexity
 
 ---
 

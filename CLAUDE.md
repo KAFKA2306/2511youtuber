@@ -196,7 +196,7 @@ providers:
       enabled: true
       url: "http://localhost:50121"
       speakers:
-        春日部つむぎ: 3
+        春日部つむぎ: 8
         ずんだもん: 1
         玄野武宏: 11
 ```
@@ -273,7 +273,7 @@ Speaker-aware fallback:
 ```python
 # config/default.yaml
 providers.tts.voicevox.speakers:
-  春日部つむぎ: 3    # VOICEVOX speaker ID
+  春日部つむぎ: 8    # VOICEVOX speaker ID
   ずんだもん: 1
 
 providers.tts.pyttsx3.speakers:

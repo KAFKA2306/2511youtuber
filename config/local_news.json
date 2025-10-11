@@ -1,0 +1,20 @@
+[
+  {
+    "title": "日経平均が年初来高値を更新",
+    "summary": "主要ハイテク株の買いが先行し、日経平均株価は前日比450円高の39,200円で取引を終えた。",
+    "url": "https://example.com/news/nikkei-high",
+    "published_at": "2025-01-15T09:00:00+09:00"
+  },
+  {
+    "title": "国内金価格が過去最高値を記録",
+    "summary": "円安基調と安全資産需要の高まりを背景に、国内店頭金価格は1グラム1万円を突破した。",
+    "url": "https://example.com/news/gold-price",
+    "published_at": "2025-01-15T08:30:00+09:00"
+  },
+  {
+    "title": "政府、GX投資枠を前倒し実施",
+    "summary": "経済産業省はグリーントランスフォーメーション投資の補正予算を閣議決定し、インフラ整備を加速させる。",
+    "url": "https://example.com/news/gx-budget",
+    "published_at": "2025-01-14T19:15:00+09:00"
+  }
+]

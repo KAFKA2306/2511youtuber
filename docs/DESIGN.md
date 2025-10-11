@@ -229,8 +229,7 @@ class NewsCollector(Step):
     def execute(self, inputs: Dict[str, Path]) -> Path:
         providers = ProviderChain([
             PerplexityNewsProvider(priority=1),
-            NewsAPIProvider(priority=2),
-            DummyNewsProvider(priority=999)
+            LocalNewsProvider(priority=0),
         ])
 
         news_items = providers.execute(query="金融ニュース", count=3)
@@ -360,7 +359,7 @@ steps:
 tts:
   voicevox:
     speakers:
-      春日部つむぎ: 3
+      春日部つむぎ: 8
       ずんだもん: 1
       玄野武宏: 11
 
@@ -548,7 +547,7 @@ providers:
       enabled: true
       url: "http://localhost:50021"
       speakers:
-        春日部つむぎ: 3
+        春日部つむぎ: 8
         ずんだもん: 1
         玄野武宏: 11
 

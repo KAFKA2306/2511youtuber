@@ -29,9 +29,9 @@ script_generation:
     3. {reporter_name}が視聴者の生活に結び付く疑問を投げ、宿題（後述ブロック）を予告。
 
     【推しデータ三択ブロック】
-    - カードA: NASDAQ100 ETF。主力テック銘柄の一次情報から抜いた最新KPIを引用。
-    - カードB: ゴールド需給。先物ポジションの増減と為替ヘッジの関係を噛み砕く。
-    - カードC: {side_theme}（要約: {side_theme_summary}）。ブログや視聴者投稿に紐づく旬ネタを差し込む。
+    - NASDAQ100 ETF。主力テック銘柄の一次情報から抜いた最新KPIを引用。
+    - ゴールド需給。先物ポジションの増減と為替ヘッジの関係を噛み砕く。
+    - {side_theme}（要約: {side_theme_summary}）。ブログや視聴者投稿に紐づく旬ネタを差し込む。
     - {analyst_name}は各カードをPREP法で整理、{reporter_name}はコメント投票を促す。
 
     【視聴者宿題ブロック】
@@ -49,7 +49,7 @@ script_generation:
       - speaker: {narrator_name}
         text: 放課後速報の号令と最大の衝撃数値
       - speaker: {analyst_name}
-        text: WOWフックと推しデータ三択の宣言
+        text: 
       - speaker: {reporter_name}
         text: 視聴者の疑問と参加誘導
     ```
@@ -75,7 +75,7 @@ metadata_generation:
     【メタデータ要件】
 
     1. タイトル（50文字以内）
-       - 冒頭で最大の衝撃・WOW要素を配置
+       - 冒頭で最大の衝撃
        - 数値を必ず含める（％、倍、円、ドルなど）
        - 緊迫感・緊急性を演出（速報、警報、来た、など）
        - 【】で重要ワードを強調
