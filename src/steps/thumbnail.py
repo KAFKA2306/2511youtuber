@@ -215,9 +215,114 @@ class ThumbnailGenerator(Step):
                 y += max(4, self.padding // 4)
         return y
 
-    def _wrap_text(self, text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:
+    def _wrap_text(
+        self,
+        text: str,
+        font: ImageFont.ImageFont | None = None,
+        max_width: int | None = None,
+        max_chars: int | None = None,
+    ) -> List[str]:
+        if font is None:
+            font = self._load_font(self.title_font_size)
+        if max_width is None:
+            max_width = max(self.padding, self.width - (self.padding * 2))
+        char_limit = max_chars if max_chars is not None else self.max_chars_per_line
         if max_width <= 0:
-            return [text[: self.max_chars_per_line]] if text else [""]
+            return self._wrap_text_greedy(text, font, max_width, char_limit)
+
+        remaining_lines = self.max_lines
+        lines: List[str] = []
+        for chunk in text.split("\n"):
+            if remaining_lines <= 0:
+                break
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            chunk_lines = self._wrap_text_balanced(chunk, font, max_width, remaining_lines, char_limit)
+            if not chunk_lines:
+                chunk_lines = self._wrap_text_greedy(chunk, font, max_width, char_limit)
+            lines.extend(chunk_lines[:remaining_lines])
+            remaining_lines = self.max_lines - len(lines)
+            if remaining_lines <= 0:
+                break
+
+        if not lines:
+            lines = self._wrap_text_greedy(text, font, max_width, char_limit)
+        return lines[: self.max_lines]
+
+    def _wrap_text_balanced(
+        self,
+        text: str,
+        font: ImageFont.ImageFont,
+        max_width: int,
+        max_lines: int,
+        char_limit: int,
+    ) -> List[str]:
+        if max_lines <= 0 or not text:
+            return []
+
+        n = len(text)
+        valid_segments = {}
+
+        def fits(segment: str) -> bool:
+            if not segment:
+                return False
+            if len(segment) > char_limit:
+                return False
+            key = segment
+            if key not in valid_segments:
+                valid_segments[key] = self._measure_text_width(font, segment) <= max_width
+            return valid_segments[key]
+
+        best: tuple[float, float, int, List[str]] | None = None
+
+        def score(lines: List[str]) -> tuple[float, float, int]:
+            lengths = [len(line) for line in lines]
+            target = n / len(lines)
+            variance = sum((length - target) ** 2 for length in lengths)
+            spread = max(lengths) - min(lengths)
+            return (variance, spread, len(lines))
+
+        def search(start: int, remaining: int, acc: List[str]):
+            nonlocal best
+            if remaining == 1:
+                segment = text[start:]
+                if fits(segment):
+                    candidate = acc + [segment]
+                    candidate_score = score(candidate)
+                    if best is None or candidate_score < best[:3]:
+                        best = (*candidate_score, candidate)
+                return
+
+            max_end = len(text) - (remaining - 1)
+            for end in range(start + 1, max_end + 1):
+                segment = text[start:end]
+                if not fits(segment):
+                    continue
+                acc.append(segment)
+                search(end, remaining - 1, acc)
+                acc.pop()
+
+        for lines_count in range(1, max_lines + 1):
+            search(0, lines_count, [])
+            if best:
+                break
+
+        if best:
+            return best[3]
+        return []
+
+    def _wrap_text_greedy(
+        self,
+        text: str,
+        font: ImageFont.ImageFont,
+        max_width: int,
+        char_limit: int | None = None,
+    ) -> List[str]:
+        if char_limit is None:
+            char_limit = self.max_chars_per_line
+        if max_width <= 0:
+            return [text[:char_limit]] if text else [""]
 
         lines: List[str] = []
         current = ""
@@ -230,7 +335,7 @@ class ThumbnailGenerator(Step):
                 current = ""
                 continue
             tentative = current + char
-            if self._measure_text_width(font, tentative) <= max_width and len(tentative) <= self.max_chars_per_line:
+            if self._measure_text_width(font, tentative) <= max_width and len(tentative) <= char_limit:
                 current = tentative
                 continue
             if current:
@@ -238,7 +343,7 @@ class ThumbnailGenerator(Step):
                 if len(lines) >= self.max_lines:
                     return lines
             current = char
-            if len(current) > self.max_chars_per_line or self._measure_text_width(font, current) > max_width:
+            if len(current) > char_limit or self._measure_text_width(font, current) > max_width:
                 lines.append(current)
                 current = ""
                 if len(lines) >= self.max_lines:
@@ -248,7 +353,7 @@ class ThumbnailGenerator(Step):
             lines.append(current)
 
         if not lines:
-            lines = [text[: self.max_chars_per_line]] if text else [""]
+            lines = [text[:char_limit]] if text else [""]
         return lines[: self.max_lines]
 
     def _measure_text_width(self, font: ImageFont.ImageFont, text: str) -> int:

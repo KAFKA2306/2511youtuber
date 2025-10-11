@@ -11,6 +11,7 @@ from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
 from src.utils.config import Config
+from src.utils.discord import post_run_summary
 from src.utils.logger import get_logger
 from src.workflow import WorkflowOrchestrator
 
@@ -116,6 +117,7 @@ def main():
     )
 
     if result.status == "success":
+        post_run_summary(run_id, result.outputs)
         print("\n✅ Video generation completed successfully!")
         print(f"Run ID: {run_id}")
         print(f"Video: {result.outputs.get('render_video', 'N/A')}")
