@@ -1,3 +1,4 @@
+from collections import deque
 from pathlib import Path
 
 import litellm
@@ -15,13 +16,19 @@ class GeminiProvider:
         self.model = model if "/" in model else f"gemini/{model}" if not model.startswith("gemini/") else model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.api_keys = load_secret_values("GEMINI_API_KEY")
+        key_values = load_secret_values("GEMINI_API_KEY")
+        if not key_values:
+            key_values = []
+        self._keys = deque(key_values)
 
     def is_available(self) -> bool:
         return bool(self.api_keys)
 
     def execute(self, prompt: str, **kwargs) -> str:
-        api_key = self.api_keys[0]
+        if not self._keys:
+            raise RuntimeError("No Gemini API keys configured")
+        api_key = self._keys[0]
+        self._keys.rotate(-1)
         response = litellm.completion(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
