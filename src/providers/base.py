@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Protocol
+from typing import Any, Iterable, Protocol, Sequence
 
 
 class Provider(Protocol):
@@ -9,8 +9,33 @@ class Provider(Protocol):
     def execute(self, **kwargs: Any) -> Any: ...
 
 
+class AllProvidersFailedError(RuntimeError):
+    def __init__(self, providers: Sequence[str], errors: dict[str, Exception]):
+        message = ", ".join(providers) or "no providers"
+        super().__init__(f"All providers failed: {message}")
+        self.providers = providers
+        self.errors = errors
+
+
+class ProviderChain:
+    def __init__(self, providers: Iterable[Provider]):
+        self.providers = sorted(
+            providers,
+            key=lambda provider: getattr(provider, "priority", 0),
+            reverse=True,
+        )
+
+    def execute(self, **kwargs: Any) -> Any:
+        errors: dict[str, Exception] = {}
+        for provider in self.providers:
+            if not provider.is_available():
+                continue
+            try:
+                return provider.execute(**kwargs)
+            except Exception as exc:  # noqa: BLE001 - bubble up aggregated failure
+                errors[provider.name] = exc
+        raise AllProvidersFailedError([p.name for p in self.providers], errors)
+
+
 def execute_with_fallback(providers: Iterable[Provider], **kwargs: Any) -> Any:
-    for provider in providers:
-        if provider.is_available():
-            return provider.execute(**kwargs)
-    raise RuntimeError("No providers available")
+    return ProviderChain(providers).execute(**kwargs)

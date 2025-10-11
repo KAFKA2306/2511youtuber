@@ -3,6 +3,10 @@ from pathlib import Path
 from typing import Dict
 
 
+class StepExecutionError(RuntimeError):
+    """Raised when a step finishes without producing its declared artifact."""
+
+
 class Step(ABC):
     name: str
     output_filename: str
@@ -25,9 +29,11 @@ class Step(ABC):
         if self.output_exists():
             return self.get_output_path()
 
-        output_path = self.execute(inputs)
+        output_path = Path(self.execute(inputs))
 
         if not output_path.exists():
-            raise FileNotFoundError(f"Step {self.name} did not produce output at {output_path}")
+            raise StepExecutionError(
+                f"Step {self.name} did not produce output at {output_path}"
+            )
 
         return output_path
