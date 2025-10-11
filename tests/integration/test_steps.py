@@ -3,8 +3,8 @@ import shutil
 from pathlib import Path
 
 import pytest
-from PIL import Image
 
+from PIL import Image
 from src.models import NewsItem, Script
 from src.steps.audio import AudioSynthesizer
 from src.steps.metadata import MetadataAnalyzer
@@ -18,19 +18,14 @@ from src.utils.config import Config
 
 @pytest.mark.integration
 @pytest.mark.skipif(
-    not Path.home().joinpath(".secrets/PERPLEXITY_API_KEY").exists(),
-    reason="Requires PERPLEXITY_API_KEY"
+    not Path.home().joinpath(".secrets/PERPLEXITY_API_KEY").exists(), reason="Requires PERPLEXITY_API_KEY"
 )
 class TestNewsCollectorIntegration:
     def test_news_collection_creates_valid_output(self, temp_run_dir, test_run_id):
         from src.utils.config import Config
+
         config = Config.load()
-        step = NewsCollector(
-            run_id=test_run_id,
-            run_dir=temp_run_dir,
-            count=2,
-            providers_config=config.providers.news
-        )
+        step = NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, count=2, providers_config=config.providers.news)
         output_path = step.run({})
 
         assert output_path.exists()
@@ -69,11 +64,11 @@ class TestScriptGeneratorIntegration:
         speakers = Config.load().steps.script.speakers
         step = ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)
 
-        nested_yaml = '''
+        nested_yaml = """
         "segments:
           - speaker: 春日部つむぎ
             text: こんにちは"
-        '''
+        """
 
         script = step._parse_and_validate(nested_yaml)
         assert len(script.segments) == 1
@@ -91,11 +86,9 @@ class TestAudioSynthesizerIntegration:
         step = AudioSynthesizer(
             run_id=test_run_id,
             run_dir=temp_run_dir,
-            pyttsx3_config={"speakers": {
-                "春日部つむぎ": {"rate": 140},
-                "ずんだもん": {"rate": 160},
-                "玄野武宏": {"rate": 150}
-            }}
+            pyttsx3_config={
+                "speakers": {"春日部つむぎ": {"rate": 140}, "ずんだもん": {"rate": 160}, "玄野武宏": {"rate": 150}}
+            },
         )
         output_path = step.run({"generate_script": script_output_path})
 
@@ -106,7 +99,6 @@ class TestAudioSynthesizerIntegration:
 @pytest.mark.integration
 class TestSubtitleFormatterIntegration:
     def test_subtitle_generation(self, temp_run_dir, test_run_id, sample_script_path):
-        from pydub import AudioSegment
         from pydub.generators import Sine
 
         run_path = temp_run_dir / test_run_id
@@ -120,10 +112,7 @@ class TestSubtitleFormatterIntegration:
         dummy_audio.export(audio_path, format="wav")
 
         step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
-        output_path = step.run({
-            "generate_script": script_output_path,
-            "synthesize_audio": audio_path
-        })
+        output_path = step.run({"generate_script": script_output_path, "synthesize_audio": audio_path})
 
         assert output_path.exists()
 
@@ -138,10 +127,13 @@ class TestSubtitleFormatterIntegration:
         step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
 
         from src.models import Script, ScriptSegment
-        script = Script(segments=[
-            ScriptSegment(speaker="春日部つむぎ", text="短い"),
-            ScriptSegment(speaker="ずんだもん", text="これは長いテキストです。")
-        ])
+
+        script = Script(
+            segments=[
+                ScriptSegment(speaker="春日部つむぎ", text="短い"),
+                ScriptSegment(speaker="ずんだもん", text="これは長いテキストです。"),
+            ]
+        )
 
         timestamps = step._calculate_timestamps(script, 10.0)
 
@@ -151,7 +143,6 @@ class TestSubtitleFormatterIntegration:
         assert timestamps[0]["end"] < timestamps[1]["start"]
 
     def test_wraps_long_lines(self, temp_run_dir, test_run_id, sample_script_path):
-        from pydub import AudioSegment
         from pydub.generators import Sine
 
         run_path = temp_run_dir / test_run_id
@@ -169,10 +160,7 @@ class TestSubtitleFormatterIntegration:
             run_dir=temp_run_dir,
             max_chars_per_line=10,
         )
-        output_path = step.run({
-            "generate_script": script_output_path,
-            "synthesize_audio": audio_path
-        })
+        output_path = step.run({"generate_script": script_output_path, "synthesize_audio": audio_path})
 
         import unicodedata
 
@@ -256,10 +244,12 @@ class TestThumbnailGeneratorIntegration:
             },
         )
 
-        output_path = step.run({
-            "generate_script": script_output_path,
-            "analyze_metadata": metadata_path,
-        })
+        output_path = step.run(
+            {
+                "generate_script": script_output_path,
+                "analyze_metadata": metadata_path,
+            }
+        )
 
         assert output_path.exists()
 
@@ -278,11 +268,14 @@ class TestYouTubeUploaderIntegration:
 
         metadata_path = run_path / "metadata.json"
         with open(metadata_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "title": "テスト動画",
-                "description": "説明",
-                "tags": ["テスト"],
-            }, f)
+            json.dump(
+                {
+                    "title": "テスト動画",
+                    "description": "説明",
+                    "tags": ["テスト"],
+                },
+                f,
+            )
 
         step = YouTubeUploader(
             run_id=test_run_id,
@@ -295,10 +288,12 @@ class TestYouTubeUploaderIntegration:
             },
         )
 
-        output_path = step.run({
-            "render_video": video_path,
-            "analyze_metadata": metadata_path,
-        })
+        output_path = step.run(
+            {
+                "render_video": video_path,
+                "analyze_metadata": metadata_path,
+            }
+        )
 
         assert output_path.exists()
         with open(output_path, encoding="utf-8") as f:

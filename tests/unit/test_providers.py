@@ -1,5 +1,6 @@
 import pytest
-from src.providers.base import Provider, ProviderChain, AllProvidersFailedError
+
+from src.providers.base import AllProvidersFailedError, Provider, ProviderChain
 
 pytestmark = pytest.mark.unit
 

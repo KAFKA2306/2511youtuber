@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-pytestmark = pytest.mark.unit
-
 from src.steps.metadata import MetadataAnalyzer
+
+pytestmark = pytest.mark.unit
 
 
 class TestMetadataAnalyzerUnit:

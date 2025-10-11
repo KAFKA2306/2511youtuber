@@ -54,7 +54,9 @@ def open(fp: str | Path, mode: str | None = None) -> ImageStub:  # noqa: A003
 
     path = Path(fp)
     data = json.loads(path.read_text(encoding="utf-8"))
-    image = ImageStub(mode=data.get("mode", "RGB"), size=tuple(data.get("size", (0, 0))), background=data.get("background", "black"))
+    image = ImageStub(
+        mode=data.get("mode", "RGB"), size=tuple(data.get("size", (0, 0))), background=data.get("background", "black")
+    )
     image.operations = list(data.get("operations", []))
     return image
 

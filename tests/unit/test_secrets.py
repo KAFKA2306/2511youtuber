@@ -1,8 +1,8 @@
 import pytest
 
-pytestmark = pytest.mark.unit
-
 from src.utils.secrets import load_secret_values
+
+pytestmark = pytest.mark.unit
 
 
 class TestLoadSecretValues:

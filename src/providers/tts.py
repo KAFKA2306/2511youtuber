@@ -1,13 +1,14 @@
-import requests
-import pyttsx3
 import subprocess
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
+
+import pyttsx3
+import requests
 from pydub import AudioSegment
+
 from src.providers.base import Provider
 from src.utils.logger import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -81,7 +82,7 @@ class Pyttsx3Provider(Provider):
         self.speakers = speakers or {
             "春日部つむぎ": {"rate": 140},
             "ずんだもん": {"rate": 160},
-            "玄野武宏": {"rate": 150}
+            "玄野武宏": {"rate": 150},
         }
         self._engine = None
         self._engine_available = None
@@ -99,14 +100,14 @@ class Pyttsx3Provider(Provider):
 
         if self._engine_available and self._engine:
             temp_path = Path(f"/tmp/pyttsx3_{speaker}_{hash(text)}.wav")
-            self._engine.setProperty('rate', speaker_config['rate'])
+            self._engine.setProperty("rate", speaker_config["rate"])
             self._engine.save_to_file(text, str(temp_path))
             self._engine.runAndWait()
 
             audio = AudioSegment.from_wav(temp_path)
             temp_path.unlink(missing_ok=True)
 
-            logger.info(f"pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
+            logger.info("pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
             return audio
 
         duration_ms = max(len(text) * 80, 500)

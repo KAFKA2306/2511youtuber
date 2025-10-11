@@ -41,12 +41,7 @@ class VideoRenderer(Step):
 
         audio_duration = self._get_audio_duration(Path(audio_path))
 
-        self.logger.info(
-            f"Rendering video",
-            audio_duration=audio_duration,
-            resolution=self.resolution,
-            fps=self.fps
-        )
+        self.logger.info("Rendering video", audio_duration=audio_duration, resolution=self.resolution, fps=self.fps)
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -54,8 +49,7 @@ class VideoRenderer(Step):
         width, height = map(int, self.resolution.split("x"))
 
         video_stream = ffmpeg.input(
-            f'color=c=0x193d5a:size={width}x{height}:duration={audio_duration}:rate={self.fps}',
-            f='lavfi'
+            f"color=c=0x193d5a:size={width}x{height}:duration={audio_duration}:rate={self.fps}", f="lavfi"
         )
 
         effect_context = VideoEffectContext(
@@ -68,20 +62,17 @@ class VideoRenderer(Step):
         subtitle_path_str = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
 
         video_stream = video_stream.filter(
-            'subtitles',
+            "subtitles",
             subtitle_path_str,
-            force_style='FontName=Noto Sans CJK JP,FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,Outline=2'
+            force_style=(
+                "FontName=Noto Sans CJK JP,FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,Outline=2"
+            ),
         )
 
         audio_stream = ffmpeg.input(str(audio_path))
 
         output = ffmpeg.output(
-            video_stream,
-            audio_stream,
-            str(output_path),
-            vcodec=self.codec,
-            preset=self.preset,
-            crf=self.crf
+            video_stream, audio_stream, str(output_path), vcodec=self.codec, preset=self.preset, crf=self.crf
         ).overwrite_output()
 
         try:
@@ -93,13 +84,13 @@ class VideoRenderer(Step):
             )
         except ffmpeg.Error as e:
             self.logger.error(
-                f"FFmpeg failed",
+                "FFmpeg failed",
                 stderr=e.stderr.decode() if e.stderr else "",
-                stdout=e.stdout.decode() if e.stdout else ""
+                stdout=e.stdout.decode() if e.stdout else "",
             )
             raise
 
-        self.logger.info(f"Video rendered successfully", output_path=str(output_path))
+        self.logger.info("Video rendered successfully", output_path=str(output_path))
         return output_path
 
     def _get_audio_duration(self, audio_path: Path) -> float:
@@ -120,6 +111,5 @@ class VideoRenderer(Step):
                 self.logger.warning("Failed to load bundled ffmpeg", error=str(exc))
 
         raise FileNotFoundError(
-            "FFmpeg executable not found. Install ffmpeg or add it to PATH, or "
-            "ensure imageio-ffmpeg is available."
+            "FFmpeg executable not found. Install ffmpeg or add it to PATH, or ensure imageio-ffmpeg is available."
         )

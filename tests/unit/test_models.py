@@ -1,6 +1,8 @@
-import pytest
-from src.models import ScriptSegment, Script, NewsItem, WorkflowState
 from datetime import datetime
+
+import pytest
+
+from src.models import NewsItem, ScriptSegment, WorkflowState
 
 pytestmark = pytest.mark.unit
 
@@ -18,11 +20,7 @@ class TestScriptSegment:
 
 class TestNewsItem:
     def test_create_news_item(self):
-        news = NewsItem(
-            title="金融ニュース",
-            summary="テスト要約",
-            url="https://example.com"
-        )
+        news = NewsItem(title="金融ニュース", summary="テスト要約", url="https://example.com")
         assert news.title == "金融ニュース"
         assert isinstance(news.published_at, datetime)
 

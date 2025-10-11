@@ -18,7 +18,9 @@ class VideoEffect:
 
     name: str = ""
 
-    def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:  # pragma: no cover - interface
+    def apply(
+        self, stream: FilterableStream, context: VideoEffectContext
+    ) -> FilterableStream:  # pragma: no cover - interface
         raise NotImplementedError
 
 

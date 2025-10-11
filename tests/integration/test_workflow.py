@@ -1,20 +1,20 @@
 import json
 import shutil
-from pathlib import Path
 
 import pytest
-from src.workflow import WorkflowOrchestrator
+
+from src.models import WorkflowState
+from src.steps.audio import AudioSynthesizer
+from src.steps.base import Step
+from src.steps.metadata import MetadataAnalyzer
 from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
-from src.steps.audio import AudioSynthesizer
 from src.steps.subtitle import SubtitleFormatter
-from src.steps.video import VideoRenderer
-from src.steps.metadata import MetadataAnalyzer
 from src.steps.thumbnail import ThumbnailGenerator
+from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
-from src.steps.base import Step
-from src.models import WorkflowState
 from src.utils.config import Config
+from src.workflow import WorkflowOrchestrator
 
 
 @pytest.mark.integration
@@ -106,9 +106,7 @@ class TestWorkflowIntegration:
         state.save(temp_run_dir)
 
         speakers_config = Config.load().steps.script.speakers
-        steps = [
-            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers_config)
-        ]
+        steps = [ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers_config)]
 
         orchestrator1 = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)
         result1 = orchestrator1.execute()
@@ -137,9 +135,7 @@ class TestWorkflowIntegration:
             def execute(self, inputs):
                 raise Exception("Intentional failure")
 
-        steps = [
-            FailingStep(run_id=test_run_id, run_dir=temp_run_dir)
-        ]
+        steps = [FailingStep(run_id=test_run_id, run_dir=temp_run_dir)]
 
         orchestrator = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)
         result = orchestrator.execute()

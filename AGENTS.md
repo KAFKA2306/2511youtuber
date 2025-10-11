@@ -15,7 +15,7 @@
 - Python 3.11, four-space indentation, and type hints everywhere; modules and functions use `snake_case`, classes use `PascalCase`, constants stay uppercase.
 - Favor small, composable functions and data classes or Pydantic models in `src/models.py`; keep success-path logic only.
 - Keep implementations minimal per the docs: keep files short, isolate concerns across modules, avoid adding comments, no error handling. No mockups—let the real pipeline seams carry the behavior.
-- Format and lint with `uv run ruff check src tests` (add `src` as that code stabilizes).
+- Format and lint with `uv run ruff check src tests`, `uv run ruff format src tests` (add `src` as that code stabilizes).
 - must not hard coding and write comments. separate config. must not write retry and timeout logic. delete retry and timeout logic. think truely root cause. must not try catch logic.
 - always think to reduce codes and delete files to keep simple but stable.
 

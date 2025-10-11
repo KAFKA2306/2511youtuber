@@ -88,9 +88,9 @@
 
 | API | 用途 | 必須性 | フォールバック |
 |-----|------|--------|--------------|
-| Gemini | スクリプト生成 | 必須 | ダミースクリプト |
+| Gemini | スクリプト生成 | 必須 | Another Gemini API keys |
 | VOICEVOX | 音声合成 | 推奨 | pyttsx3（オフライン） |
-| Perplexity | ニュース収集 | オプション | NewsAPI → ダミーニュース |
+| Perplexity | ニュース収集 | オプション | NewsAPI |
 
 **設計原則**: 外部API障害時もワークフローは完遂する
 

@@ -1,4 +1,5 @@
 """Utilities for loading sensitive configuration from environment variables or secret files."""
+
 from __future__ import annotations
 
 import os

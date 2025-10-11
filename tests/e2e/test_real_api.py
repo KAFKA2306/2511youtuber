@@ -1,5 +1,7 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 from src.providers.llm import GeminiProvider
 from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
@@ -65,7 +67,7 @@ segments:
 
         steps = [
             NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, count=2),
-            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)
+            ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers),
         ]
 
         orchestrator = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)
@@ -79,9 +81,11 @@ segments:
         assert script_path.exists()
 
         import json
+
         with open(script_path, encoding="utf-8") as f:
             data = json.load(f)
 
         from src.models import Script
+
         script = Script(**data)
         assert len(script.segments) >= 3

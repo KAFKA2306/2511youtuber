@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
 from typing import Dict
+
 from pydub import AudioSegment
-from src.steps.base import Step
-from src.providers.base import ProviderChain
-from src.providers.tts import VOICEVOXProvider, Pyttsx3Provider
+
 from src.models import Script
+from src.providers.base import ProviderChain
+from src.providers.tts import Pyttsx3Provider, VOICEVOXProvider
+from src.steps.base import Step
 
 
 class AudioSynthesizer(Step):
@@ -23,7 +25,7 @@ class AudioSynthesizer(Step):
             raise ValueError("Script file not found")
 
         script = self._load_script(Path(script_path))
-        self.logger.info(f"Loaded script", segments=len(script.segments))
+        self.logger.info("Loaded script", segments=len(script.segments))
 
         providers = []
         if self.voicevox_config:
@@ -33,7 +35,7 @@ class AudioSynthesizer(Step):
 
         audio_segments = []
         for i, segment in enumerate(script.segments):
-            self.logger.info(f"Synthesizing segment {i+1}/{len(script.segments)}", speaker=segment.speaker)
+            self.logger.info(f"Synthesizing segment {i + 1}/{len(script.segments)}", speaker=segment.speaker)
 
             audio = tts_chain.execute(text=segment.text, speaker=segment.speaker)
             audio_segments.append(audio)
@@ -54,10 +56,10 @@ class AudioSynthesizer(Step):
 
         duration_seconds = len(combined_audio) / 1000.0
         self.logger.info(
-            f"Audio synthesized",
+            "Audio synthesized",
             segments=len(audio_segments),
             duration_seconds=duration_seconds,
-            output_path=str(output_path)
+            output_path=str(output_path),
         )
 
         return output_path

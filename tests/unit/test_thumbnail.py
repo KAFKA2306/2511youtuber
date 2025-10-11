@@ -1,9 +1,9 @@
 import pytest
 
-pytestmark = pytest.mark.unit
-
 from src.models import Script, ScriptSegment
 from src.steps.thumbnail import ThumbnailGenerator
+
+pytestmark = pytest.mark.unit
 
 
 class TestThumbnailGeneratorUnit:
@@ -15,10 +15,12 @@ class TestThumbnailGeneratorUnit:
 
     def test_build_callouts_prefers_metadata_keywords(self, tmp_path):
         step = ThumbnailGenerator(run_id="test", run_dir=tmp_path, thumbnail_config={"width": 640, "height": 360})
-        script = Script(segments=[
-            ScriptSegment(speaker="春日部つむぎ", text="金融市場が動いています"),
-            ScriptSegment(speaker="ずんだもん", text="円安が進行しています"),
-        ])
+        script = Script(
+            segments=[
+                ScriptSegment(speaker="春日部つむぎ", text="金融市場が動いています"),
+                ScriptSegment(speaker="ずんだもん", text="円安が進行しています"),
+            ]
+        )
         metadata = {
             "analysis": {
                 "keyword_density": {
@@ -33,10 +35,12 @@ class TestThumbnailGeneratorUnit:
 
     def test_subtitle_text_falls_back_to_speakers(self, tmp_path):
         step = ThumbnailGenerator(run_id="test", run_dir=tmp_path, thumbnail_config={"width": 640, "height": 360})
-        script = Script(segments=[
-            ScriptSegment(speaker="春日部つむぎ", text="こんにちは"),
-            ScriptSegment(speaker="ずんだもん", text="解説します"),
-        ])
+        script = Script(
+            segments=[
+                ScriptSegment(speaker="春日部つむぎ", text="こんにちは"),
+                ScriptSegment(speaker="ずんだもん", text="解説します"),
+            ]
+        )
 
         subtitle = step._build_subtitle_text(None, script)
         assert "春日部つむぎ" in subtitle

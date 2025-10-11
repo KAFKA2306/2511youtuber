@@ -1,12 +1,13 @@
-import pytest
 from pathlib import Path
 
-pytestmark = pytest.mark.unit
+import pytest
 
-from src.steps.script import ScriptGenerator
-from src.utils.config import Config
 from src.providers.base import AllProvidersFailedError, ProviderChain
 from src.steps.base import StepExecutionError
+from src.steps.script import ScriptGenerator
+from src.utils.config import Config
+
+pytestmark = pytest.mark.unit
 
 
 class TestScriptParsingErrors:

@@ -1,9 +1,8 @@
 import pytest
-from pathlib import Path
-
-pytestmark = pytest.mark.unit
 
 from src.utils.config import Config
+
+pytestmark = pytest.mark.unit
 
 
 class TestConfig:

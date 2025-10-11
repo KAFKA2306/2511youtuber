@@ -7,7 +7,6 @@ from src.providers.base import Provider
 from src.utils.logger import get_logger
 from src.utils.secrets import load_secret_values
 
-
 logger = get_logger(__name__)
 
 
@@ -15,7 +14,9 @@ class GeminiProvider(Provider):
     name = "gemini"
     priority = 1
 
-    def __init__(self, model: str = "gemini/gemini-2.5-flash-preview-09-2025", temperature: float = 0.7, max_tokens: int = 4000):
+    def __init__(
+        self, model: str = "gemini/gemini-2.5-flash-preview-09-2025", temperature: float = 0.7, max_tokens: int = 4000
+    ):
         self.configured_model = model
         self.model = self._normalise_model_name(model)
         self.temperature = temperature
@@ -55,7 +56,7 @@ class GeminiProvider(Provider):
                     messages=[{"role": "user", "content": prompt}],
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
-                    api_key=api_key
+                    api_key=api_key,
                 )
 
                 content = response.choices[0].message.content

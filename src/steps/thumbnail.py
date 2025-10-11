@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Dict, List
 
 from PIL import Image, ImageDraw, ImageFont
-
 from src.models import Script
 from src.steps.base import Step
 

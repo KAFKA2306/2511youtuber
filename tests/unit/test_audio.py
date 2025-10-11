@@ -3,15 +3,13 @@ import json
 import pytest
 from pydub import AudioSegment
 
-pytestmark = pytest.mark.unit
-
 from src.steps.audio import AudioSynthesizer
+
+pytestmark = pytest.mark.unit
 
 
 class TestAudioSynthesizerUnit:
-    def test_generates_silent_audio_when_script_has_no_segments(
-        self, temp_run_dir, test_run_id
-    ) -> None:
+    def test_generates_silent_audio_when_script_has_no_segments(self, temp_run_dir, test_run_id) -> None:
         run_path = temp_run_dir / test_run_id
         run_path.mkdir(parents=True, exist_ok=True)
 

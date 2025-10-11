@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.unit
-
 from src.providers.youtube import YouTubeClient
+
+pytestmark = pytest.mark.unit
 
 
 class TestYouTubeClient:

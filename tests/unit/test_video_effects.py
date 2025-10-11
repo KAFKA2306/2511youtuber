@@ -2,13 +2,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-pytestmark = pytest.mark.unit
-
 from src.providers.video_effects import (
     KenBurnsEffect,
     VideoEffectContext,
     VideoEffectPipeline,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestVideoEffectPipeline:
@@ -16,15 +16,17 @@ class TestVideoEffectPipeline:
         stream = MagicMock()
         stream.filter.return_value = stream
 
-        pipeline = VideoEffectPipeline.from_config([
-            {
-                "type": "ken_burns",
-                "zoom_speed": 0.01,
-                "max_zoom": 1.3,
-                "hold_frame_factor": 0.5,
-                "pan_mode": "left_to_right",
-            }
-        ])
+        pipeline = VideoEffectPipeline.from_config(
+            [
+                {
+                    "type": "ken_burns",
+                    "zoom_speed": 0.01,
+                    "max_zoom": 1.3,
+                    "hold_frame_factor": 0.5,
+                    "pan_mode": "left_to_right",
+                }
+            ]
+        )
 
         context = VideoEffectContext(duration_seconds=12.0, fps=24, resolution=(1280, 720))
         pipeline.apply(stream, context)
@@ -39,16 +41,12 @@ class TestVideoEffectPipeline:
         assert "ih/2 - (ih/zoom/2)" == call.kwargs["y"]
 
     def test_disabled_effects_are_skipped(self):
-        pipeline = VideoEffectPipeline.from_config([
-            {"type": "ken_burns", "enabled": False}
-        ])
+        pipeline = VideoEffectPipeline.from_config([{"type": "ken_burns", "enabled": False}])
         assert pipeline.effects == []
 
     def test_unknown_effect_raises(self):
         with pytest.raises(ValueError):
-            VideoEffectPipeline.from_config([
-                {"type": "unknown"}
-            ])
+            VideoEffectPipeline.from_config([{"type": "unknown"}])
 
 
 class TestKenBurnsEffect:

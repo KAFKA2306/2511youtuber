@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
-from typing import List, Literal, Dict, Any
+from typing import Dict, List, Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -36,6 +37,7 @@ class WorkflowState(BaseModel):
         if state_path.exists():
             with open(state_path) as f:
                 import json
+
                 data = json.load(f)
                 return cls(**data)
         return cls(run_id=run_id)
@@ -45,6 +47,7 @@ class WorkflowState(BaseModel):
         state_path.parent.mkdir(parents=True, exist_ok=True)
         with open(state_path, "w") as f:
             import json
+
             json.dump(self.model_dump(mode="json"), f, ensure_ascii=False, indent=2)
 
     def mark_completed(self, step_name: str, output_path: str):

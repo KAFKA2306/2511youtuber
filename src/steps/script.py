@@ -1,15 +1,16 @@
 import json
-import textwrap
-import yaml
 import re
+import textwrap
 from pathlib import Path
-from typing import Dict, Any
-from src.steps.base import Step
-from src.providers.base import ProviderChain
-from src.providers.llm import GeminiProvider, DummyLLMProvider, load_prompt_template
-from src.models import Script, NewsItem
-from src.utils.logger import get_logger
+from typing import Any, Dict
 
+import yaml
+
+from src.models import NewsItem, Script
+from src.providers.base import ProviderChain
+from src.providers.llm import DummyLLMProvider, GeminiProvider, load_prompt_template
+from src.steps.base import Step
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,7 @@ class ScriptGenerator(Step):
             raise ValueError("News file not found")
 
         news_items = self._load_news(Path(news_path))
-        self.logger.info(f"Loaded news items", count=len(news_items))
+        self.logger.info("Loaded news items", count=len(news_items))
 
         llm_chain = self._build_llm_chain()
 
@@ -48,11 +49,7 @@ class ScriptGenerator(Step):
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(script.model_dump(mode="json"), f, ensure_ascii=False, indent=2)
 
-        self.logger.info(
-            f"Script generated",
-            segments=len(script.segments),
-            output_path=str(output_path)
-        )
+        self.logger.info("Script generated", segments=len(script.segments), output_path=str(output_path))
         return output_path
 
     def _load_news(self, news_path: Path) -> list[NewsItem]:
@@ -63,15 +60,12 @@ class ScriptGenerator(Step):
     def _build_prompt(self, news_items: list[NewsItem]) -> str:
         template = load_prompt_template("script_generation")
 
-        news_text = "\n\n".join([
-            f"タイトル: {item.title}\n要約: {item.summary}"
-            for item in news_items
-        ])
+        news_text = "\n\n".join([f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items])
         return template.format(
             news_items=news_text,
             analyst_name=self.canonical_roles.get("analyst", ""),
             reporter_name=self.canonical_roles.get("reporter", ""),
-            narrator_name=self.canonical_roles.get("narrator", "")
+            narrator_name=self.canonical_roles.get("narrator", ""),
         )
 
     def _parse_and_validate(self, raw: str, max_depth: int = 3) -> Script:
@@ -86,7 +80,7 @@ class ScriptGenerator(Step):
             try:
                 data = yaml.safe_load(raw)
             except yaml.YAMLError as e:
-                self.logger.warning(f"YAML parse failed, trying JSON", error=str(e))
+                self.logger.warning("YAML parse failed, trying JSON", error=str(e))
 
             if data is None:
                 try:
@@ -100,7 +94,7 @@ class ScriptGenerator(Step):
                 return script
 
             if isinstance(data, str):
-                self.logger.info(f"Recursively unwrapping string", attempt=attempt)
+                self.logger.info("Recursively unwrapping string", attempt=attempt)
                 raw = data
                 continue
 
@@ -122,16 +116,11 @@ class ScriptGenerator(Step):
         if cleaned.startswith("```") and cleaned.endswith("```"):
             cleaned = cleaned[3:-3]
 
-        wrappers = [
-            ('"""', '"""'),
-            ("'''", "'''"),
-            ('"', '"'),
-            ("'", "'")
-        ]
+        wrappers = [('"""', '"""'), ("'''", "'''"), ('"', '"'), ("'", "'")]
 
         for prefix, suffix in wrappers:
             if cleaned.startswith(prefix) and cleaned.endswith(suffix) and len(cleaned) >= len(prefix) + len(suffix):
-                cleaned = cleaned[len(prefix):-len(suffix)]
+                cleaned = cleaned[len(prefix) : -len(suffix)]
                 cleaned = cleaned.strip()
                 break
 
@@ -187,11 +176,11 @@ class ScriptGenerator(Step):
         return self.default_speaker
 
     def _sanitize_parenthetical_annotations(self, raw: str) -> str:
-        pattern = re.compile(r'（([^）]*?):')
+        pattern = re.compile(r"（([^）]*?):")
 
         def _replace(match: re.Match[str]) -> str:
             inner = match.group(1)
-            return f'（{inner}：'
+            return f"（{inner}："
 
         return pattern.sub(_replace, raw)
 
@@ -203,7 +192,7 @@ class ScriptGenerator(Step):
         profiles = {
             role: {
                 "name": info.get("name", "").strip(),
-                "aliases": [alias.strip() for alias in info.get("aliases", []) if alias]
+                "aliases": [alias.strip() for alias in info.get("aliases", []) if alias],
             }
             for role, info in dict(config).items()
         }
@@ -226,10 +215,7 @@ class ScriptGenerator(Step):
         speakers = [
             self.canonical_roles.get("analyst", ""),
             self.canonical_roles.get("reporter", ""),
-            self.canonical_roles.get("narrator", "")
+            self.canonical_roles.get("narrator", ""),
         ]
         speakers = [name for name in speakers if name]
-        return ProviderChain([
-            GeminiProvider(),
-            DummyLLMProvider(speakers=speakers)
-        ])
+        return ProviderChain([GeminiProvider(), DummyLLMProvider(speakers=speakers)])

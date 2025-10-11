@@ -13,7 +13,6 @@ from src.utils.config import load_prompts
 from src.utils.logger import get_logger
 from src.utils.secrets import load_secret_values
 
-
 logger = get_logger(__name__)
 
 
@@ -137,4 +136,3 @@ class PerplexityNewsProvider(Provider):
             return datetime.fromisoformat(value)
         except ValueError:
             return datetime.now(timezone.utc)
-

@@ -26,7 +26,7 @@ class NewsCollector(Step):
         self.providers_config = providers_config
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
-        self.logger.info(f"Collecting news", query=self.query, count=self.count)
+        self.logger.info("Collecting news", query=self.query, count=self.count)
 
         providers = ProviderChain(self._build_providers())
 
@@ -36,14 +36,9 @@ class NewsCollector(Step):
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(
-                [item.model_dump(mode="json") for item in news_items],
-                f,
-                ensure_ascii=False,
-                indent=2
-            )
+            json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
 
-        self.logger.info(f"News collected", count=len(news_items), output_path=str(output_path))
+        self.logger.info("News collected", count=len(news_items), output_path=str(output_path))
         return output_path
 
     def _build_providers(self) -> List[PerplexityNewsProvider]:

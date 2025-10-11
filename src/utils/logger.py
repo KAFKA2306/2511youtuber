@@ -1,7 +1,6 @@
-import logging
 import json
+import logging
 from datetime import datetime
-from typing import Any, Dict
 
 
 class StructuredLogger:
@@ -14,9 +13,7 @@ class StructuredLogger:
         if format_type == "json":
             handler.setFormatter(JsonFormatter())
         else:
-            handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
+            handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
         self.logger.handlers = []
         self.logger.addHandler(handler)
