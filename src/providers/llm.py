@@ -17,9 +17,8 @@ class GeminiProvider:
         self.temperature = temperature
         self.max_tokens = max_tokens
         key_values = load_secret_values("GEMINI_API_KEY")
-        if not key_values:
-            key_values = []
-        self._keys = deque(key_values)
+        self.api_keys = list(key_values)
+        self._keys = deque(self.api_keys)
 
     def is_available(self) -> bool:
         return bool(self.api_keys)
