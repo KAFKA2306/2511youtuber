@@ -43,7 +43,12 @@ class YouTubeUploader(Step):
         with open(metadata_path, encoding="utf-8") as f:
             metadata = json.load(f)
 
-        upload_result = self.client.upload(Path(video_path), metadata)
+        thumbnail_input = inputs.get("generate_thumbnail")
+        thumbnail_path = Path(thumbnail_input) if thumbnail_input else None
+        if thumbnail_path and (not thumbnail_path.exists() or thumbnail_path.stat().st_size == 0):
+            thumbnail_path = None
+
+        upload_result = self.client.upload(Path(video_path), metadata, thumbnail_path=thumbnail_path)
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)

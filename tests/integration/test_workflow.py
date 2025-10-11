@@ -40,7 +40,6 @@ class TestWorkflowIntegration:
                 run_dir=temp_run_dir,
                 metadata_config={
                     "target_keywords": ["金融", "経済"],
-                    "min_keyword_density": 0.01,
                     "max_title_length": 60,
                     "max_description_length": 3500,
                     "default_tags": ["金融ニュース"],

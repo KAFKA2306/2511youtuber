@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "金融ニュース 最新"
+    query: "bloomberg ニュース OR 日本経済新聞 株ニュース OR ロイター 株ニュース"
 
   script:
     min_duration: 300
@@ -94,7 +94,6 @@ steps:
       - "株価"
       - "円安"
       - "円高"
-    min_keyword_density: 0.01
     max_title_length: 50
     max_description_length: 5000
     default_tags:
@@ -105,8 +104,8 @@ steps:
 
   youtube:
     enabled: true
-    dry_run: true
-    default_visibility: "unlisted"
+    dry_run: false
+    default_visibility: "public"
     category_id: 25
     max_title_length: 100
     max_description_length: 5000
@@ -137,11 +136,11 @@ providers:
       enabled: true
       speakers:
         春日部つむぎ:
-          rate: 170
+          rate: 150
         ずんだもん:
-          rate: 170
+          rate: 150
         玄野武宏:
-          rate: 170
+          rate: 150
 
   news:
     perplexity:

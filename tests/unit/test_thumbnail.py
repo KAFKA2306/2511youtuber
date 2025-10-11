@@ -21,14 +21,7 @@ class TestThumbnailGeneratorUnit:
                 ScriptSegment(speaker="ずんだもん", text="円安が進行しています"),
             ]
         )
-        metadata = {
-            "analysis": {
-                "keyword_density": {
-                    "金融": {"count": 5, "density": 0.02},
-                    "経済": {"count": 1, "density": 0.01},
-                }
-            }
-        }
+        metadata = {"tags": ["金融", "経済", "速報"]}
 
         callouts = step._build_callouts(metadata, script)
         assert callouts[0] == "金融"

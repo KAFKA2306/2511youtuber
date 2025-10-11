@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-from collections import Counter
 from pathlib import Path
 from typing import Dict, List
 
@@ -26,7 +25,6 @@ class MetadataAnalyzer(Step):
         super().__init__(run_id, run_dir)
         metadata_config = metadata_config or {}
         self.target_keywords: List[str] = list(metadata_config.get("target_keywords", []))
-        self.min_keyword_density: float = float(metadata_config.get("min_keyword_density", 0.01))
         self.max_title_length: int = int(metadata_config.get("max_title_length", 50))
         self.max_description_length: int = int(metadata_config.get("max_description_length", 5000))
         self.default_tags: List[str] = list(metadata_config.get("default_tags", []))
@@ -45,7 +43,6 @@ class MetadataAnalyzer(Step):
             raise ValueError("Script file not found for metadata analysis")
 
         script = self._load_script(Path(script_path))
-        full_text = "".join(segment.text for segment in script.segments)
 
         news_items = []
         if news_path and Path(news_path).exists():
@@ -63,8 +60,7 @@ class MetadataAnalyzer(Step):
             tags = self._build_tags_from_script(script)
             category_id = 25
 
-        keyword_report = self._analyze_keywords(full_text)
-        recommendations = self._build_recommendations(keyword_report)
+        recommendations: List[str] = []
 
         output = {
             "title": title[: self.max_title_length],
@@ -74,7 +70,6 @@ class MetadataAnalyzer(Step):
             "analysis": {
                 "segments": len(script.segments),
                 "duration_estimate": script.total_duration_estimate,
-                "keyword_density": keyword_report,
             },
             "recommendations": recommendations,
         }
@@ -143,32 +138,6 @@ class MetadataAnalyzer(Step):
         if not isinstance(metadata, dict):
             raise ValueError("Metadata YAML must be a mapping")
         return metadata
-
-    def _analyze_keywords(self, text: str) -> Dict[str, Dict[str, float]]:
-        if not text:
-            return {kw: {"count": 0, "density": 0.0} for kw in self.target_keywords}
-
-        counts = Counter()
-        for keyword in self.target_keywords:
-            counts[keyword] = text.count(keyword)
-
-        total_length = max(len(text), 1)
-        return {
-            keyword: {
-                "count": counts[keyword],
-                "density": counts[keyword] / total_length,
-            }
-            for keyword in self.target_keywords
-        }
-
-    def _build_recommendations(self, keyword_report: Dict[str, Dict[str, float]]) -> List[str]:
-        recommendations: List[str] = []
-        for keyword, data in keyword_report.items():
-            if data["density"] < self.min_keyword_density:
-                recommendations.append(f"キーワード『{keyword}』の含有率が低いため、原稿で強調してください。")
-        if not recommendations:
-            recommendations.append("主要キーワードの密度は目標値を満たしています。")
-        return recommendations
 
     def _build_title(self, script: Script) -> str:
         base = script.segments[0].text if script.segments else "金融ニュース速報"

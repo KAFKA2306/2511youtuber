@@ -103,7 +103,6 @@ class ThumbnailStepConfig(BaseModel):
 class MetadataStepConfig(BaseModel):
     enabled: bool = False
     target_keywords: list[str]
-    min_keyword_density: float
     max_title_length: int
     max_description_length: int
     default_tags: list[str] = Field(default_factory=list)

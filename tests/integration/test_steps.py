@@ -195,7 +195,6 @@ class TestMetadataAnalyzerIntegration:
             run_dir=temp_run_dir,
             metadata_config={
                 "target_keywords": ["金融", "経済"],
-                "min_keyword_density": 0.02,
                 "max_title_length": 60,
                 "max_description_length": 500,
                 "default_tags": ["金融ニュース"],
@@ -210,7 +209,7 @@ class TestMetadataAnalyzerIntegration:
             metadata = json.load(f)
 
         assert "title" in metadata
-        assert "recommendations" in metadata
+        assert metadata.get("recommendations") == []
         assert metadata["tags"]
 
 

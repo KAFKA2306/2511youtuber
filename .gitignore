@@ -33,7 +33,7 @@ runs/
 *.png
 *.jpg
 *.srt
-
+*.pickle
 .pytest_cache/
 .coverage
 htmlcov/

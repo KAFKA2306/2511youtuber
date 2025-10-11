@@ -25,11 +25,10 @@ class TestConfig:
         assert "つむぎ" in config.steps.script.speakers.analyst.aliases
         assert config.steps.script.speakers.reporter.name == "ずんだもん"
         assert config.steps.script.speakers.narrator.name == "玄野武宏"
-        assert config.steps.thumbnail.enabled is False
+        assert config.steps.thumbnail.enabled is True
         assert config.steps.thumbnail.width == 1280
-        assert config.steps.metadata.enabled is False
-        assert config.steps.metadata.min_keyword_density == 0.01
-        assert config.steps.youtube.enabled is False
+        assert config.steps.metadata.enabled is True
+        assert config.steps.youtube.enabled is True
 
     def test_providers_config(self):
         config = Config.load()

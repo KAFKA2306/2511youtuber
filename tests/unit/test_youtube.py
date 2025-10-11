@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import pytest
@@ -43,3 +44,27 @@ class TestYouTubeClient:
         assert result["status"] == "dry_run"
         assert result["video_id"].startswith("dry_")
         assert result["metadata"]["title"].startswith("テスト")
+
+    def test_upload_includes_thumbnail_path_in_dry_run(self, tmp_path: Path):
+        video_path = tmp_path / "video.mp4"
+        video_path.write_bytes(b"video")
+        thumbnail_path = tmp_path / "thumbnail.png"
+        thumbnail_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII="
+            )
+        )
+
+        client = YouTubeClient(dry_run=True)
+        result = client.upload(video_path, {"title": "テスト"}, thumbnail_path=thumbnail_path)
+
+        assert result["thumbnail_path"] == str(thumbnail_path)
+
+    def test_upload_raises_when_thumbnail_missing(self, tmp_path: Path):
+        video_path = tmp_path / "video.mp4"
+        video_path.write_bytes(b"video")
+
+        client = YouTubeClient(dry_run=True)
+
+        with pytest.raises(FileNotFoundError):
+            client.upload(video_path, {"title": "テスト"}, thumbnail_path=tmp_path / "missing.png")

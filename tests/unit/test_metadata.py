@@ -8,7 +8,7 @@ pytestmark = pytest.mark.unit
 
 
 class TestMetadataAnalyzerUnit:
-    def test_keyword_density_analysis(self, temp_run_dir, test_run_id, sample_script_path):
+    def test_metadata_generation(self, temp_run_dir, test_run_id, sample_script_path):
         import shutil
 
         run_path = temp_run_dir / test_run_id
@@ -22,10 +22,10 @@ class TestMetadataAnalyzerUnit:
             run_dir=temp_run_dir,
             metadata_config={
                 "target_keywords": ["金融", "経済"],
-                "min_keyword_density": 0.01,
                 "max_title_length": 50,
                 "max_description_length": 400,
                 "default_tags": ["金融ニュース"],
+                "use_llm": False,
             },
         )
 
@@ -34,6 +34,6 @@ class TestMetadataAnalyzerUnit:
         with open(output_path, encoding="utf-8") as f:
             metadata = json.load(f)
 
-        density = metadata["analysis"]["keyword_density"]
-        assert set(density.keys()) == {"金融", "経済"}
         assert metadata["tags"][0] == "金融ニュース"
+        assert metadata["analysis"]["segments"] > 0
+        assert metadata["recommendations"] == []

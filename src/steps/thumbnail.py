@@ -158,17 +158,13 @@ class ThumbnailGenerator(Step):
     def _build_callouts(self, metadata: Dict | None, script: Script) -> List[str]:
         keywords: List[str] = []
         if metadata:
-            analysis = metadata.get("analysis") or {}
-            density = analysis.get("keyword_density") or {}
-            if isinstance(density, dict):
-                ordered = sorted(
-                    density.items(),
-                    key=lambda item: item[1].get("density", 0),
-                    reverse=True,
-                )
-                for keyword, stats in ordered:
-                    if stats.get("count", 0) > 0:
-                        keywords.append(str(keyword))
+            tags = metadata.get("tags") or []
+            for tag in tags:
+                if not isinstance(tag, str):
+                    continue
+                clean = tag.strip()
+                if clean:
+                    keywords.append(clean)
         if keywords:
             return [self._truncate(keyword, self.max_chars_per_line + 2) for keyword in keywords[: self.max_lines]]
 

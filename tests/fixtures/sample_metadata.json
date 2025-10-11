@@ -24,33 +24,7 @@
   "category_id": 25,
   "analysis": {
     "segments": 20,
-    "duration_estimate": 0.0,
-    "keyword_density": {
-      "金融": {
-        "count": 6,
-        "density": 0.00436046511627907
-      },
-      "経済": {
-        "count": 1,
-        "density": 0.0007267441860465116
-      },
-      "投資": {
-        "count": 6,
-        "density": 0.00436046511627907
-      },
-      "株価": {
-        "count": 0,
-        "density": 0.0
-      },
-      "円安": {
-        "count": 0,
-        "density": 0.0
-      },
-      "円高": {
-        "count": 0,
-        "density": 0.0
-      }
-    }
+    "duration_estimate": 0.0
   },
   "recommendations": [
   ]

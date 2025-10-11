@@ -127,7 +127,7 @@ class YouTubeClient:
 
         return prepared
 
-    def upload(self, video_path: Path, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def upload(self, video_path: Path, metadata: Dict[str, Any], thumbnail_path: Path | None = None) -> Dict[str, Any]:
         """Upload a video using the prepared metadata.
 
         In dry-run mode, this generates a deterministic video ID that mimics the
@@ -139,6 +139,11 @@ class YouTubeClient:
             raise FileNotFoundError(f"Video file not found: {video_path}")
 
         prepared = self.prepare_metadata(metadata)
+        thumbnail = Path(thumbnail_path) if thumbnail_path else None
+        if thumbnail and not thumbnail.exists():
+            raise FileNotFoundError(f"Thumbnail file not found: {thumbnail}")
+        if thumbnail and thumbnail.stat().st_size == 0:
+            thumbnail = None
 
         if self.dry_run:
             video_id = self._generate_dry_run_id(video_path, prepared)
@@ -146,6 +151,7 @@ class YouTubeClient:
                 "video_id": video_id,
                 "status": "dry_run",
                 "metadata": prepared,
+                "thumbnail_path": str(thumbnail) if thumbnail else None,
             }
 
         upload_body = {
@@ -167,6 +173,10 @@ class YouTubeClient:
         response = insert_request.execute()
         video_id = response.get("id")
 
+        if thumbnail:
+            thumbnail_media = MediaFileUpload(str(thumbnail), mimetype="image/png")
+            self.service.thumbnails().set(videoId=video_id, media_body=thumbnail_media).execute()
+
         logger.info(f"Video uploaded successfully: {video_id}")
 
         return {
@@ -176,6 +186,7 @@ class YouTubeClient:
             "uploaded_at": datetime.now().isoformat(),
             "file_size": file_size,
             "metadata": prepared,
+            "thumbnail_path": str(thumbnail) if thumbnail else None,
         }
 
     def _merge_tags(self, tags: Iterable[str]) -> List[str]:
