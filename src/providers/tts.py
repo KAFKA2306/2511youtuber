@@ -43,22 +43,13 @@ class VOICEVOXProvider(Provider):
         self._bootstrapped[key] = True
 
     def _speaker_id(self, speaker: str) -> int:
-        if speaker in self.speakers:
-            return self.speakers[speaker]
-        if self.speakers:
-            return next(iter(self.speakers.values()))
-        return 3
+        return self.speakers[speaker]
 
     def is_available(self) -> bool:
-        try:
-            response = requests.get(f"{self.url}/version")
-            return response.status_code == 200
-        except requests.RequestException:
-            return False
+        response = requests.get(f"{self.url}/version")
+        return response.status_code == 200
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
-        if not self.is_available():
-            raise RuntimeError("VOICEVOX server not available")
         speaker_id = self._speaker_id(speaker)
         query = requests.post(
             f"{self.url}/audio_query",
@@ -85,51 +76,24 @@ class Pyttsx3Provider(Provider):
             "玄野武宏": {"rate": 150},
         }
         self._engine = None
-        self._engine_available = None
-        self._engine_error = None
 
     def is_available(self) -> bool:
-        self._ensure_engine()
-        # Even if the engine cannot be initialised we can fall back to synthetic audio
         return True
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
-        speaker_config = self.speakers.get(speaker, {"rate": 150})
-
+        speaker_config = self.speakers[speaker]
         self._ensure_engine()
-
-        if self._engine_available and self._engine:
-            temp_path = Path(f"/tmp/pyttsx3_{speaker}_{hash(text)}.wav")
-            self._engine.setProperty("rate", speaker_config["rate"])
-            self._engine.save_to_file(text, str(temp_path))
-            self._engine.runAndWait()
-
-            audio = AudioSegment.from_wav(temp_path)
-            temp_path.unlink(missing_ok=True)
-
-            logger.info("pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
-            return audio
-
-        duration_ms = max(len(text) * 80, 500)
-        audio = AudioSegment.silent(duration=duration_ms, frame_rate=24000)
-        logger.info(
-            "pyttsx3 engine unavailable, generated silent fallback audio",
-            speaker=speaker,
-            duration_ms=duration_ms,
-            error=str(self._engine_error) if self._engine_error else None,
-        )
+        temp_path = Path(f"/tmp/pyttsx3_{speaker}_{hash(text)}.wav")
+        self._engine.setProperty("rate", speaker_config["rate"])
+        self._engine.save_to_file(text, str(temp_path))
+        self._engine.runAndWait()
+        audio = AudioSegment.from_wav(temp_path)
+        temp_path.unlink(missing_ok=True)
+        logger.info("pyttsx3 synthesis completed", speaker=speaker, duration_ms=len(audio))
         return audio
 
     def _ensure_engine(self) -> None:
-        if self._engine_available is not None:
+        if self._engine:
             return
-
-        try:
-            engine = pyttsx3.init()
-            engine.stop()
-            self._engine = engine
-            self._engine_available = True
-        except Exception as exc:
-            self._engine = None
-            self._engine_available = False
-            self._engine_error = exc
+        self._engine = pyttsx3.init()
+        self._engine.stop()

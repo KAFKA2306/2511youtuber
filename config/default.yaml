@@ -124,11 +124,11 @@ providers:
       enabled: true
       speakers:
         春日部つむぎ:
-          rate: 140
+          rate: 170
         ずんだもん:
-          rate: 160
+          rate: 170
         玄野武宏:
-          rate: 150
+          rate: 170
 
   news:
     perplexity:
