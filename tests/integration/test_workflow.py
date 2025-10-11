@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -18,10 +19,18 @@ from src.utils.config import Config
 
 @pytest.mark.integration
 class TestWorkflowIntegration:
-    def test_full_workflow_with_dummy_providers(self, temp_run_dir, test_run_id):
+    def test_full_workflow_with_dummy_providers(self, temp_run_dir, test_run_id, sample_news_path):
+        run_path = temp_run_dir / test_run_id
+        run_path.mkdir(parents=True, exist_ok=True)
+        news_output = run_path / "news.json"
+        shutil.copy(sample_news_path, news_output)
+
+        state = WorkflowState(run_id=test_run_id)
+        state.mark_completed("collect_news", str(news_output))
+        state.save(temp_run_dir)
+
         speakers_config = Config.load().steps.script.speakers
         steps = [
-            NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, query="テスト", count=2),
             ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers_config),
             AudioSynthesizer(run_id=test_run_id, run_dir=temp_run_dir),
             SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24),
@@ -70,11 +79,9 @@ class TestWorkflowIntegration:
         result = orchestrator.execute()
 
         assert result.status in ["success", "partial"]
-        assert len(result.outputs) >= 2
-        assert "collect_news" in result.outputs
+        assert len(result.outputs) >= 1
         assert "generate_script" in result.outputs
 
-        run_path = temp_run_dir / test_run_id
         assert run_path.exists()
         assert (run_path / "news.json").exists()
         assert (run_path / "script.json").exists()
@@ -88,17 +95,24 @@ class TestWorkflowIntegration:
             if "upload_youtube" in result.outputs:
                 assert (run_path / "youtube.json").exists()
 
-    def test_checkpoint_resume(self, temp_run_dir, test_run_id):
+    def test_checkpoint_resume(self, temp_run_dir, test_run_id, sample_news_path):
+        run_path = temp_run_dir / test_run_id
+        run_path.mkdir(parents=True, exist_ok=True)
+        news_output = run_path / "news.json"
+        shutil.copy(sample_news_path, news_output)
+
+        state = WorkflowState(run_id=test_run_id)
+        state.mark_completed("collect_news", str(news_output))
+        state.save(temp_run_dir)
+
         speakers_config = Config.load().steps.script.speakers
         steps = [
-            NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, query="テスト", count=2),
             ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers_config)
         ]
 
         orchestrator1 = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)
         result1 = orchestrator1.execute()
 
-        assert "collect_news" in result1.outputs
         assert "generate_script" in result1.outputs
 
         orchestrator2 = WorkflowOrchestrator(run_id=test_run_id, steps=steps, run_dir=temp_run_dir)

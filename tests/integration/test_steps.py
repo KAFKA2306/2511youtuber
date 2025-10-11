@@ -17,9 +17,20 @@ from src.utils.config import Config
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not Path.home().joinpath(".secrets/PERPLEXITY_API_KEY").exists(),
+    reason="Requires PERPLEXITY_API_KEY"
+)
 class TestNewsCollectorIntegration:
     def test_news_collection_creates_valid_output(self, temp_run_dir, test_run_id):
-        step = NewsCollector(run_id=test_run_id, run_dir=temp_run_dir, count=2)
+        from src.utils.config import Config
+        config = Config.load()
+        step = NewsCollector(
+            run_id=test_run_id,
+            run_dir=temp_run_dir,
+            count=2,
+            providers_config=config.providers.news
+        )
         output_path = step.run({})
 
         assert output_path.exists()

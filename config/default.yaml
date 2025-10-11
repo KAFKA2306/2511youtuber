@@ -122,8 +122,6 @@ providers:
       model: "sonar"
       temperature: 0.2
       max_tokens: 2048
-    dummy:
-      enabled: false
 
 
 logging:

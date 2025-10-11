@@ -146,13 +146,8 @@ class PerplexityNewsProviderConfig(BaseModel):
     max_tokens: int = 2048
 
 
-class DummyNewsProviderConfig(BaseModel):
-    enabled: bool = False
-
-
 class NewsProvidersConfig(BaseModel):
     perplexity: PerplexityNewsProviderConfig | None = None
-    dummy: DummyNewsProviderConfig | None = None
 
 
 class ProvidersConfig(BaseModel):
@@ -186,3 +181,13 @@ class Config(BaseModel):
 
     def get_gemini_api_keys(self) -> list[str]:
         return load_secret_values("GEMINI_API_KEY")
+
+
+def load_prompts(prompts_path: str | Path | None = None) -> Dict:
+    if prompts_path is None:
+        prompts_path = Path(__file__).parent.parent.parent / "config" / "prompts.yaml"
+    else:
+        prompts_path = Path(prompts_path)
+
+    with open(prompts_path) as f:
+        return yaml.safe_load(f)

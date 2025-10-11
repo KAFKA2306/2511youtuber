@@ -2,9 +2,8 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from src.providers.base import Provider
 from src.providers.base import ProviderChain
-from src.providers.news import DummyNewsProvider, PerplexityNewsProvider
+from src.providers.news import PerplexityNewsProvider
 from src.steps.base import Step
 from src.utils.config import NewsProvidersConfig
 
@@ -47,8 +46,8 @@ class NewsCollector(Step):
         self.logger.info(f"News collected", count=len(news_items), output_path=str(output_path))
         return output_path
 
-    def _build_providers(self) -> List[Provider]:
-        providers: List[Provider] = []
+    def _build_providers(self) -> List[PerplexityNewsProvider]:
+        providers: List[PerplexityNewsProvider] = []
         config = self.providers_config
 
         if config and config.perplexity and config.perplexity.enabled:
@@ -59,14 +58,5 @@ class NewsCollector(Step):
                     max_tokens=config.perplexity.max_tokens,
                 )
             )
-
-        if config and config.dummy and config.dummy.enabled:
-            providers.append(DummyNewsProvider())
-
-        if not providers:
-            if config is None:
-                providers.append(DummyNewsProvider())
-            else:
-                raise ValueError("No news providers enabled in configuration")
 
         return providers

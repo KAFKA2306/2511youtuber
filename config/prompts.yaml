@@ -1,3 +1,11 @@
+news_collection:
+  system: "You are an assistant that produces structured financial news summaries in pure Japanese."
+  user_template: |
+    {topic}を題材に、信頼できる情報源から取得した最新ニュースを{count}件まとめてください。
+    応答は必ず以下のJSON配列形式で出力してください。
+    各要素は title, summary, url, published_at(ISO8601) のキーを持ちます。
+    不要な説明やコードブロック記法は含めないでください。
+
 script_generation:
   system: |
     あなたは視聴維持率50%超を実現する金融動画のスクリプトライターです。
