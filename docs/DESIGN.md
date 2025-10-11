@@ -229,7 +229,6 @@ class NewsCollector(Step):
     def execute(self, inputs: Dict[str, Path]) -> Path:
         providers = ProviderChain([
             PerplexityNewsProvider(priority=1),
-            LocalNewsProvider(priority=0),
         ])
 
         news_items = providers.execute(query="金融ニュース", count=3)

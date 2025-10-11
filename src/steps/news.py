@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from src.providers.base import execute_with_fallback
-from src.providers.news import LocalNewsProvider, PerplexityNewsProvider
+from src.providers.news import PerplexityNewsProvider
 from src.steps.base import Step
 from src.utils.config import NewsProvidersConfig
 
@@ -33,8 +33,8 @@ class NewsCollector(Step):
             json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
         return output_path
 
-    def _build_providers(self) -> List:
-        providers: List = []
+    def _build_providers(self) -> List[PerplexityNewsProvider]:
+        providers: List[PerplexityNewsProvider] = []
         config = self.providers_config
         if config and config.perplexity and config.perplexity.enabled:
             providers.append(
@@ -44,5 +44,4 @@ class NewsCollector(Step):
                     max_tokens=config.perplexity.max_tokens,
                 )
             )
-        providers.append(LocalNewsProvider())
-        return providers
+        return providers or [PerplexityNewsProvider()]
