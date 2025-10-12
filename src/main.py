@@ -1,3 +1,4 @@
+import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -32,9 +33,14 @@ def estimate_max_chars_per_line(
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--news-query")
+    args = parser.parse_args()
     logger.info("Starting YouTube AI Video Generator v2")
 
     config = Config.load()
+    if args.news_query:
+        config.steps.news.query = args.news_query
 
     run_id = create_run_id()
     run_dir = Path(config.workflow.default_run_dir)
