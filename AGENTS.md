@@ -7,7 +7,7 @@
 
 ## Build, Test, and Development Commands
 - `uv sync` installs runtime dependencies plus Ruff, pytest, and coverage tooling.
-- `uv run python -m src.main --config config/default.yaml` launches the CLI; use `uv run python src/main.py` for a lightweight iteration loop.
+- `uv run python -m src.main` launches the CLI; use `uv run python src/main.py` for a lightweight iteration loop.
 - `uv run pytest tests/unit -m unit -v --cov=src --cov-report=term-missing` provides fast feedback with coverage; `uv run pytest tests/integration -v` validates orchestration, and `uv run pytest -v -m e2e` drives Gemini-backed flows once `.env` keys are set.
 - Run linting and formatting via `uv run ruff check src tests` and `uv run ruff format src tests`.
 

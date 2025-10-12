@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from src.models import Script
 from src.providers.tts import VOICEVOXProvider
-from src.steps.base import Step
+from src.core.step import Step
 
 
 class AudioSynthesizer(Step):

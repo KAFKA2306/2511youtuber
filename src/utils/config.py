@@ -116,6 +116,23 @@ class YouTubeStepConfig(BaseModel):
     default_tags: list[str] = Field(default_factory=list)
 
 
+class PodcastStepConfig(BaseModel):
+    enabled: bool = False
+    feed_title: str = "金融ニュース解説ポッドキャスト"
+    feed_description: str = "AI生成の日本経済・金融ニュース解説"
+    feed_author: str = "2510 YouTuber AI"
+    feed_url: str = "https://example.com/podcast"
+
+
+class BuzzsproutStepConfig(BaseModel):
+    enabled: bool = False
+    podcast_id: str | None = None
+    token_key: str = "buzzsprout_api_token"
+    podcast_id_key: str = "buzzsprout_podcast_id"
+    title_template: str = "金融ニュース解説 Episode {run_id}"
+    publish_immediately: bool = True
+
+
 class StepsConfig(BaseModel):
     news: NewsStepConfig
     script: ScriptStepConfig
@@ -125,6 +142,8 @@ class StepsConfig(BaseModel):
     thumbnail: ThumbnailStepConfig
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
+    podcast: PodcastStepConfig
+    buzzsprout: BuzzsproutStepConfig
 
 
 class GeminiProviderConfig(BaseModel):

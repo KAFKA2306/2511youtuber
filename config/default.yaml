@@ -114,6 +114,20 @@ steps:
       - "ニュース"
       - "経済"
 
+  podcast:
+    enabled: false
+    feed_title: "金融ニュース解説ポッドキャスト"
+    feed_description: "AI生成の日本経済・金融ニュース解説"
+    feed_author: "2510 YouTuber AI"
+    feed_url: "https://example.com/podcast"
+  buzzsprout:
+    enabled: false
+    podcast_id: null
+    token_key: "buzzsprout_api_token"
+    podcast_id_key: "buzzsprout_podcast_id"
+    title_template: "金融ニュース解説 Episode {run_id}"
+    publish_immediately: true
+
 providers:
   llm:
     gemini:

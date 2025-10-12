@@ -1,12 +1,12 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, List
 
 import yaml
 
+from src.core.step import Step
 from src.models import NewsItem, Script
 from src.providers.llm import GeminiProvider, load_prompt_template
-from src.steps.base import Step
 
 
 class ScriptGenerator(Step):
@@ -55,9 +55,6 @@ class ScriptGenerator(Step):
             f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items
         )
         side_theme = self._pick_side_theme(news_items)
-        recent_topics_note = self.previous_topics_note or "直近テーマ情報なし"
-        next_theme_note = self.previous_next_hint or "視聴者に次回リクエストをさらっと促す"
-
         return template.format(
             news_items=news_text,
             analyst_name=self.speakers["analyst"],
@@ -65,45 +62,39 @@ class ScriptGenerator(Step):
             narrator_name=self.speakers["narrator"],
             side_theme=side_theme[0],
             side_theme_summary=side_theme[1],
-            recent_topics_note=recent_topics_note,
-            next_theme_note=next_theme_note,
+            recent_topics_note=self.previous_topics_note or "直近テーマ情報なし",
+            next_theme_note=self.previous_next_hint or "視聴者に次回リクエストをさらっと促す",
         )
 
     def _load_previous_context(self, run_dir: Path) -> tuple[str, str]:
         base = Path(run_dir)
         if not base.exists():
             return "", ""
-        candidates = sorted(
-            [p for p in base.iterdir() if p.is_dir() and p.name != self.run_id],
-            reverse=True,
+
+        candidates = (
+            p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id
         )
         for candidate in candidates:
             script_path = candidate / "script.json"
             if not script_path.exists():
                 continue
             try:
-                with open(script_path, encoding="utf-8") as f:
-                    data = json.load(f)
+                data = json.loads(script_path.read_text(encoding="utf-8"))
             except Exception:
                 continue
             segments = data.get("segments") or []
             if not segments:
                 continue
-            recent_bits: list[str] = []
-            for segment in segments:
-                text = self._summarise_text(segment.get("text", ""))
-                if text:
-                    recent_bits.append(text)
-                if len(recent_bits) >= 3:
-                    break
-            recent_summary = " / ".join(recent_bits[:3])[:220]
-            trailing = ""
-            for segment in reversed(segments):
-                text = self._summarise_text(segment.get("text", ""))
-                if text:
-                    trailing = text[:160]
-                    break
+
+            snippets = [self._summarise_text(seg.get("text", "")) for seg in segments]
+            snippets = [s for s in snippets if s]
+            if not snippets:
+                continue
+
+            recent_summary = " / ".join(snippets[:3])[:220]
+            trailing = next((s for s in reversed(snippets) if s), "")[:160]
             return recent_summary, trailing
+
         return "", ""
 
     def _summarise_text(self, value: str) -> str:
@@ -125,7 +116,7 @@ class ScriptGenerator(Step):
             raise ValueError("Maximum recursion depth exceeded during parsing")
 
         text = self._strip_code_fence(raw)
-        for loader in self._parsers():
+        for loader in (yaml.safe_load, json.loads):
             try:
                 parsed = loader(text)
             except Exception:
@@ -139,9 +130,6 @@ class ScriptGenerator(Step):
             return self._coerce_to_mapping(stripped[1:-1], max_depth=max_depth - 1)
 
         raise ValueError("Unable to parse script output")
-
-    def _parsers(self) -> Iterable:
-        return (yaml.safe_load, json.loads)
 
     def _strip_code_fence(self, text: str) -> str:
         if text.startswith("```") and text.endswith("```"):

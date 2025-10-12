@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict
 
 from src.providers.youtube import YouTubeClient
-from src.steps.base import Step
+from src.core.step import Step
 
 
 class YouTubeUploader(Step):

@@ -7,9 +7,9 @@ from typing import Dict, List
 
 import yaml
 
+from src.core.step import Step
 from src.models import Script
 from src.providers.llm import GeminiProvider, load_prompt_template
-from src.steps.base import Step
 
 
 class MetadataAnalyzer(Step):
@@ -60,8 +60,6 @@ class MetadataAnalyzer(Step):
             tags = self._build_tags_from_script(script)
             category_id = 25
 
-        recommendations: List[str] = []
-
         output = {
             "title": title[: self.max_title_length],
             "description": description[: self.max_description_length],
@@ -71,7 +69,6 @@ class MetadataAnalyzer(Step):
                 "segments": len(script.segments),
                 "duration_estimate": script.total_duration_estimate,
             },
-            "recommendations": recommendations,
         }
 
         output_path = self.get_output_path()

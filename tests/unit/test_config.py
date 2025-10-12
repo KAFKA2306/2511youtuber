@@ -29,6 +29,7 @@ class TestConfig:
         assert config.steps.thumbnail.width == 1280
         assert config.steps.metadata.enabled is True
         assert config.steps.youtube.enabled is True
+        assert config.steps.buzzsprout.enabled is False
 
     def test_providers_config(self):
         config = Config.load()

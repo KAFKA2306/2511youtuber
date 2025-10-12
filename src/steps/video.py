@@ -7,8 +7,8 @@ from typing import Dict
 import ffmpeg
 from pydub import AudioSegment
 
+from src.core.step import Step
 from src.providers.video_effects import VideoEffectContext, VideoEffectPipeline
-from src.steps.base import Step
 
 
 class VideoRenderer(Step):
