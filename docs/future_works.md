@@ -99,3 +99,83 @@ ORDER BY retention DESC LIMIT 5
 
 ある程度成功事例がないと、特に有益なフィードバックループを回せない。
 一方で、将来的には必須機能であり、ある程度、成功事例、失敗事例、チャンネル全体の整合性などを積み重ねてから実装する余地あり。
+
+
+
+
+
+
+
+---
+
+
+## 提案11：字幕タイミングの精度向上
+
+### 現状の課題
+`SubtitleFormatter`は文字数比率で時刻を配分しており、実際の音声と字幕がズレます。[2][1]
+
+### 実装方法
+
+**`src/steps/subtitle.py`を改訂**:
+```python
+def align_with_audio(audio_path: Path, segments: List[ScriptSegment]) -> List[SubtitleEntry]:
+    from pydub import AudioSegment
+    
+    audio = AudioSegment.from_wav(audio_path)
+    total_duration = len(audio) / 1000.0  # ms → s
+    
+    # 無音区間を検出し、セグメント境界として使用
+    silences = detect_silence(audio, min_silence_len=300, silence_thresh=-40)
+    
+    # 各セグメントを無音区間で区切る
+    timings = calculate_timings(segments, silences, total_duration)
+    return timings
+```
+
+**依存追加**:
+```toml
+# pyproject.toml
+dependencies = [
+    "pydub>=0.25.1",
+]
+```
+
+**効果**: 字幕と音声のズレが解消され、視聴体験が大幅に改善されます。
+
+### 今実装していない理由
+
+実際に、字幕のずれは少しだけある。切り替わりが1秒くらい早い。ただ、許容範囲だ。致命的ではない。
+
+***
+
+## 提案14：プロンプトバージョン管理
+
+### 現状の課題
+`prompts.yaml`を変更すると、過去の動画との整合性が失われます。[1]
+
+### 実装方法
+
+**バージョン付きプロンプト**:
+```
+config/
+└── prompts/
+    ├── v1.0.yaml  # 初版
+    ├── v1.1.yaml  # 改訂版
+    └── latest.yaml → v1.1.yaml  # シンボリックリンク
+```
+
+**`workflow_state.json`に記録**:
+```json
+{
+  "run_id": "20251013_1600",
+  "prompt_version": "v1.1",
+  "completed_steps": ["news", "script"]
+}
+```
+
+**効果**: 動画ごとに使用したプロンプトが記録され、A/Bテストや品質分析が可能になります。
+
+# 今実装していない理由
+
+特にない。実験管理的にプロンプトとその効果を科学的に検証して、蓄積していく体制があるといい。
+一方で抱えきれないほどのプロジェクト肥大化にならないように注意深く進める必要がある。LLMのコンテクストを超えてしまうと、その他の改修ができなくなってしまうため、肥大化にはリスクがある。
