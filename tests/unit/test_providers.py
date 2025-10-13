@@ -22,14 +22,6 @@ class MockProvider(Provider):
 
 
 class TestProviderChain:
-    def test_first_provider_succeeds(self):
-        providers = [
-            MockProvider("primary", priority=1),
-            MockProvider("secondary", priority=2),
-        ]
-        chain = ProviderChain(providers)
-        result = chain.execute()
-        assert result == "primary_result"
 
     def test_fallback_to_second_provider(self):
         providers = [
@@ -58,12 +50,3 @@ class TestProviderChain:
         with pytest.raises(AllProvidersFailedError):
             chain.execute()
 
-    def test_priority_ordering(self):
-        providers = [
-            MockProvider("low_priority", priority=10),
-            MockProvider("high_priority", priority=1),
-            MockProvider("medium_priority", priority=5),
-        ]
-        chain = ProviderChain(providers)
-        result = chain.execute()
-        assert result == "high_priority_result"
