@@ -2,11 +2,18 @@ from pathlib import Path
 
 import pytest
 
-from src.steps.podcast import PodcastExporter
+try:
+    from feedgen.feed import FeedGenerator  # noqa: F401
 
+    feedgen_installed = True
+except ImportError:
+    feedgen_installed = False
 
 @pytest.mark.unit
+@pytest.mark.skipif(not feedgen_installed, reason="feedgen is not installed")
 def test_podcast_exporter_creates_feed(tmp_path: Path) -> None:
+    from src.steps.podcast import PodcastExporter
+
     run_id = "test-run"
     run_dir = tmp_path
     audio_path = tmp_path / "input.wav"

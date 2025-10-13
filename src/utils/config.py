@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Annotated, Dict, Literal, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -42,10 +42,54 @@ class AudioStepConfig(BaseModel):
     format: str
 
 
-class VideoEffectConfig(BaseModel):
-    type: str
+class VideoOverlayOffsetConfig(BaseModel):
+    top: int | None = None
+    right: int | None = None
+    bottom: int | None = None
+    left: int | None = None
+
+
+def default_tsumugi_offset() -> VideoOverlayOffsetConfig:
+    return VideoOverlayOffsetConfig(right=20, bottom=0)
+
+
+class VideoOverlayConfig(BaseModel):
+    type: Literal["overlay"] = "overlay"
     enabled: bool = True
-    model_config = ConfigDict(extra="allow")
+    image_path: str
+    anchor: str = "bottom_right"
+    height_ratio: float | None = None
+    width_ratio: float | None = None
+    height: int | None = None
+    width: int | None = None
+    offset: VideoOverlayOffsetConfig | None = None
+
+
+class TsumugiOverlayConfig(BaseModel):
+    type: Literal["tsumugi_overlay"] = "tsumugi_overlay"
+    enabled: bool = True
+    image_path: str = "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
+    anchor: str = "bottom_right"
+    height_ratio: float | None = 0.85
+    width_ratio: float | None = None
+    height: int | None = None
+    width: int | None = None
+    offset: VideoOverlayOffsetConfig = Field(default_factory=default_tsumugi_offset)
+
+
+class KenBurnsEffectConfig(BaseModel):
+    type: Literal["ken_burns"] = "ken_burns"
+    enabled: bool = True
+    zoom_speed: float = 0.0015
+    max_zoom: float = 1.2
+    hold_frame_factor: float = 1.0
+    pan_mode: str = "center"
+
+
+VideoEffectConfig = Annotated[
+    Union[KenBurnsEffectConfig, VideoOverlayConfig, TsumugiOverlayConfig],
+    Field(discriminator="type"),
+]
 
 
 class VideoStepConfig(BaseModel):

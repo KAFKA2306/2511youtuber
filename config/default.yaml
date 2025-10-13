@@ -50,6 +50,7 @@ steps:
         max_zoom: 1.2
         hold_frame_factor: 1.0
         pan_mode: "center"
+      - type: "tsumugi_overlay"
 
   thumbnail:
     enabled: true
@@ -68,7 +69,7 @@ steps:
     overlays:
       - name: "character"
         enabled: true
-        image_path: "assets/春日部つむぎ立ち絵_公式_v2.0/春日部つむぎ立ち絵_公式_v1.1.1.png"
+        image_path: "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
         anchor: "bottom_right"
         height_ratio: 0.85
         offset:

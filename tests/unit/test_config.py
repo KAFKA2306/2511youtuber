@@ -21,6 +21,7 @@ class TestConfig:
         assert config.steps.subtitle.max_visual_width == 40
         assert config.steps.video.fps == 25
         assert config.steps.video.effects[0].type == "ken_burns"
+        assert config.steps.video.effects[1].type == "tsumugi_overlay"
         assert config.steps.script.speakers.analyst.name == "春日部つむぎ"
         assert "つむぎ" in config.steps.script.speakers.analyst.aliases
         assert config.steps.script.speakers.reporter.name == "ずんだもん"

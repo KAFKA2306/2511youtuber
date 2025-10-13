@@ -14,22 +14,20 @@ class VideoEffectContext:
 
 
 class VideoEffect:
-    """Base class for declarative ffmpeg video effects."""
-
     name: str = ""
 
     def apply(
         self, stream: FilterableStream, context: VideoEffectContext
-    ) -> FilterableStream:  # pragma: no cover - interface
+    ) -> FilterableStream:
         raise NotImplementedError
 
 
 EFFECT_REGISTRY: Dict[str, Type[VideoEffect]] = {}
+TSUMUGI_OVERLAY_PATH = "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
+TSUMUGI_OVERLAY_OFFSET = {"right": 20, "bottom": 0}
 
 
 def register_effect(effect_cls: Type[VideoEffect]) -> Type[VideoEffect]:
-    if not effect_cls.name:
-        raise ValueError("VideoEffect subclasses must define a name")
     EFFECT_REGISTRY[effect_cls.name] = effect_cls
     return effect_cls
 
@@ -47,29 +45,14 @@ class VideoEffectPipeline:
     @classmethod
     def from_config(cls, config: Iterable[Dict] | None) -> "VideoEffectPipeline":
         effects: List[VideoEffect] = []
-        if not config:
-            return cls(effects)
 
-        for raw in config:
-            if not raw:
+        for raw in config or []:
+            data = raw.model_dump() if hasattr(raw, "model_dump") else raw
+            if not data.get("enabled", True):
                 continue
 
-            if hasattr(raw, "model_dump"):
-                raw = raw.model_dump()
-
-            effect_type = raw.get("type")
-            if not effect_type:
-                raise ValueError("Video effect configuration requires a 'type' field")
-
-            if not raw.get("enabled", True):
-                continue
-
-            effect_cls = EFFECT_REGISTRY.get(effect_type)
-            if not effect_cls:
-                raise ValueError(f"Unknown video effect type: {effect_type}")
-
-            params = {k: v for k, v in raw.items() if k not in {"type", "enabled"}}
-            effect = effect_cls(**params)
+            params = {k: v for k, v in data.items() if k not in {"type", "enabled"}}
+            effect = EFFECT_REGISTRY[data["type"]](**params)
             effects.append(effect)
 
         return cls(effects)
@@ -124,8 +107,148 @@ class KenBurnsEffect(VideoEffect):
         return center_x, center_y
 
 
+def _resolve_overlay_position(
+    video_resolution: Tuple[int, int],
+    overlay_resolution: Tuple[int, int],
+    anchor: str = "bottom_right",
+    offset: Dict[str, int] | None = None,
+) -> Tuple[int, int]:
+    offset = offset or {}
+    top = int(offset.get("top") or 0)
+    right = int(offset.get("right") or 0)
+    bottom = int(offset.get("bottom") or 0)
+    left = int(offset.get("left") or 0)
+    video_width, video_height = video_resolution
+    overlay_width, overlay_height = overlay_resolution
+
+    if "left" in anchor:
+        x = left
+    elif "right" in anchor:
+        x = video_width - overlay_width - right
+    else:
+        x = (video_width - overlay_width) // 2 + left - right
+
+    if "top" in anchor:
+        y = top
+    elif "bottom" in anchor:
+        y = video_height - overlay_height - bottom
+    else:
+        y = (video_height - overlay_height) // 2 + top - bottom
+
+    return max(0, x), max(0, y)
+
+
+@register_effect
+class OverlayEffect(VideoEffect):
+    name = "overlay"
+
+    def __init__(
+        self,
+        image_path: str,
+        anchor: str = "bottom_right",
+        height_ratio: float | None = None,
+        width_ratio: float | None = None,
+        height: int | None = None,
+        width: int | None = None,
+        offset: Dict[str, int] | None = None,
+    ) -> None:
+        self.image_path = image_path
+        self.anchor = anchor
+        self.height_ratio = height_ratio
+        self.width_ratio = width_ratio
+        self.height = height
+        self.width = width
+        self.offset = offset
+
+    def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:
+        import ffmpeg
+
+        overlay_stream = ffmpeg.input(self.image_path)
+        probe = ffmpeg.probe(self.image_path)
+        original_width = int(probe["streams"][0]["width"])
+        original_height = int(probe["streams"][0]["height"])
+        video_width, video_height = context.resolution
+
+        overlay_width, overlay_height = self._resolve_overlay_dimensions(
+            original_width,
+            original_height,
+            video_width,
+            video_height,
+        )
+
+        if (overlay_width, overlay_height) != (original_width, original_height):
+            overlay_stream = overlay_stream.filter("scale", overlay_width, overlay_height)
+
+        x, y = _resolve_overlay_position(
+            context.resolution,
+            (overlay_width, overlay_height),
+            self.anchor,
+            self.offset,
+        )
+
+        return stream.overlay(overlay_stream, x=x, y=y)
+
+    def _resolve_overlay_dimensions(
+        self,
+        original_width: int,
+        original_height: int,
+        video_width: int,
+        video_height: int,
+    ) -> Tuple[int, int]:
+        width = original_width
+        height = original_height
+
+        if self.height:
+            height = max(int(self.height), 1)
+            width = max(int(round(original_width * (height / original_height))), 1)
+        elif self.width:
+            width = max(int(self.width), 1)
+            height = max(int(round(original_height * (width / original_width))), 1)
+        elif self.height_ratio:
+            height = max(int(round(video_height * float(self.height_ratio))), 1)
+            width = max(int(round(original_width * (height / original_height))), 1)
+        elif self.width_ratio:
+            width = max(int(round(video_width * float(self.width_ratio))), 1)
+            height = max(int(round(original_height * (width / original_width))), 1)
+
+        return width, height
+
+
+@register_effect
+class TsumugiOverlayEffect(VideoEffect):
+    name = "tsumugi_overlay"
+
+    def __init__(
+        self,
+        image_path: str = TSUMUGI_OVERLAY_PATH,
+        anchor: str = "bottom_right",
+        height_ratio: float | None = 0.85,
+        width_ratio: float | None = None,
+        height: int | None = None,
+        width: int | None = None,
+        offset: Dict[str, int] | None = None,
+    ) -> None:
+        resolved_offset = offset if offset is not None else TSUMUGI_OVERLAY_OFFSET
+        self.overlay = OverlayEffect(
+            image_path=image_path,
+            anchor=anchor,
+            height_ratio=height_ratio,
+            width_ratio=width_ratio,
+            height=height,
+            width=width,
+            offset=dict(resolved_offset),
+        )
+
+    def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:
+        return self.overlay.apply(stream, context)
+
+
 __all__ = [
     "KenBurnsEffect",
+    "OverlayEffect",
+    "TSUMUGI_OVERLAY_OFFSET",
+    "TSUMUGI_OVERLAY_PATH",
+    "TsumugiOverlayEffect",
     "VideoEffect",
     "VideoEffectContext",
     "VideoEffectPipeline",
