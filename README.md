@@ -1,332 +1,157 @@
 # YouTube AI Video Generator v2
 
-**バージョン**: 2.0.0
-**ステータス**: MVP実装完了
-**作成日**: 2025-10-10
-**更新日**: 2025-10-10
+## はじめに
+YouTube AI Video Generator v2 は、最新の金融ニュースから日本語の投資解説動画を自動生成するワークフロー型システムです。旧バージョンの複雑さと不安定さを解消し、**シンプル・堅牢・モジュール構成**を徹底して再実装しました。はじめて本プロジェクトを読む方でも全体像がつかめるよう、主要情報を本ドキュメントに集約しています。
 
-## 概要
+## 1. 全体像とゴール
+- 目的: 金融ニュースの要約、スクリプト生成、音声合成、字幕整形、動画出力を自動化
+- 成果物: `video.mp4`、`audio.wav`、`subtitles.srt`、`script.json`、`news.json`
+- 対象視聴者: 明るく専門性のあるキャラクター「春日部つむぎ」が解説する投資チャンネル視聴者
+- 運用方針: Gemini を必須 API とし、各ステップにフォールバックとチェックポイントを実装して 95% の成功率を目指す
 
-金融ニュースから高品質な日本語YouTube動画を自動生成するシステムの**ゼロベース再構築版**です。
+## 2. 動作環境とセットアップ手順
+1. 前提ソフトウェアを用意
+   - Python 3.11（`python --version` で確認）
+   - [uv](https://github.com/astral-sh/uv) 0.4 以上（`uv --version`）
+   - FFmpeg 4.4 以上（`ffmpeg -version`）。Mac の場合は `brew install ffmpeg`、Ubuntu の場合は `apt install ffmpeg` で導入可能
+2. 依存関係をインストール
+   ```bash
+   uv sync
+   ```
+3. 環境変数を設定
+   - `config/.env.example` を `.env` にコピー
+   - 必須: `GEMINI_API_KEY`
+   - 任意（推奨）: `VOICEVOX_HOST`, `NEWS_API_KEY`, `DISCORD_BOT_TOKEN`
+4. ワークフローを実行
+   ```bash
+   uv run python -m src.main --config config/default.yaml
+   ```
+5. 生成物とログの確認
+   - `runs/{run_id}/` に以下の構造で保存され、再実行時は既存ファイルを自動検出します
+     ```
+     runs/2025-01-31-120000/
+     ├─ inputs/news.json        # 収集したニュース
+     ├─ outputs/script.json     # Gemini スクリプト
+     ├─ outputs/audio.wav       # 合成音声
+     ├─ outputs/subtitles.srt   # 字幕
+     ├─ outputs/video.mp4       # 最終動画
+     └─ logs/workflow.log       # JSON 形式の構造化ログ
+     ```
 
-旧プロジェクト（`/home/kafka/projects/2510youtuber`）の50時間以上のデバッグ経験から学んだ教訓を活かし、**Simple, Resilient, Modular** な設計で再実装しています。
-
-## 主な改善点
-
-| 項目 | 旧プロジェクト | 新プロジェクト (v2) |
-|------|--------------|-------------------|
-| **ワークフローステップ数** | 13 | 5 |
-| **外部API必須数** | 6 | 1 (Gemini) |
-| **統合テスト** | 0件 | 10件以上 |
-| **ワークフロー成功率** | 20% (4/5失敗) | 95%目標 |
-| **チェックポイント機能** | なし | あり |
-| **部分的成功** | 不可 | 可能 |
-
-## ディレクトリ構造
-
+## 3. ディレクトリと主なモジュール
 ```
-youtube-ai-v2/
-├── docs/                    # ドキュメント
-│   ├── REQUIREMENTS.md      # 要求仕様書
-│   ├── DESIGN.md            # 設計仕様書
-│   └── ANTI_PATTERNS.md     # 旧プロジェクト失敗パターン集
-│
-├── src/                     # ソースコード ✅
-│   ├── main.py              # エントリーポイント
-│   ├── workflow.py          # ワークフローオーケストレータ
-│   ├── models.py            # データモデル
-│   ├── steps/               # 5つのステップ実装
-│   ├── providers/           # プラグイン式プロバイダ
-│   └── utils/               # ユーティリティ
-│
-├── tests/                   # テスト ✅
-│   └── unit/                # ユニットテスト (25テスト)
-│
-├── config/                  # 設定ファイル ✅
-│   ├── default.yaml         # デフォルト設定
-│   ├── prompts.yaml         # LLMプロンプト
-│   └── .env.example         # 環境変数テンプレート
-│
-└── runs/                    # 実行結果（未作成）
-    └── {run_id}/            # 各実行の出力
-```
-
-## 実装状況
-
-### ✅ Phase 0: 設計（完了）
-
-- [x] 要求仕様書作成 (`docs/REQUIREMENTS.md`)
-- [x] 設計仕様書作成 (`docs/DESIGN.md`)
-- [x] アンチパターン集作成 (`docs/ANTI_PATTERNS.md`)
-
-### ✅ Phase 1: MVP実装（完了）
-
-**コア実装 (19ファイル)**
-- [x] プロジェクト構造作成
-- [x] データモデル (`src/models.py`)
-- [x] 設定管理 (`src/utils/config.py`, `src/utils/logger.py`)
-- [x] プロバイダ基底クラス (`src/providers/base.py`)
-- [x] 3つのプロバイダ実装 (LLM, TTS, News)
-- [x] ステップ基底クラス (`src/steps/base.py`)
-- [x] 5つのステップ実装 (NewsCollector, ScriptGenerator, AudioSynthesizer, SubtitleFormatter, VideoRenderer)
-- [x] ワークフローオーケストレータ (`src/workflow.py`)
-- [x] CLIエントリーポイント (`src/main.py`)
-
-**テスト (58+テスト)**
-- [x] ユニットテスト (40+テスト)
-  - `test_models.py` - データモデル (16テスト)
-  - `test_providers.py` - プロバイダチェーン (5テスト)
-  - `test_config.py` - 設定ローダー (4テスト)
-  - `test_error_cases.py` - エラーケース (15テスト)
-- [x] 統合テスト (15+テスト)
-  - `test_workflow.py` - ワークフロー全体 (4テスト)
-  - `test_steps.py` - 各ステップ (11テスト)
-- [x] E2Eテスト (3テスト)
-  - `test_real_api.py` - 実Gemini API (3テスト)
-
-**設定ファイル**
-- [x] デフォルト設定 (`config/default.yaml`)
-- [x] プロンプト管理 (`config/prompts.yaml`)
-- [x] 環境変数テンプレート (`config/.env.example`)
-
-### ✅ テスト完了状況
-
-- [x] ユニットテスト (40+テスト)
-- [x] 統合テスト (15+テスト)
-- [x] E2Eテスト (3テスト)
-- [x] エラーケーステスト (15テスト)
-- [x] テストドキュメント作成 (`docs/TESTING.md`)
-
-**Phase 1完了**: MVP実装 + 完全なテストスイート
-
-## ワークフロー（5ステップ）
-
-```
-1. NewsCollector      → news.json
-   (Perplexity → NewsAPI → ダミー)
-
-2. ScriptGenerator    → script.json
-   (Gemini + 日本語純度検証)
-
-3. AudioSynthesizer   → audio.wav
-   (VOICEVOX)
-
-4. SubtitleFormatter  → subtitles.srt
-   (文字数比率で時刻配分)
-
-5. VideoRenderer      → video.mp4
-   (FFmpeg: lavfi color + 字幕)
+src/
+├─ main.py            # CLI エントリーポイント
+├─ workflow.py        # 5 ステップを束ねるオーケストレータ
+├─ models.py          # データモデルとチェックポイント状態
+├─ steps/             # NewsCollector など各ステップの実装
+├─ providers/         # LLM / TTS / News のプラグイン実装
+└─ utils/             # 設定、ロギング、ファイル操作
+config/
+├─ default.yaml       # ワークフロー設定
+├─ prompts.yaml       # LLM プロンプト
+└─ .env.example       # 必須環境変数のテンプレート
+tests/                # pytest ベースのユニット・統合・E2E テスト
+scripts/              # Discord ボットなど補助スクリプト
+assets/               # 動画生成に必要な静的リソース
 ```
 
-## 設計原則
+## 4. ワークフローステップ
+| # | ステップ名 | 主入力 | 主出力 | フォールバック | チェックポイント |
+|---|------------|--------|--------|----------------|------------------|
+| 1 | **NewsCollector** | `config/default.yaml` の `news.providers` | `runs/.../inputs/news.json` | オンライン API が失敗した場合はローカルキャッシュ (`assets/news_samples/`) を使用 | 取得済み記事は JSON に保存し再利用 |
+| 2 | **ScriptGenerator** | ニュース JSON、`config/prompts.yaml` | `runs/.../outputs/script.json` | Gemini キー枯渇時は予備キー、すべて失敗時は直近成功スクリプトを再提示 | スクリプトを段落単位で保存 |
+| 3 | **AudioSynthesizer** | スクリプト JSON、`config/default.yaml.tts` | `runs/.../outputs/audio.wav` | VOICEVOX 不達時は pyttsx3 に切替 | 話者ごとの WAV を結合し中間ファイルを保持 |
+| 4 | **SubtitleFormatter** | スクリプト JSON、音声長 | `runs/.../outputs/subtitles.srt` | 文字数超過時は自動で文分割 | フォーマット済み字幕を保存 |
+| 5 | **VideoRenderer** | 背景素材 (`assets/background.mp4`)、音声、字幕 | `runs/.../outputs/video.mp4` | 背景動画欠損時は単色背景を生成 | FFmpeg コマンドと実行ログを記録 |
 
-### 1. Simple（シンプル）
-- 5ステップで完結
-- 外部API依存は最小限（必須: Gemini のみ）
-- CrewAI等の複雑なフレームワーク不使用
+各ステップは開始・終了イベントを構造化ログに記録し、成功時に成果物をファイルへ保存してから次へ進みます。途中で失敗した場合も既存成果物は保持され、再実行時には出力ファイルの存在チェックによって自動スキップされます。
 
-### 2. Resilient（堅牢）
-- 全ステップにチェックポイント機能
-- 外部APIは全てフォールバック戦略あり
-- エラーハンドリング完備（Critical/Error/Warningを分類）
+## 5. 品質保証
+| 項目 | コマンド | 実施タイミング | 目的 |
+|------|----------|----------------|------|
+| ユニットテスト | `uv run pytest tests/unit -v --maxfail=1` | すべてのコミット前 | モデル・ユーティリティの単体検証 |
+| 統合テスト | `uv run pytest tests/integration -v` | PR 作成前 | ステップ間連携とフォールバック挙動の確認 |
+| E2E テスト | `uv run pytest -v -m e2e --runslow` | リリース前・週次 | 実 API を使用し主要シナリオ 3 件を検証 |
+| カバレッジ | `uv run pytest tests/unit -m unit -v --cov=src --cov-report=term-missing` | 週次レポート | 80% 以上のカバレッジ維持 |
+| 静的検査 | `uv run ruff check src tests` | PR 作成前 | コード規約とバグ起因パターンの検出 |
+| 整形 | `uv run ruff format src tests` | 必要時 | フォーマット統一 |
 
-### 3. Modular（モジュラー）
-- 各コンポーネントは独立してテスト可能
-- プロバイダはプラグイン式で差し替え可能
-- 設定ファイルでプロバイダ追加可能
+失敗したテストは `runs/{run_id}/logs/workflow.log` の出力例と照らし合わせて原因を特定し、再現手順を README に追記してから修正する運用です。
 
-## ドキュメント
+## 6. 設計のキーポイント
+- **Simple**: ステップを 5 つに厳選し、Gemini を唯一の必須外部 API とすることで制御フローを単純化
+- **Resilient**: 各ステップ完了時に `WorkflowState` へ状態を永続化し、失敗時も途中成果物を保持
+- **Observable**: すべての重要イベントを JSON ログに記録し、Grafana／Loki で可視化できる形式を維持
+- **Modular**: `src/providers/` に TTS・LLM・ニュースのプラグインを分離し、設定値のみで差し替え可能
+- **WorkflowState**: `src/models.py` の `WorkflowState` が run_id、完了ステップ、出力パス、エラーを追跡し、`runs/<run_id>/state.json` を参照しながら同じ run_id で再生成されたオーケストレータから中断地点を自動復元
 
-すべてのドキュメントは `docs/` ディレクトリにあります:
+### 設定ファイルの読み解き方
+- `config/default.yaml`
+  - `news.providers`: 優先順位付きのニュース API リスト（`type`, `api_key_env`, `cache_path`）
+  - `script`: Gemini プロンプトテンプレートと温度設定
+  - `tts`: 利用する音声エンジンと話者マッピング
+  - `video`: FFmpeg プリセット、出力解像度、字幕スタイル
+- `config/prompts.yaml`
+  - キャラクター「春日部つむぎ」の語彙リスト
+  - 真面目モード／ギャルモードの切替条件
+  - ニュース要約時の必須指標 (株価、金利、為替)
 
-- **[REQUIREMENTS.md](docs/REQUIREMENTS.md)** - 要求仕様書（目的、機能要求、非機能要求）
-- **[DESIGN.md](docs/DESIGN.md)** - 設計仕様書（アーキテクチャ、実装詳細）
-- **[ANTI_PATTERNS.md](docs/ANTI_PATTERNS.md)** - 旧プロジェクトの失敗から学ぶ教訓集
-- **[TESTING.md](docs/TESTING.md)** - テストガイド（58+テスト、実行方法、カバレッジ）
+## 7. 要件の抜粋と失敗から得た知見
+- **機能要件 (Phase 1)**: ニュース 3 件 → 対話形式スクリプト → 話者別 TTS → 字幕付き 1080p 動画をローカル保存
+- **非機能要件**: 95% 以上のワークフロー成功率、テストカバレッジ 80% 以上、音声同期 ±100ms 以内
+- **品質指標**
+  - スクリプト: 5〜10 分尺、話者交代 10 回以上、WOW スコア 6.0 以上
+  - 音声: 24kHz WAV、話者識別可能
+  - 動画: 1920x1080 / 25fps、字幕コントラスト比 4.5:1 以上
+- **再発防止メモ**
+  - 旧版は 13 ステップ直列・ 8 API 依存で 66% 稼働率 → 必須機能だけを 5 ステップに圧縮
+  - 状態をメモリ管理していたためクラッシュで成果物消失 → すべてファイルへ永続化
+  - テストゼロでフォーマット崩れを見逃した → ユニット / 統合 / E2E をコミットフローに組み込み
 
-## 旧プロジェクトとの違い
+## 8. キャラクターとコンテンツ方針
+- **主役**: VOICEVOX 春日部つむぎ（ギャル語と専門トーンを切替）
+- **構成テンプレ**
+  1. 「放課後速報」で市場指標を 30 秒で提示
+  2. 視聴者質問を引用し、長期視点の解説を 3 分で展開
+  3. 次回予告とコメント募集
+- **補助キャラクター**: ずんだもん（要点リキャップ）、玄野武宏（リスク警告）
+- **スクリプト反映ポイント**: `config/prompts.yaml.script_style.lexicon` にギャル語辞書、`...serious_mode` に真面目トーン指示を記述
+- **コンプライアンス**: 金融商品勧誘を避けるため「投資判断は自己責任」と締める行を必ず挿入
 
-### アーキテクチャ
+## 9. 運用ノート（Discord ニュースボット）
+- 目的: Discord サーバーに最新ニュースを配信し、動画生成の素材にする
+- 起動スクリプト: `./scripts/run_discord_news_bot.sh`
+- 必要変数: `.env` に `DISCORD_BOT_TOKEN`, `NEWS_API_KEY`
+- 実行前テスト: `uv run python scripts/discord_news_bot.py --dry-run` で投稿内容を標準出力に確認
+- 常駐化: systemd で稼働させる場合は以下の設定例を使用
+  ```ini
+  [Unit]
+  Description=Discord News Bot
+  After=network-online.target
 
-- **13ステップ → 5ステップ**: 複雑性を大幅削減
-- **逐次実行 → チェックポイント方式**: 途中から再開可能
-- **メモリ内状態 → ファイル永続化**: 全ての中間生成物を保存
+  [Service]
+  Type=simple
+  WorkingDirectory=/workspace/2511youtuber
+  ExecStart=/workspace/2511youtuber/scripts/run_discord_news_bot.sh
+  Restart=always
+  RestartSec=5
 
-### 品質保証
+  [Install]
+  WantedBy=multi-user.target
+  ```
 
-- **統合テスト 0件 → 10件以上**: ステップ間連携を検証
-- **CI/CD なし → Git hooks必須**: コミット前に自動テスト
-- **ドキュメントなし → 完全文書化**: 設計判断の理由を記録
-
-### エラーハンドリング
-
-- **try-catch削除 → 完全なエラーハンドリング**: 適切な防御的プログラミング
-- **単一障害点 → フォールバック戦略**: APIレートリミットのみリトライ実装を許容
-- **全体停止 → 部分的成功**: オプション機能の失敗は許容
-
-## 開発スケジュール
-
-| Phase | 期間 | 成果物 |
-|-------|------|--------|
-| **Phase 0** (完了) | 1日 | 要求仕様書・設計仕様書 |
-| **Phase 1** (次) | 2週間 | MVP（5ステップワークフロー） |
-| **Phase 2** | 1週間 | YouTube統合・メタデータ分析 |
-| **Phase 3** | 1週間 | 映像エフェクト・サムネイル生成 |
-
-## 貢献ガイドライン
-
-このプロジェクトは旧プロジェクトの失敗を繰り返さないため、以下の原則を厳守します:
-
-### コミット前チェックリスト
-
-- [ ] ユニットテストが全て通る（`pytest tests/unit -v`）
-- [ ] Lintingエラーなし（`ruff check .`）
-- [ ] 新機能にはテストを追加
-- [ ] ドキュメント更新（必要に応じて）
-
-### コード品質基準
-
-- **SOLID原則**: 各モジュールは単一責任、拡張に開いて変更に閉じる
-- **DRY原則**: 重複コード排除
-- **関心の分離**: ワークフロー制御 ≠ ビジネスロジック
-
-### 禁止事項
-
-- ❌ エラーハンドリング
-- ❌ テストなしリファクタリング（旧プロジェクトのアンチパターン8）
-- ❌ 設定のハードコーディング（旧プロジェクトのアンチパターン13）
-- ❌ API仕様未確認のまま実装（旧プロジェクトのアンチパターン6）
-
-## ライセンス
-
-（未定）
-
-## 連絡先
-
-（未定）
+## 10. 今後の拡張のヒント
+- LLM や TTS のプロバイダは `config/default.yaml` で切替可能。新プロバイダを追加する際はテストとフォールバックを先に用意
+- `runs/{run_id}/` をバージョン管理対象外にすることで、出力物を安全に保管
+- 新シナリオを追加する場合は、スクリプトテンプレートとテストケースを同時に更新して品質基準を維持
 
 ---
-
-## 使用方法
-
-### 1. 環境セットアップ
-
-```bash
-# プロジェクトディレクトリに移動
-cd youtube-ai-v2
-
-# 依存関係インストール
-uv sync
-
-# 環境変数設定
-cp config/.env.example config/.env
-# config/.env を編集してGEMINI_API_KEYを設定
-```
-
-### 2. 実行
-
-```bash
-# ワークフロー実行
-uv run python -m src.main
-
-# または
-python src.main.py
-```
-
-### 3. 出力確認
-
-```bash
-# 生成されたファイルは runs/{run_id}/ に保存されます
-ls -la runs/20251010_123456/
-# news.json
-# script.json
-# audio.wav
-# subtitles.srt
-# video.mp4
-```
-
-### 4. テスト実行
-
-```bash
-# ユニットテストのみ（最速）
-pytest tests/unit -v
-
-# 統合テスト含む
-pytest tests/unit tests/integration -v
-
-# E2Eテスト（要 GEMINI_API_KEY）
-export GEMINI_API_KEY=your-key
-pytest tests/e2e -v
-
-# 全テスト実行
-pytest -v
-
-# カバレッジ付き
-pytest tests/unit --cov=src --cov-report=html
-```
-
-詳細は **[docs/TESTING.md](docs/TESTING.md)** を参照。
+### トラブルシューティングのチェックリスト
+- **Gemini から 429 が返る**: `.env` に予備 API キーを追加し、`config/default.yaml.script.api_keys` に列挙
+- **VOICEVOX 接続不可**: `VOICEVOX_HOST=http://localhost:50021` を設定し、`scripts/voicevox_manager.sh start` を使用
+- **FFmpeg エラー (filter not found)**: `ffmpeg -version` で 4.4 以上を確認し、古いバージョンの場合はアップグレード
+- **字幕ズレ**: `runs/.../outputs/audio_segments/` を確認し、セグメント長が極端に短い場合は `config/default.yaml.subtitle.max_chars` を減らす
 
 ---
-
-## 実装の特徴
-
-### チェックポイント機能
-
-途中で停止しても、完了したステップは再実行されません:
-
-```bash
-# 初回実行（ステップ3で失敗）
-python src/main.py
-# → ステップ1,2が完了、ステップ3で停止
-
-# 再実行
-python src/main.py
-# → ステップ1,2はスキップ、ステップ3から再開
-```
-
-### プロバイダフォールバック
-
-APIが利用できない場合の自動フォールバックはありません。各プロバイダの設定値を正しく整えてから実行してください。
-
----
-
-## 🎉 Phase 1完了
-
-**MVP実装 + 完全なテストスイート が完成しました！**
-
-### 成果物サマリー
-
-| カテゴリ | 実装内容 | 数 |
-|---------|---------|---|
-| **ドキュメント** | 要求仕様書、設計仕様書、アンチパターン集、テストガイド | 4 |
-| **実装ファイル** | モデル、ワークフロー、ステップ、プロバイダ、ユーティリティ | 19 |
-| **テスト** | ユニット、統合、E2E、エラーケース | 58+ |
-| **設定** | YAML、プロンプト、環境変数 | 3 |
-
-### 次のステップ（Phase 2）
-
-- YouTube API統合（オプション機能として独立実装）
-- メタデータ分析・フィードバックループ
-- 映像エフェクト拡張（プラグイン方式）
-
-**現時点で基本的なワークフローは完全に動作可能です。**
-# 2511youtuber
-
-## Automation
-
-This project can be run automatically using a cron job. The following cron job will run the script at 7:00, 12:00, and 17:00 every day:
-
-```bash
-0 7,12,17 * * * cd /home/kafka/projects/2510youtuber/youtube-ai-v2 && /home/kafka/.local/bin/uv run python -m src.main --config config/default.yaml >> /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log 2>&1
-```
-
-This will execute the main script and log all output to `/home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log`.
-
-### How to check the execution status
-
-You can monitor the `cron.log` file to check the status of the automatic runs:
-
-```bash
-tail -f /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log
-```
+この README だけでプロジェクトの背景・使い方・設計意図まで把握できる構成にしています。詳細を深掘りしたい場合は、ソースコードと設定ファイルをあわせて参照してください。
