@@ -315,18 +315,16 @@ APIが利用できない場合の自動フォールバックはありません�
 
 ## Automation
 
-This project can be run automatically using a cron job. The following cron job will run the script at 7:00, 12:00, and 17:00 every day:
+Use the bundled wrapper to run the workflow under cron; it prepares the environment, rotates basic metadata, and keeps logs in one place:
 
 ```bash
-0 7,12,17 * * * cd /home/kafka/projects/2510youtuber/youtube-ai-v2 && /home/kafka/.local/bin/uv run python -m src.main >> /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log 2>&1
+0 7,12,17 * * * /home/kafka/projects/2510youtuber/youtube-ai-v2/scripts/run_workflow_cron.sh
 ```
 
-This will execute the main script and log all output to `/home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log`.
+The script guards against overlapping executions, ensures `logs/` exists, and records each run in `logs/cron.log` plus a machine-readable snapshot at `logs/last_run.json`. Set `UV_BIN` in the crontab if `uv` is installed elsewhere.
 
-### How to check the execution status
+### Monitoring automated runs
 
-You can monitor the `cron.log` file to check the status of the automatic runs:
-
-```bash
-tail -f /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log
-```
+- Follow the live log: `tail -f /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log`
+- Inspect the last result: `cat /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/last_run.json`
+- The wrapper exits non-zero when the workflow fails, so `cron` will report errors via mail if configured.
