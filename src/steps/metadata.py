@@ -32,8 +32,11 @@ class MetadataAnalyzer(Step):
         self.llm_provider: GeminiProvider | None = None
 
         if self.use_llm:
-            model = metadata_config.get("llm_model", "gemini/gemini-2.5-flash-preview-09-2025")
-            self.llm_provider = GeminiProvider(model=model, temperature=0.7)
+            self.llm_provider = GeminiProvider(
+                model=metadata_config.get("llm_model"),
+                temperature=metadata_config.get("llm_temperature"),
+                max_tokens=metadata_config.get("llm_max_tokens"),
+            )
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         script_path = inputs.get("generate_script")

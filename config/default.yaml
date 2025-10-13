@@ -87,7 +87,7 @@ steps:
   metadata:
     enabled: true
     use_llm: true
-    llm_model: "gemini/gemini-2.5-flash-preview-09-2025"
+    llm_model: "gemini-2.5-pro" #"gemini/gemini-2.5-flash-preview-09-2025"
     target_keywords:
       - "金融"
       - "経済"
