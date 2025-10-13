@@ -29,6 +29,24 @@ class TestScriptParsingErrors:
         script = step._parse_and_validate(json_string)
         assert len(script.segments) == 1
 
+    def test_parse_allows_prefixed_code_block(self, temp_run_dir, test_run_id):
+        speakers = Config.load().steps.script.speakers
+        step = ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)
+
+        wrapped = "了解です！\n```yaml\nsegments:\n  - speaker: 春日部つむぎ\n    text: こんにちは\n```"
+
+        script = step._parse_and_validate(wrapped)
+        assert script.segments[0].speaker == "春日部つむぎ"
+
+    def test_parse_allows_inline_segments_without_fence(self, temp_run_dir, test_run_id):
+        speakers = Config.load().steps.script.speakers
+        step = ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)
+
+        prefixed = "こちらが台本です:\nsegments:\n  - speaker: 春日部つむぎ\n    text: こんにちは"
+
+        script = step._parse_and_validate(prefixed)
+        assert script.segments[0].text.startswith("こんにちは")
+
     def test_max_recursion_depth(self, temp_run_dir, test_run_id):
         speakers = Config.load().steps.script.speakers
         step = ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)

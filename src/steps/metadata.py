@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import yaml
 
@@ -124,13 +124,83 @@ class MetadataAnalyzer(Step):
         return "\n".join(excerpts)
 
     def _parse_llm_response(self, response: str) -> Dict:
-        match = re.search(r"```(?:yaml|yml)\n(.*?)```", response, re.DOTALL)
-        yaml_str = match.group(1) if match else response
-
-        metadata = yaml.safe_load(yaml_str)
-        if not isinstance(metadata, dict):
+        data = self._coerce_to_mapping(response)
+        if not isinstance(data, dict):
             raise ValueError("Metadata YAML must be a mapping")
-        return metadata
+        return data
+
+    def _coerce_to_mapping(self, raw: str, *, max_depth: int = 6) -> Any:
+        if max_depth < 0:
+            raise ValueError("Maximum recursion depth exceeded during metadata parsing")
+
+        for candidate in self._candidate_payloads(raw):
+            for loader in (yaml.safe_load, json.loads):
+                try:
+                    parsed = loader(candidate)
+                except Exception:
+                    continue
+                if isinstance(parsed, str):
+                    return self._coerce_to_mapping(parsed, max_depth=max_depth - 1)
+                return parsed
+
+        stripped = raw.strip()
+        if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {'"', "'"}:
+            return self._coerce_to_mapping(stripped[1:-1], max_depth=max_depth - 1)
+
+        raise ValueError("Unable to parse metadata output")
+
+    def _candidate_payloads(self, raw: str) -> List[str]:
+        text = raw.strip().lstrip("\ufeff")
+        candidates: List[str] = []
+
+        def add(value: str) -> None:
+            value = value.strip()
+            if value and value not in candidates:
+                candidates.append(value)
+
+        add(text)
+
+        code_block = self._extract_code_block(text)
+        if code_block is not None:
+            add(code_block)
+
+        triple_block = self._extract_triple_quote_block(text)
+        if triple_block is not None:
+            add(triple_block)
+
+        yaml_body = self._extract_yaml_body(text)
+        if yaml_body is not None:
+            add(yaml_body)
+
+        original_candidates = list(candidates)
+        for value in original_candidates:
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                add(value[1:-1])
+
+        return candidates
+
+    def _extract_code_block(self, text: str) -> str | None:
+        if "```" not in text:
+            return None
+        match = re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL)
+        if match is None:
+            return None
+        return match.group(1)
+
+    def _extract_triple_quote_block(self, text: str) -> str | None:
+        match = re.search(r"'''\s*\n?(.*?)\n?'''", text, re.DOTALL)
+        if match:
+            return match.group(1)
+        match = re.search(r'"""\s*\n?(.*?)\n?"""', text, re.DOTALL)
+        if match:
+            return match.group(1)
+        return None
+
+    def _extract_yaml_body(self, text: str) -> str | None:
+        match = re.search(r"(?:^|\r?\n)(title:\s.*)", text, re.DOTALL)
+        if match is None:
+            return None
+        return match.group(1)
 
     def _build_title(self, script: Script) -> str:
         base = script.segments[0].text if script.segments else "金融ニュース速報"

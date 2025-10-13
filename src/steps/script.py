@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -115,27 +116,63 @@ class ScriptGenerator(Step):
         if max_depth < 0:
             raise ValueError("Maximum recursion depth exceeded during parsing")
 
-        text = self._strip_code_fence(raw)
-        for loader in (yaml.safe_load, json.loads):
-            try:
-                parsed = loader(text)
-            except Exception:
-                continue
-            if isinstance(parsed, str):
-                return self._coerce_to_mapping(parsed, max_depth=max_depth - 1)
-            return parsed
+        for candidate in self._candidate_payloads(raw):
+            for loader in (yaml.safe_load, json.loads):
+                try:
+                    parsed = loader(candidate)
+                except Exception:
+                    continue
+                if isinstance(parsed, str):
+                    return self._coerce_to_mapping(parsed, max_depth=max_depth - 1)
+                return parsed
 
-        stripped = text.strip()
+        stripped = raw.strip()
         if stripped.startswith("\"") and stripped.endswith("\""):
             return self._coerce_to_mapping(stripped[1:-1], max_depth=max_depth - 1)
 
         raise ValueError("Unable to parse script output")
 
-    def _strip_code_fence(self, text: str) -> str:
-        if text.startswith("```") and text.endswith("```"):
-            text = text.split("\n", 1)[1]
-            text = text.rsplit("\n", 1)[0]
-        return text
+    def _candidate_payloads(self, raw: str) -> List[str]:
+        text = raw.strip().lstrip("\ufeff")
+        candidates: List[str] = []
+
+        def add(value: str) -> None:
+            value = value.strip()
+            if value and value not in candidates:
+                candidates.append(value)
+
+        add(text)
+
+        code_block = self._extract_code_block(text)
+        if code_block is not None:
+            add(code_block)
+
+        segments_block = self._extract_segments_block(text)
+        if segments_block is not None:
+            add(segments_block)
+
+        original_candidates = list(candidates)
+        for value in original_candidates:
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                add(value[1:-1])
+
+        return candidates
+
+    def _extract_code_block(self, text: str) -> str | None:
+        if "```" not in text:
+            return None
+        match = re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL)
+        if match is None:
+            return None
+        return match.group(1)
+
+    def _extract_segments_block(self, text: str) -> str | None:
+        if "segments:" not in text:
+            return None
+        match = re.search(r"(?:^|\r?\n)(segments:.*)", text, re.DOTALL)
+        if match is None:
+            return None
+        return match.group(1)
 
     def _pick_side_theme(self, news_items: List[NewsItem]) -> tuple[str, str]:
         for item in news_items:
