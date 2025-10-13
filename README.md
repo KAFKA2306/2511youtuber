@@ -318,7 +318,7 @@ APIが利用できない場合の自動フォールバックはありません�
 This project can be run automatically using a cron job. The following cron job will run the script at 7:00, 12:00, and 17:00 every day:
 
 ```bash
-0 7,12,17 * * * cd /home/kafka/projects/2510youtuber/youtube-ai-v2 && /home/kafka/.local/bin/uv run python -m src.main --config config/default.yaml >> /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log 2>&1
+0 7,12,17 * * * cd /home/kafka/projects/2510youtuber/youtube-ai-v2 && /home/kafka/.local/bin/uv run python -m src.main >> /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log 2>&1
 ```
 
 This will execute the main script and log all output to `/home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log`.
