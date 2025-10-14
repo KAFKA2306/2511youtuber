@@ -39,6 +39,13 @@ class ScriptGenerator(Step):
 
         raw_output = self.provider.execute(prompt=prompt)
         script = self._parse_and_validate(raw_output)
+        recent_note, next_note = self._context_from_segments(script.segments)
+        script = script.model_copy(
+            update={
+                "recent_topics_note": recent_note,
+                "next_theme_note": next_note,
+            }
+        )
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,29 +79,38 @@ class ScriptGenerator(Step):
         if not base.exists():
             return "", ""
 
-        candidates = (
+        candidates = [
             p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id
-        )
+        ]
         for candidate in candidates:
-            script_path = candidate / "script.json"
-            if not script_path.exists():
-                continue
-            try:
-                data = json.loads(script_path.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            segments = data.get("segments") or []
-            if not segments:
-                continue
+            recent_note = ""
+            next_note = ""
 
-            snippets = [self._summarise_text(seg.get("text", "")) for seg in segments]
-            snippets = [s for s in snippets if s]
-            if not snippets:
-                continue
+            script_data = self._safe_read_json(candidate / "script.json")
+            if script_data:
+                recent_note = str(
+                    script_data.get("recent_topics_note")
+                    or script_data.get("recent_topic_note")
+                    or ""
+                ).strip()
+                next_note = str(script_data.get("next_theme_note") or "").strip()
 
-            recent_summary = " / ".join(snippets[:3])[:220]
-            trailing = next((s for s in reversed(snippets) if s), "")[:160]
-            return recent_summary, trailing
+                if not (recent_note or next_note):
+                    segments = script_data.get("segments") or []
+                    recent_note, next_note = self._context_from_segments(segments)
+
+            if not recent_note:
+                metadata_title = self._extract_metadata_title(candidate)
+                if metadata_title:
+                    recent_note = metadata_title
+
+            if not recent_note:
+                youtube_title = self._extract_youtube_title(candidate)
+                if youtube_title:
+                    recent_note = youtube_title
+
+            if recent_note or next_note:
+                return recent_note, next_note
 
         return "", ""
 
@@ -105,6 +121,66 @@ class ScriptGenerator(Step):
         if "。" in text:
             text = text.split("。", 1)[0] + "。"
         return text
+
+    def _context_from_segments(self, segments: List[Any]) -> tuple[str, str]:
+        snippets: List[str] = []
+        for segment in segments:
+            if hasattr(segment, "text"):
+                text = getattr(segment, "text", "")
+            elif isinstance(segment, dict):
+                text = segment.get("text", "")
+            else:
+                text = ""
+            snippet = self._summarise_text(text)
+            if snippet:
+                snippets.append(snippet)
+
+        if not snippets:
+            return "", ""
+
+        recent_summary = " / ".join(snippets[:3])[:220]
+        trailing = next((s for s in reversed(snippets) if s), "")[:160]
+        return recent_summary, trailing
+
+    def _safe_read_json(self, path: Path) -> Dict[str, Any] | None:
+        if not path.exists():
+            return None
+        try:
+            with path.open(encoding="utf-8") as handle:
+                data = json.load(handle)
+        except Exception:
+            return None
+        if not isinstance(data, dict):
+            return None
+        return data
+
+    def _extract_metadata_title(self, run_path: Path) -> str:
+        metadata = self._safe_read_json(run_path / "metadata.json")
+        if not metadata:
+            return ""
+        title = str(metadata.get("title") or "").strip()
+        if title:
+            return title
+        nested = metadata.get("metadata")
+        if isinstance(nested, dict):
+            nested_title = str(nested.get("title") or "").strip()
+            if nested_title:
+                return nested_title
+        return ""
+
+    def _extract_youtube_title(self, run_path: Path) -> str:
+        payload = self._safe_read_json(run_path / "youtube.json")
+        if not payload:
+            return ""
+        title = str(payload.get("title") or "").strip()
+        if title:
+            return title
+        metadata = payload.get("metadata")
+        if isinstance(metadata, dict):
+            nested_title = str(metadata.get("title") or "").strip()
+            if nested_title:
+                return nested_title
+        return ""
 
     def _parse_and_validate(self, raw: str, *, max_depth: int = 6) -> Script:
         data = self._coerce_to_mapping(raw.strip(), max_depth=max_depth)

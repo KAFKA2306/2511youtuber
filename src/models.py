@@ -20,3 +20,5 @@ class ScriptSegment(BaseModel):
 class Script(BaseModel):
     segments: List[ScriptSegment]
     total_duration_estimate: float = 0.0
+    recent_topics_note: str = ""
+    next_theme_note: str = ""
