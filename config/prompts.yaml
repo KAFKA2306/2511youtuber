@@ -95,8 +95,6 @@ metadata_generation:
     【出力フォーマット（YAML）】
     '''
     title: "# 【記号】+ 衝撃的な数値や事実 + 視聴者の関心を引く問いかけ"
-    title_alt1: "# 異なる切り口のタイトル案1"
-    title_alt2: "# 異なる切り口のタイトル案2"
     description: |
       # スクリプト内のanalystの鋭い視点を要約した、視聴者を引き込む冒頭文
 

@@ -221,6 +221,7 @@ class PerplexityNewsProviderConfig(BaseModel):
     model: str = "sonar"
     temperature: float = 0.2
     max_tokens: int = 2048
+    search_recency_filter: str | None = None
 
 
 class NewsProvidersConfig(BaseModel):

@@ -154,6 +154,7 @@ providers:
       model: "sonar"
       temperature: 0.2
       max_tokens: 2048
+      search_recency_filter: "week"
 
 
 logging:

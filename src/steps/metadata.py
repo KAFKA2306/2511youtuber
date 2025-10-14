@@ -10,11 +10,14 @@ import yaml
 from src.core.step import Step
 from src.models import Script
 from src.providers.llm import GeminiProvider, load_prompt_template
+from src.utils.logger import get_logger
 
 
 class MetadataAnalyzer(Step):
     name = "analyze_metadata"
     output_filename = "metadata.json"
+
+    logger = get_logger(__name__)
 
     def __init__(
         self,
@@ -51,17 +54,31 @@ class MetadataAnalyzer(Step):
         if news_path and Path(news_path).exists():
             news_items = self._load_news(Path(news_path))
 
+        fallback_title = self._build_title(script)
+        fallback_description = self._build_description(script)
+        fallback_tags = self._build_tags_from_script(script)
+        category_id = 25
+
+        llm_metadata: Dict[str, Any] | None = None
+
         if self.use_llm and self.llm_provider and self.llm_provider.is_available():
-            llm_metadata = self._generate_metadata_with_llm(news_items, script)
-            title = llm_metadata.get("title", "")
-            description = llm_metadata.get("description", "")
-            tags = llm_metadata.get("tags", [])
-            category_id = llm_metadata.get("category_id", 25)
+            try:
+                llm_metadata = self._generate_metadata_with_llm(news_items, script)
+            except Exception as exc:  # noqa: BLE001 - best effort fallback for automation
+                self.logger.warning(
+                    "LLM metadata generation failed for run %s: %s", self.run_id, exc
+                )
+
+        if llm_metadata:
+            title = str(llm_metadata.get("title", fallback_title))
+            description = str(llm_metadata.get("description", fallback_description))
+            normalized_tags = self._normalize_tags(llm_metadata.get("tags"))
+            tags = normalized_tags or fallback_tags
+            category_id = self._safe_category_id(llm_metadata.get("category_id"), category_id)
         else:
-            title = self._build_title(script)
-            description = self._build_description(script)
-            tags = self._build_tags_from_script(script)
-            category_id = 25
+            title = fallback_title
+            description = fallback_description
+            tags = fallback_tags
 
         output = {
             "title": title[: self.max_title_length],
@@ -235,3 +252,20 @@ class MetadataAnalyzer(Step):
                 unique_tags.append(tag)
                 seen.add(tag)
         return unique_tags[:30]
+
+    def _normalize_tags(self, tags: Any) -> List[str]:
+        if isinstance(tags, list):
+            cleaned = [str(tag).strip() for tag in tags if str(tag).strip()]
+            if cleaned:
+                return cleaned[:30]
+        if isinstance(tags, str) and tags.strip():
+            return [part.strip() for part in tags.split(",") if part.strip()][:30]
+        return []
+
+    def _safe_category_id(self, value: Any, default: int) -> int:
+        try:
+            if value is None or value == "":
+                return default
+            return int(value)
+        except (TypeError, ValueError):
+            return default

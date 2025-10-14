@@ -42,6 +42,7 @@ class NewsCollector(Step):
                     model=config.perplexity.model,
                     temperature=config.perplexity.temperature,
                     max_tokens=config.perplexity.max_tokens,
+                    search_recency_filter=config.perplexity.search_recency_filter,
                 )
             )
         return providers or [PerplexityNewsProvider()]

@@ -1,6 +1,9 @@
+import json as json_module
+
 import pytest
 
 from src.providers.base import AllProvidersFailedError, Provider, ProviderChain
+from src.providers.news import PerplexityNewsProvider
 
 pytestmark = pytest.mark.unit
 
@@ -50,3 +53,54 @@ class TestProviderChain:
         with pytest.raises(AllProvidersFailedError):
             chain.execute()
 
+
+class TestPerplexityNewsProvider:
+
+    def test_execute_includes_recency_filter(self, monkeypatch):
+        captured_payload: dict = {}
+
+        def fake_load_secret_values(key: str):
+            assert key == "PERPLEXITY_API_KEY"
+            return ["dummy-key"]
+
+        def fake_post(url, headers=None, json=None):  # noqa: A002 - match requests.post signature
+            captured_payload["json"] = json
+
+            class DummyResponse:
+
+                @staticmethod
+                def raise_for_status() -> None:
+                    return None
+
+                @staticmethod
+                def json() -> dict:
+                    return {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": json_module.dumps(
+                                        [
+                                            {
+                                                "title": "Sample",
+                                                "summary": "Summary",
+                                                "url": "https://example.com",
+                                                "published_at": "2024-05-01T00:00:00Z",
+                                            }
+                                        ]
+                                    )
+                                }
+                            }
+                        ]
+                    }
+
+            return DummyResponse()
+
+        monkeypatch.setattr("src.providers.news.load_secret_values", fake_load_secret_values)
+        monkeypatch.setattr("src.providers.news.requests.post", fake_post)
+
+        provider = PerplexityNewsProvider(search_recency_filter="week")
+
+        result = provider.execute(query="test", count=1)
+
+        assert len(result) == 1
+        assert captured_payload["json"]["search_recency_filter"] == "week"
