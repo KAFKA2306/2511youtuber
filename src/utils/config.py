@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
+from typing import Annotated, Dict, Literal, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -42,9 +42,66 @@ class AudioStepConfig(BaseModel):
     format: str
 
 
-class VideoEffectConfig(BaseModel):
-    type: str
+class VideoOverlayOffsetConfig(BaseModel):
+    top: int | None = None
+    right: int | None = None
+    bottom: int | None = None
+    left: int | None = None
+
+
+def default_tsumugi_offset() -> VideoOverlayOffsetConfig:
+    return VideoOverlayOffsetConfig(right=20, bottom=0)
+
+
+class VideoOverlayConfig(BaseModel):
+    type: Literal["overlay"] = "overlay"
     enabled: bool = True
+    image_path: str
+    anchor: str = "bottom_right"
+    height_ratio: float | None = None
+    width_ratio: float | None = None
+    height: int | None = None
+    width: int | None = None
+    offset: VideoOverlayOffsetConfig | None = None
+
+
+class TsumugiOverlayConfig(BaseModel):
+    type: Literal["tsumugi_overlay"] = "tsumugi_overlay"
+    enabled: bool = True
+    image_path: str = "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
+    anchor: str = "bottom_right"
+    height_ratio: float | None = 0.85
+    width_ratio: float | None = None
+    height: int | None = None
+    width: int | None = None
+    offset: VideoOverlayOffsetConfig = Field(default_factory=default_tsumugi_offset)
+
+
+class KenBurnsEffectConfig(BaseModel):
+    type: Literal["ken_burns"] = "ken_burns"
+    enabled: bool = True
+    zoom_speed: float = 0.0015
+    max_zoom: float = 1.2
+    hold_frame_factor: float = 1.0
+    pan_mode: str = "center"
+
+
+VideoEffectConfig = Annotated[
+    Union[KenBurnsEffectConfig, VideoOverlayConfig, TsumugiOverlayConfig],
+    Field(discriminator="type"),
+]
+
+class VideoSubtitleStyleConfig(BaseModel):
+    font_path: str | None = None
+    font_name: str | None = None
+    font_size: int | None = None
+    primary_colour: str | None = None
+    outline_colour: str | None = None
+    outline: int | None = None
+    shadow: int | None = None
+    bold: int | None = None
+    italic: int | None = None
+    alignment: int | None = None
     model_config = ConfigDict(extra="allow")
 
 
@@ -55,6 +112,7 @@ class VideoStepConfig(BaseModel):
     preset: str
     crf: int
     effects: list[VideoEffectConfig] = Field(default_factory=list)
+    subtitles: VideoSubtitleStyleConfig | None = None
 
 
 class SubtitleStepConfig(BaseModel):
@@ -102,6 +160,10 @@ class ThumbnailStepConfig(BaseModel):
 
 class MetadataStepConfig(BaseModel):
     enabled: bool = False
+    use_llm: bool = True
+    llm_model: str | None = None
+    llm_temperature: float | None = None
+    llm_max_tokens: int | None = None
     target_keywords: list[str]
     max_title_length: int
     max_description_length: int
@@ -116,6 +178,23 @@ class YouTubeStepConfig(BaseModel):
     default_tags: list[str] = Field(default_factory=list)
 
 
+class PodcastStepConfig(BaseModel):
+    enabled: bool = False
+    feed_title: str = "金融ニュース解説ポッドキャスト"
+    feed_description: str = "AI生成の日本経済・金融ニュース解説"
+    feed_author: str = "2510 YouTuber AI"
+    feed_url: str = "https://example.com/podcast"
+
+
+class BuzzsproutStepConfig(BaseModel):
+    enabled: bool = False
+    podcast_id: str | None = None
+    token_key: str = "buzzsprout_api_token"
+    podcast_id_key: str = "buzzsprout_podcast_id"
+    title_template: str = "金融ニュース解説 Episode {run_id}"
+    publish_immediately: bool = True
+
+
 class StepsConfig(BaseModel):
     news: NewsStepConfig
     script: ScriptStepConfig
@@ -125,6 +204,8 @@ class StepsConfig(BaseModel):
     thumbnail: ThumbnailStepConfig
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
+    podcast: PodcastStepConfig
+    buzzsprout: BuzzsproutStepConfig
 
 
 class GeminiProviderConfig(BaseModel):
@@ -154,6 +235,7 @@ class PerplexityNewsProviderConfig(BaseModel):
     model: str = "sonar"
     temperature: float = 0.2
     max_tokens: int = 2048
+    search_recency_filter: str | None = None
 
 
 class NewsProvidersConfig(BaseModel):

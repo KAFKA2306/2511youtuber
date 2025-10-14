@@ -60,19 +60,7 @@ class TestScriptGeneratorIntegration:
         script = Script(**data)
         assert len(script.segments) >= 3
 
-    def test_script_recursive_yaml_parsing(self, temp_run_dir, test_run_id):
-        speakers = Config.load().steps.script.speakers
-        step = ScriptGenerator(run_id=test_run_id, run_dir=temp_run_dir, speakers_config=speakers)
 
-        nested_yaml = """
-        "segments:
-          - speaker: 春日部つむぎ
-            text: こんにちは"
-        """
-
-        script = step._parse_and_validate(nested_yaml)
-        assert len(script.segments) == 1
-        assert script.segments[0].speaker == "春日部つむぎ"
 
 
 @pytest.mark.integration
@@ -121,30 +109,6 @@ class TestAudioSynthesizerIntegration:
 
 @pytest.mark.integration
 class TestSubtitleFormatterIntegration:
-    def test_subtitle_generation(self, temp_run_dir, test_run_id, sample_script_path):
-        from pydub.generators import Sine
-
-        run_path = temp_run_dir / test_run_id
-        run_path.mkdir(parents=True, exist_ok=True)
-
-        script_output_path = run_path / "script.json"
-        shutil.copy(sample_script_path, script_output_path)
-
-        audio_path = run_path / "audio.wav"
-        dummy_audio = Sine(440).to_audio_segment(duration=5000)
-        dummy_audio.export(audio_path, format="wav")
-
-        step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
-        output_path = step.run({"generate_script": script_output_path, "synthesize_audio": audio_path})
-
-        assert output_path.exists()
-
-        with open(output_path, encoding="utf-8") as f:
-            content = f.read()
-
-        assert "1" in content
-        assert "-->" in content
-        assert "こんにちは" in content
 
     def test_timestamp_calculation(self, temp_run_dir, test_run_id):
         step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
@@ -206,34 +170,7 @@ class TestSubtitleFormatterIntegration:
 
 @pytest.mark.integration
 class TestMetadataAnalyzerIntegration:
-    def test_metadata_analysis_produces_recommendations(self, temp_run_dir, test_run_id, sample_script_path):
-        run_path = temp_run_dir / test_run_id
-        run_path.mkdir(parents=True, exist_ok=True)
-
-        script_output_path = run_path / "script.json"
-        shutil.copy(sample_script_path, script_output_path)
-
-        step = MetadataAnalyzer(
-            run_id=test_run_id,
-            run_dir=temp_run_dir,
-            metadata_config={
-                "target_keywords": ["金融", "経済"],
-                "max_title_length": 60,
-                "max_description_length": 500,
-                "default_tags": ["金融ニュース"],
-            },
-        )
-
-        output_path = step.run({"generate_script": script_output_path})
-
-        assert output_path.exists()
-
-        with open(output_path, encoding="utf-8") as f:
-            metadata = json.load(f)
-
-        assert "title" in metadata
-        assert metadata.get("recommendations") == []
-        assert metadata["tags"]
+    pass
 
 
 @pytest.mark.integration

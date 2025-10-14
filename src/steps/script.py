@@ -1,12 +1,13 @@
 import json
+import re
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, List
 
 import yaml
 
+from src.core.step import Step
 from src.models import NewsItem, Script
 from src.providers.llm import GeminiProvider, load_prompt_template
-from src.steps.base import Step
 
 
 class ScriptGenerator(Step):
@@ -55,9 +56,6 @@ class ScriptGenerator(Step):
             f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items
         )
         side_theme = self._pick_side_theme(news_items)
-        recent_topics_note = self.previous_topics_note or "直近テーマ情報なし"
-        next_theme_note = self.previous_next_hint or "視聴者に次回リクエストをさらっと促す"
-
         return template.format(
             news_items=news_text,
             analyst_name=self.speakers["analyst"],
@@ -65,45 +63,39 @@ class ScriptGenerator(Step):
             narrator_name=self.speakers["narrator"],
             side_theme=side_theme[0],
             side_theme_summary=side_theme[1],
-            recent_topics_note=recent_topics_note,
-            next_theme_note=next_theme_note,
+            recent_topics_note=self.previous_topics_note or "直近テーマ情報なし",
+            next_theme_note=self.previous_next_hint or "視聴者に次回リクエストをさらっと促す",
         )
 
     def _load_previous_context(self, run_dir: Path) -> tuple[str, str]:
         base = Path(run_dir)
         if not base.exists():
             return "", ""
-        candidates = sorted(
-            [p for p in base.iterdir() if p.is_dir() and p.name != self.run_id],
-            reverse=True,
+
+        candidates = (
+            p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id
         )
         for candidate in candidates:
             script_path = candidate / "script.json"
             if not script_path.exists():
                 continue
             try:
-                with open(script_path, encoding="utf-8") as f:
-                    data = json.load(f)
+                data = json.loads(script_path.read_text(encoding="utf-8"))
             except Exception:
                 continue
             segments = data.get("segments") or []
             if not segments:
                 continue
-            recent_bits: list[str] = []
-            for segment in segments:
-                text = self._summarise_text(segment.get("text", ""))
-                if text:
-                    recent_bits.append(text)
-                if len(recent_bits) >= 3:
-                    break
-            recent_summary = " / ".join(recent_bits[:3])[:220]
-            trailing = ""
-            for segment in reversed(segments):
-                text = self._summarise_text(segment.get("text", ""))
-                if text:
-                    trailing = text[:160]
-                    break
+
+            snippets = [self._summarise_text(seg.get("text", "")) for seg in segments]
+            snippets = [s for s in snippets if s]
+            if not snippets:
+                continue
+
+            recent_summary = " / ".join(snippets[:3])[:220]
+            trailing = next((s for s in reversed(snippets) if s), "")[:160]
             return recent_summary, trailing
+
         return "", ""
 
     def _summarise_text(self, value: str) -> str:
@@ -124,30 +116,63 @@ class ScriptGenerator(Step):
         if max_depth < 0:
             raise ValueError("Maximum recursion depth exceeded during parsing")
 
-        text = self._strip_code_fence(raw)
-        for loader in self._parsers():
-            try:
-                parsed = loader(text)
-            except Exception:
-                continue
-            if isinstance(parsed, str):
-                return self._coerce_to_mapping(parsed, max_depth=max_depth - 1)
-            return parsed
+        for candidate in self._candidate_payloads(raw):
+            for loader in (yaml.safe_load, json.loads):
+                try:
+                    parsed = loader(candidate)
+                except Exception:
+                    continue
+                if isinstance(parsed, str):
+                    return self._coerce_to_mapping(parsed, max_depth=max_depth - 1)
+                return parsed
 
-        stripped = text.strip()
+        stripped = raw.strip()
         if stripped.startswith("\"") and stripped.endswith("\""):
             return self._coerce_to_mapping(stripped[1:-1], max_depth=max_depth - 1)
 
         raise ValueError("Unable to parse script output")
 
-    def _parsers(self) -> Iterable:
-        return (yaml.safe_load, json.loads)
+    def _candidate_payloads(self, raw: str) -> List[str]:
+        text = raw.strip().lstrip("\ufeff")
+        candidates: List[str] = []
 
-    def _strip_code_fence(self, text: str) -> str:
-        if text.startswith("```") and text.endswith("```"):
-            text = text.split("\n", 1)[1]
-            text = text.rsplit("\n", 1)[0]
-        return text
+        def add(value: str) -> None:
+            value = value.strip()
+            if value and value not in candidates:
+                candidates.append(value)
+
+        add(text)
+
+        code_block = self._extract_code_block(text)
+        if code_block is not None:
+            add(code_block)
+
+        segments_block = self._extract_segments_block(text)
+        if segments_block is not None:
+            add(segments_block)
+
+        original_candidates = list(candidates)
+        for value in original_candidates:
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                add(value[1:-1])
+
+        return candidates
+
+    def _extract_code_block(self, text: str) -> str | None:
+        if "```" not in text:
+            return None
+        match = re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL)
+        if match is None:
+            return None
+        return match.group(1)
+
+    def _extract_segments_block(self, text: str) -> str | None:
+        if "segments:" not in text:
+            return None
+        match = re.search(r"(?:^|\r?\n)(segments:.*)", text, re.DOTALL)
+        if match is None:
+            return None
+        return match.group(1)
 
     def _pick_side_theme(self, news_items: List[NewsItem]) -> tuple[str, str]:
         for item in news_items:

@@ -15,10 +15,17 @@ class PerplexityNewsProvider:
     name = "perplexity"
     api_url = "https://api.perplexity.ai/chat/completions"
 
-    def __init__(self, model: str = "sonar", temperature: float = 0.2, max_tokens: int = 2048):
+    def __init__(
+        self,
+        model: str = "sonar",
+        temperature: float = 0.2,
+        max_tokens: int = 2048,
+        search_recency_filter: str | None = None,
+    ):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.search_recency_filter = search_recency_filter
         self.api_keys = load_secret_values("PERPLEXITY_API_KEY")
         self.prompts = load_prompts()["news_collection"]
 
@@ -30,21 +37,25 @@ class PerplexityNewsProvider:
         prompt = self.prompts["user_template"].format(topic=topic, count=count)
         api_key = self.api_keys[0]
 
+        payload = {
+            "model": self.model,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "messages": [
+                {"role": "system", "content": self.prompts["system"]},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        if self.search_recency_filter:
+            payload["search_recency_filter"] = self.search_recency_filter
+
         response = requests.post(
             self.api_url,
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "model": self.model,
-                "temperature": self.temperature,
-                "max_tokens": self.max_tokens,
-                "messages": [
-                    {"role": "system", "content": self.prompts["system"]},
-                    {"role": "user", "content": prompt},
-                ],
-            },
+            json=payload,
         )
         response.raise_for_status()
         data = response.json()

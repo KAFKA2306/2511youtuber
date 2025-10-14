@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from src.providers.base import execute_with_fallback
 from src.providers.news import PerplexityNewsProvider
-from src.steps.base import Step
+from src.core.step import Step
 from src.utils.config import NewsProvidersConfig
 
 
@@ -42,6 +42,7 @@ class NewsCollector(Step):
                     model=config.perplexity.model,
                     temperature=config.perplexity.temperature,
                     max_tokens=config.perplexity.max_tokens,
+                    search_recency_filter=config.perplexity.search_recency_filter,
                 )
             )
         return providers or [PerplexityNewsProvider()]

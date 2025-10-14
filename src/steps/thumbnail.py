@@ -6,8 +6,8 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
+from src.core.step import Step
 from src.models import Script
-from src.steps.base import Step
 
 
 class ThumbnailGenerator(Step):
@@ -24,6 +24,7 @@ class ThumbnailGenerator(Step):
         self.background_color = str(cfg.get("background_color", "#1a2238"))
         self.title_color = str(cfg.get("title_color", "#FFFFFF"))
         self.subtitle_color = str(cfg.get("subtitle_color", "#FFD166"))
+        self.show_subtitle = bool(cfg.get("show_subtitle", True))
         self.padding = int(cfg.get("padding", 80))
         self.title_font_size = int(cfg.get("title_font_size", 96))
         self.subtitle_font_size = int(cfg.get("subtitle_font_size", 56))
@@ -31,6 +32,7 @@ class ThumbnailGenerator(Step):
         self.max_chars_per_line = int(cfg.get("max_chars_per_line", 12))
         self.font_path = cfg.get("font_path")
         self.overlay_configs = list(cfg.get("overlays", []))
+        self.right_guard_band_px = int(cfg.get("right_guard_band_px", 0))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_path = self.get_output_path()
@@ -55,18 +57,21 @@ class ThumbnailGenerator(Step):
         title_font = self._load_font(self.title_font_size)
         subtitle_font = self._load_font(self.subtitle_font_size)
 
-        text_right_edge = self._compute_text_right_edge(overlays)
+        guard_band = max(0, self.right_guard_band_px)
+        text_right_edge = self.width - self.padding - guard_band
         title_bottom = self._render_text_block(draw, title, title_font, self.title_color, self.padding, text_right_edge)
-        self._render_text_block(
-            draw,
-            subtitle,
-            subtitle_font,
-            self.subtitle_color,
-            title_bottom + self.padding // 2,
-            text_right_edge,
-        )
+        if self.show_subtitle and subtitle:
+            self._render_text_block(
+                draw,
+                subtitle,
+                subtitle_font,
+                self.subtitle_color,
+                title_bottom + self.padding // 2,
+                text_right_edge,
+            )
 
-        self._apply_overlays(image, overlays)
+        for overlay in overlays:
+            image.paste(overlay["image"], overlay["position"], mask=overlay["image"])
         image.convert("RGB").save(output_path, format="PNG")
         return output_path
 
@@ -91,9 +96,9 @@ class ThumbnailGenerator(Step):
 
     def _resolve_subtitle(self, metadata: Dict | None, script: Script) -> str:
         if metadata:
-            recommendations = metadata.get("recommendations") or []
-            if recommendations:
-                return str(recommendations[0]).strip()
+            description = str(metadata.get("description", "")).strip()
+            if description:
+                return description.split("\n", 1)[0][:80] or "解説付き"
         if len(script.segments) > 1:
             return script.segments[1].text.strip() or "解説付き"
         if script.segments:
@@ -119,14 +124,10 @@ class ThumbnailGenerator(Step):
                 overlay = overlay_image.convert("RGBA")
             overlay = self._scale_overlay(overlay, cfg)
             position = self._resolve_overlay_position(overlay.size, cfg)
-            x, y = position
-            width, height = overlay.size
             overlays.append(
                 {
                     "image": overlay,
                     "position": position,
-                    "bbox": (x, y, x + width, y + height),
-                    "anchor": str(cfg.get("anchor", "bottom_right")).lower(),
                 }
             )
         return overlays
@@ -185,16 +186,6 @@ class ThumbnailGenerator(Step):
         y = max(0, min(self.height - height, y))
         return int(x), int(y)
 
-    def _compute_text_right_edge(self, overlays: List[Dict]) -> int:
-        right_edge = self.width - self.padding
-        for overlay in overlays:
-            anchor = overlay.get("anchor", "")
-            if "right" in anchor:
-                candidate = overlay["bbox"][0] - self.padding // 2
-                right_edge = min(right_edge, candidate)
-        min_right = self.padding * 2
-        return max(min_right, right_edge)
-
     def _render_text_block(
         self,
         draw: ImageDraw.ImageDraw,
@@ -230,87 +221,21 @@ class ThumbnailGenerator(Step):
         if max_width <= 0:
             return self._wrap_text_greedy(text, font, max_width, char_limit)
 
-        remaining_lines = self.max_lines
         lines: List[str] = []
         for chunk in text.split("\n"):
-            if remaining_lines <= 0:
+            if len(lines) >= self.max_lines:
                 break
             chunk = chunk.strip()
             if not chunk:
                 continue
-            chunk_lines = self._wrap_text_balanced(chunk, font, max_width, remaining_lines, char_limit)
-            if not chunk_lines:
-                chunk_lines = self._wrap_text_greedy(chunk, font, max_width, char_limit)
-            lines.extend(chunk_lines[:remaining_lines])
-            remaining_lines = self.max_lines - len(lines)
-            if remaining_lines <= 0:
+            chunk_lines = self._wrap_text_greedy(chunk, font, max_width, char_limit)
+            lines.extend(chunk_lines)
+            if len(lines) >= self.max_lines:
                 break
 
         if not lines:
             lines = self._wrap_text_greedy(text, font, max_width, char_limit)
         return lines[: self.max_lines]
-
-    def _wrap_text_balanced(
-        self,
-        text: str,
-        font: ImageFont.ImageFont,
-        max_width: int,
-        max_lines: int,
-        char_limit: int,
-    ) -> List[str]:
-        if max_lines <= 0 or not text:
-            return []
-
-        n = len(text)
-        valid_segments = {}
-
-        def fits(segment: str) -> bool:
-            if not segment:
-                return False
-            if len(segment) > char_limit:
-                return False
-            key = segment
-            if key not in valid_segments:
-                valid_segments[key] = self._measure_text_width(font, segment) <= max_width
-            return valid_segments[key]
-
-        best: tuple[float, float, int, List[str]] | None = None
-
-        def score(lines: List[str]) -> tuple[float, float, int]:
-            lengths = [len(line) for line in lines]
-            target = n / len(lines)
-            variance = sum((length - target) ** 2 for length in lengths)
-            spread = max(lengths) - min(lengths)
-            return (variance, spread, len(lines))
-
-        def search(start: int, remaining: int, acc: List[str]):
-            nonlocal best
-            if remaining == 1:
-                segment = text[start:]
-                if fits(segment):
-                    candidate = acc + [segment]
-                    candidate_score = score(candidate)
-                    if best is None or candidate_score < best[:3]:
-                        best = (*candidate_score, candidate)
-                return
-
-            max_end = len(text) - (remaining - 1)
-            for end in range(start + 1, max_end + 1):
-                segment = text[start:end]
-                if not fits(segment):
-                    continue
-                acc.append(segment)
-                search(end, remaining - 1, acc)
-                acc.pop()
-
-        for lines_count in range(1, max_lines + 1):
-            search(0, lines_count, [])
-            if best:
-                break
-
-        if best:
-            return best[3]
-        return []
 
     def _wrap_text_greedy(
         self,
@@ -361,9 +286,3 @@ class ThumbnailGenerator(Step):
             return int(font.getlength(text))
         bbox = font.getbbox(text)
         return int(bbox[2] - bbox[0])
-
-    def _apply_overlays(self, base_image: Image.Image, overlays: List[Dict]) -> None:
-        for overlay in overlays:
-            image = overlay["image"]
-            position = overlay["position"]
-            base_image.paste(image, position, mask=image)

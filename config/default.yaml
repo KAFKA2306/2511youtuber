@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR reuter OR yahoo finance OR https://kafkafinancialgroup.hatenablog.com/ OR CNBC"
+    query: "bloomberg OR reuter OR yahoo finance OR https://kafkafinancialgroup.hatenablog.com/ OR CNBC OR 経済政策 OR 金融政策"
 
   script:
     min_duration: 300
@@ -50,6 +50,14 @@ steps:
         max_zoom: 1.2
         hold_frame_factor: 1.0
         pan_mode: "center"
+      - type: "tsumugi_overlay"
+    subtitles:
+      font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
+      font_name: "Zen Maru Gothic"
+      font_size: 24
+      primary_colour: "&HFFFFFF&"
+      outline_colour: "&H000000&"
+      outline: 2
 
   thumbnail:
     enabled: true
@@ -58,17 +66,19 @@ steps:
     background_color: "#193d5a"
     title_color: "#FFFFFF"
     subtitle_color: "#FFD166"
+    show_subtitle: false
     accent_color: "#EF476F"
     padding: 80
-    max_lines: 3
+    max_lines: 4
     max_chars_per_line: 12
-    title_font_size: 96
+    title_font_size: 84
     subtitle_font_size: 56
     font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
+    right_guard_band_px: 400
     overlays:
       - name: "character"
         enabled: true
-        image_path: "assets/春日部つむぎ立ち絵_公式_v2.0/春日部つむぎ立ち絵_公式_v1.1.1.png"
+        image_path: "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
         anchor: "bottom_right"
         height_ratio: 0.85
         offset:
@@ -86,7 +96,7 @@ steps:
   metadata:
     enabled: true
     use_llm: true
-    llm_model: "gemini/gemini-2.5-flash-preview-09-2025"
+    llm_model: "gemini-2.5-pro" #"gemini/gemini-2.5-flash-preview-09-2025"
     target_keywords:
       - "金融"
       - "経済"
@@ -114,10 +124,25 @@ steps:
       - "ニュース"
       - "経済"
 
+  podcast:
+    enabled: false
+    feed_title: "金融ニュース解説ポッドキャスト"
+    feed_description: "AI生成の日本経済・金融ニュース解説"
+    feed_author: "2510 YouTuber AI"
+    feed_url: "https://example.com/podcast"
+  buzzsprout:
+    enabled: false
+    podcast_id: null
+    token_key: "buzzsprout_api_token"
+    podcast_id_key: "buzzsprout_podcast_id"
+    title_template: "金融ニュース解説 Episode {run_id}"
+    publish_immediately: true
+
 providers:
   llm:
     gemini:
-      model: "gemini/gemini-2.5-flash-preview-09-2025"
+      model: "gemini/gemini-2.5-pro"
+      #model: "gemini/gemini-2.5-flash-preview-09-2025"
       temperature: 0.7
       max_tokens: 4000
 
@@ -135,9 +160,10 @@ providers:
   news:
     perplexity:
       enabled: true
-      model: "sonar"
+      model: "sonar-pro" #"sonar"
       temperature: 0.2
       max_tokens: 2048
+      search_recency_filter: "week"
 
 
 logging:

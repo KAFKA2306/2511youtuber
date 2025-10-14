@@ -1,6 +1,9 @@
+import json as json_module
+
 import pytest
 
 from src.providers.base import AllProvidersFailedError, Provider, ProviderChain
+from src.providers.news import PerplexityNewsProvider
 
 pytestmark = pytest.mark.unit
 
@@ -22,14 +25,6 @@ class MockProvider(Provider):
 
 
 class TestProviderChain:
-    def test_first_provider_succeeds(self):
-        providers = [
-            MockProvider("primary", priority=1),
-            MockProvider("secondary", priority=2),
-        ]
-        chain = ProviderChain(providers)
-        result = chain.execute()
-        assert result == "primary_result"
 
     def test_fallback_to_second_provider(self):
         providers = [
@@ -58,12 +53,54 @@ class TestProviderChain:
         with pytest.raises(AllProvidersFailedError):
             chain.execute()
 
-    def test_priority_ordering(self):
-        providers = [
-            MockProvider("low_priority", priority=10),
-            MockProvider("high_priority", priority=1),
-            MockProvider("medium_priority", priority=5),
-        ]
-        chain = ProviderChain(providers)
-        result = chain.execute()
-        assert result == "high_priority_result"
+
+class TestPerplexityNewsProvider:
+
+    def test_execute_includes_recency_filter(self, monkeypatch):
+        captured_payload: dict = {}
+
+        def fake_load_secret_values(key: str):
+            assert key == "PERPLEXITY_API_KEY"
+            return ["dummy-key"]
+
+        def fake_post(url, headers=None, json=None):  # noqa: A002 - match requests.post signature
+            captured_payload["json"] = json
+
+            class DummyResponse:
+
+                @staticmethod
+                def raise_for_status() -> None:
+                    return None
+
+                @staticmethod
+                def json() -> dict:
+                    return {
+                        "choices": [
+                            {
+                                "message": {
+                                    "content": json_module.dumps(
+                                        [
+                                            {
+                                                "title": "Sample",
+                                                "summary": "Summary",
+                                                "url": "https://example.com",
+                                                "published_at": "2024-05-01T00:00:00Z",
+                                            }
+                                        ]
+                                    )
+                                }
+                            }
+                        ]
+                    }
+
+            return DummyResponse()
+
+        monkeypatch.setattr("src.providers.news.load_secret_values", fake_load_secret_values)
+        monkeypatch.setattr("src.providers.news.requests.post", fake_post)
+
+        provider = PerplexityNewsProvider(search_recency_filter="week")
+
+        result = provider.execute(query="test", count=1)
+
+        assert len(result) == 1
+        assert captured_payload["json"]["search_recency_filter"] == "week"

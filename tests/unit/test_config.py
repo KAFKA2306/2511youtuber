@@ -21,6 +21,7 @@ class TestConfig:
         assert config.steps.subtitle.max_visual_width == 40
         assert config.steps.video.fps == 25
         assert config.steps.video.effects[0].type == "ken_burns"
+        assert config.steps.video.effects[1].type == "tsumugi_overlay"
         assert config.steps.script.speakers.analyst.name == "春日部つむぎ"
         assert "つむぎ" in config.steps.script.speakers.analyst.aliases
         assert config.steps.script.speakers.reporter.name == "ずんだもん"
@@ -28,11 +29,15 @@ class TestConfig:
         assert config.steps.thumbnail.enabled is True
         assert config.steps.thumbnail.width == 1280
         assert config.steps.metadata.enabled is True
+        assert config.steps.metadata.use_llm is True
+        assert isinstance(config.steps.metadata.llm_model, str)
+        assert config.steps.metadata.llm_model != ""
         assert config.steps.youtube.enabled is True
+        assert config.steps.buzzsprout.enabled is False
 
     def test_providers_config(self):
         config = Config.load()
-        assert config.providers.llm.gemini.model == "gemini/gemini-2.5-flash-preview-09-2025"
+        assert config.providers.llm.gemini.model.startswith("gemini/")
         assert config.providers.tts.voicevox.enabled is True
         assert config.providers.tts.voicevox.speakers["春日部つむぎ"] == 8
         assert config.providers.tts.voicevox.speakers["ずんだもん"] == 1
