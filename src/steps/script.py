@@ -1,13 +1,49 @@
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 
 import yaml
 
 from src.core.step import Step
 from src.models import NewsItem, Script
 from src.providers.llm import GeminiProvider, load_prompt_template
+
+
+@dataclass
+class ScriptContextNotes:
+    recent_topics_note: str = ""
+    next_theme_note: str = ""
+
+    def to_mapping(self) -> Dict[str, str]:
+        return {
+            "recent_topics_note": self.recent_topics_note,
+            "next_theme_note": self.next_theme_note,
+        }
+
+    def merge_missing(self, other: "ScriptContextNotes") -> "ScriptContextNotes":
+        if other is None:
+            return self
+        return ScriptContextNotes(
+            recent_topics_note=self.recent_topics_note or other.recent_topics_note,
+            next_theme_note=self.next_theme_note or other.next_theme_note,
+        )
+
+    def is_empty(self) -> bool:
+        return not (self.recent_topics_note or self.next_theme_note)
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any] | None) -> "ScriptContextNotes":
+        if not data:
+            return cls()
+        recent = str(
+            data.get("recent_topics_note")
+            or data.get("recent_topic_note")
+            or ""
+        ).strip()
+        next_note = str(data.get("next_theme_note") or "").strip()
+        return cls(recent_topics_note=recent, next_theme_note=next_note)
 
 
 class ScriptGenerator(Step):
@@ -24,7 +60,7 @@ class ScriptGenerator(Step):
             else dict(speakers_config)
         )
         self.speakers = self._extract_speakers(data)
-        self.previous_topics_note, self.previous_next_hint = self._load_previous_context(run_dir)
+        self.carryover_notes = self._load_previous_context(run_dir)
         self.provider = GeminiProvider()
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
@@ -39,13 +75,9 @@ class ScriptGenerator(Step):
 
         raw_output = self.provider.execute(prompt=prompt)
         script = self._parse_and_validate(raw_output)
-        recent_note, next_note = self._context_from_segments(script.segments)
-        script = script.model_copy(
-            update={
-                "recent_topics_note": recent_note,
-                "next_theme_note": next_note,
-            }
-        )
+        generated_notes = self._context_from_segments(script.segments)
+        script = script.model_copy(update=generated_notes.to_mapping())
+        self.carryover_notes = generated_notes
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +95,8 @@ class ScriptGenerator(Step):
             f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items
         )
         side_theme = self._pick_side_theme(news_items)
+        recent_note = self.carryover_notes.recent_topics_note or "直近テーマ情報なし"
+        next_note = self.carryover_notes.next_theme_note or "視聴者に次回リクエストをさらっと促す"
         return template.format(
             news_items=news_text,
             analyst_name=self.speakers["analyst"],
@@ -70,49 +104,46 @@ class ScriptGenerator(Step):
             narrator_name=self.speakers["narrator"],
             side_theme=side_theme[0],
             side_theme_summary=side_theme[1],
-            recent_topics_note=self.previous_topics_note or "直近テーマ情報なし",
-            next_theme_note=self.previous_next_hint or "視聴者に次回リクエストをさらっと促す",
+            recent_topics_note=recent_note,
+            next_theme_note=next_note,
         )
 
-    def _load_previous_context(self, run_dir: Path) -> tuple[str, str]:
+    def _load_previous_context(self, run_dir: Path) -> ScriptContextNotes:
         base = Path(run_dir)
         if not base.exists():
-            return "", ""
+            return ScriptContextNotes()
 
         candidates = [
             p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id
         ]
         for candidate in candidates:
-            recent_note = ""
-            next_note = ""
+            notes = ScriptContextNotes()
 
             script_data = self._safe_read_json(candidate / "script.json")
             if script_data:
-                recent_note = str(
-                    script_data.get("recent_topics_note")
-                    or script_data.get("recent_topic_note")
-                    or ""
-                ).strip()
-                next_note = str(script_data.get("next_theme_note") or "").strip()
-
-                if not (recent_note or next_note):
+                notes = ScriptContextNotes.from_mapping(script_data)
+                if notes.is_empty():
                     segments = script_data.get("segments") or []
-                    recent_note, next_note = self._context_from_segments(segments)
+                    notes = notes.merge_missing(self._context_from_segments(segments))
 
-            if not recent_note:
+            if not notes.recent_topics_note:
                 metadata_title = self._extract_metadata_title(candidate)
                 if metadata_title:
-                    recent_note = metadata_title
+                    notes = notes.merge_missing(
+                        ScriptContextNotes(recent_topics_note=metadata_title)
+                    )
 
-            if not recent_note:
+            if not notes.recent_topics_note:
                 youtube_title = self._extract_youtube_title(candidate)
                 if youtube_title:
-                    recent_note = youtube_title
+                    notes = notes.merge_missing(
+                        ScriptContextNotes(recent_topics_note=youtube_title)
+                    )
 
-            if recent_note or next_note:
-                return recent_note, next_note
+            if not notes.is_empty():
+                return notes
 
-        return "", ""
+        return ScriptContextNotes()
 
     def _summarise_text(self, value: str) -> str:
         text = str(value or "").replace("\n", " ").strip()
@@ -122,7 +153,7 @@ class ScriptGenerator(Step):
             text = text.split("。", 1)[0] + "。"
         return text
 
-    def _context_from_segments(self, segments: List[Any]) -> tuple[str, str]:
+    def _context_from_segments(self, segments: List[Any]) -> ScriptContextNotes:
         snippets: List[str] = []
         for segment in segments:
             if hasattr(segment, "text"):
@@ -136,11 +167,13 @@ class ScriptGenerator(Step):
                 snippets.append(snippet)
 
         if not snippets:
-            return "", ""
+            return ScriptContextNotes()
 
         recent_summary = " / ".join(snippets[:3])[:220]
         trailing = next((s for s in reversed(snippets) if s), "")[:160]
-        return recent_summary, trailing
+        return ScriptContextNotes(
+            recent_topics_note=recent_summary, next_theme_note=trailing
+        )
 
     def _safe_read_json(self, path: Path) -> Dict[str, Any] | None:
         if not path.exists():
