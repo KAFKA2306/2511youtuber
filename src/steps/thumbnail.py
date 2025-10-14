@@ -24,6 +24,7 @@ class ThumbnailGenerator(Step):
         self.background_color = str(cfg.get("background_color", "#1a2238"))
         self.title_color = str(cfg.get("title_color", "#FFFFFF"))
         self.subtitle_color = str(cfg.get("subtitle_color", "#FFD166"))
+        self.show_subtitle = bool(cfg.get("show_subtitle", True))
         self.padding = int(cfg.get("padding", 80))
         self.title_font_size = int(cfg.get("title_font_size", 96))
         self.subtitle_font_size = int(cfg.get("subtitle_font_size", 56))
@@ -31,6 +32,7 @@ class ThumbnailGenerator(Step):
         self.max_chars_per_line = int(cfg.get("max_chars_per_line", 12))
         self.font_path = cfg.get("font_path")
         self.overlay_configs = list(cfg.get("overlays", []))
+        self.right_guard_band_px = int(cfg.get("right_guard_band_px", 0))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_path = self.get_output_path()
@@ -55,16 +57,18 @@ class ThumbnailGenerator(Step):
         title_font = self._load_font(self.title_font_size)
         subtitle_font = self._load_font(self.subtitle_font_size)
 
-        text_right_edge = self.width - self.padding
+        guard_band = max(0, self.right_guard_band_px)
+        text_right_edge = self.width - self.padding - guard_band
         title_bottom = self._render_text_block(draw, title, title_font, self.title_color, self.padding, text_right_edge)
-        self._render_text_block(
-            draw,
-            subtitle,
-            subtitle_font,
-            self.subtitle_color,
-            title_bottom + self.padding // 2,
-            text_right_edge,
-        )
+        if self.show_subtitle and subtitle:
+            self._render_text_block(
+                draw,
+                subtitle,
+                subtitle_font,
+                self.subtitle_color,
+                title_bottom + self.padding // 2,
+                text_right_edge,
+            )
 
         for overlay in overlays:
             image.paste(overlay["image"], overlay["position"], mask=overlay["image"])

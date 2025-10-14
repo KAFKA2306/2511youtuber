@@ -59,13 +59,15 @@ steps:
     background_color: "#193d5a"
     title_color: "#FFFFFF"
     subtitle_color: "#FFD166"
+    show_subtitle: false
     accent_color: "#EF476F"
     padding: 80
-    max_lines: 3
-    max_chars_per_line: 12
+    max_lines: 2
+    max_chars_per_line: 11
     title_font_size: 96
     subtitle_font_size: 56
     font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
+    right_guard_band_px: 480
     overlays:
       - name: "character"
         enabled: true
