@@ -91,6 +91,19 @@ VideoEffectConfig = Annotated[
     Field(discriminator="type"),
 ]
 
+class VideoSubtitleStyleConfig(BaseModel):
+    font_path: str | None = None
+    font_name: str | None = None
+    font_size: int | None = None
+    primary_colour: str | None = None
+    outline_colour: str | None = None
+    outline: int | None = None
+    shadow: int | None = None
+    bold: int | None = None
+    italic: int | None = None
+    alignment: int | None = None
+    model_config = ConfigDict(extra="allow")
+
 
 class VideoStepConfig(BaseModel):
     resolution: str
@@ -99,6 +112,7 @@ class VideoStepConfig(BaseModel):
     preset: str
     crf: int
     effects: list[VideoEffectConfig] = Field(default_factory=list)
+    subtitles: VideoSubtitleStyleConfig | None = None
 
 
 class SubtitleStepConfig(BaseModel):

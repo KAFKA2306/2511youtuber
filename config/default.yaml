@@ -51,6 +51,13 @@ steps:
         hold_frame_factor: 1.0
         pan_mode: "center"
       - type: "tsumugi_overlay"
+    subtitles:
+      font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
+      font_name: "Zen Maru Gothic"
+      font_size: 24
+      primary_colour: "&HFFFFFF&"
+      outline_colour: "&H000000&"
+      outline: 2
 
   thumbnail:
     enabled: true
