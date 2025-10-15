@@ -130,10 +130,10 @@ steps:
     dry_run: false
     clip_duration_seconds: 60
     thumbnail_path: "runs/20251015_183513/thumbnail.png"
-    api_key: "TWITTER_API_KEY"
-    api_secret: "TWITTER_API_SECRET"
-    access_token: "TWITTER_ACCESS_TOKEN"
-    access_secret: "TWITTER_ACCESS_SECRET"
+    api_key: "X_API_KEY"
+    api_secret: "X_API_SECRET"
+    access_token: "X_ACCESS_TOKEN"
+    access_secret: "X_ACCESS_SECRET"
 
   podcast:
     enabled: false
