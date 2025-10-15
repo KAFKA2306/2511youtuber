@@ -33,6 +33,8 @@ class TestConfig:
         assert isinstance(config.steps.metadata.llm_model, str)
         assert config.steps.metadata.llm_model != ""
         assert config.steps.youtube.enabled is True
+        assert config.steps.twitter.enabled is True
+        assert config.steps.twitter.clip_duration_seconds == 60
         assert config.steps.buzzsprout.enabled is False
 
     def test_providers_config(self):

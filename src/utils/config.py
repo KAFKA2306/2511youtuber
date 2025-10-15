@@ -179,6 +179,17 @@ class YouTubeStepConfig(BaseModel):
     default_tags: list[str] = Field(default_factory=list)
 
 
+class TwitterStepConfig(BaseModel):
+    enabled: bool = False
+    dry_run: bool = True
+    clip_duration_seconds: int = 60
+    thumbnail_path: str
+    api_key: str
+    api_secret: str
+    access_token: str
+    access_secret: str
+
+
 class PodcastStepConfig(BaseModel):
     enabled: bool = False
     feed_title: str = "金融ニュース解説ポッドキャスト"
@@ -205,6 +216,7 @@ class StepsConfig(BaseModel):
     thumbnail: ThumbnailStepConfig
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
+    twitter: TwitterStepConfig
     podcast: PodcastStepConfig
     buzzsprout: BuzzsproutStepConfig
 
