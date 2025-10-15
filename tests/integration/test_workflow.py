@@ -1,18 +1,9 @@
-import json
 import shutil
 
 import pytest
 
 from src.models import WorkflowState
-from src.steps.audio import AudioSynthesizer
-from src.steps.base import Step
-from src.steps.metadata import MetadataAnalyzer
-from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
-from src.steps.subtitle import SubtitleFormatter
-from src.steps.thumbnail import ThumbnailGenerator
-from src.steps.video import VideoRenderer
-from src.steps.youtube import YouTubeUploader
 from src.utils.config import Config
 from src.workflow import WorkflowOrchestrator
 
@@ -53,4 +44,3 @@ class TestWorkflowIntegration:
         assert loaded_state.run_id == test_run_id
         assert "test_step" in loaded_state.completed_steps
         assert loaded_state.outputs["test_step"] == "/path/to/output"
-

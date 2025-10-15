@@ -31,8 +31,6 @@ class Step(ABC):
         output_path = Path(self.execute(inputs))
 
         if not output_path.exists():
-            raise StepExecutionError(
-                f"Step {self.name} did not produce output at {output_path}"
-            )
+            raise StepExecutionError(f"Step {self.name} did not produce output at {output_path}")
 
         return output_path

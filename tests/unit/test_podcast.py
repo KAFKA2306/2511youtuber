@@ -9,6 +9,7 @@ try:
 except ImportError:
     feedgen_installed = False
 
+
 @pytest.mark.unit
 @pytest.mark.skipif(not feedgen_installed, reason="feedgen is not installed")
 def test_podcast_exporter_creates_feed(tmp_path: Path) -> None:
@@ -30,4 +31,3 @@ def test_podcast_exporter_creates_feed(tmp_path: Path) -> None:
     feed_content = output_path.read_text(encoding="utf-8")
     assert "Episode test-run" in feed_content
     assert "金融ニュース解説ポッドキャスト" in feed_content
-

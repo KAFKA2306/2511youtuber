@@ -19,13 +19,13 @@ class TestMetadataAnalyzerUnit:
         step = self._make_step(temp_run_dir, test_run_id)
 
         raw = (
-            "了解しました。\n" \
-            "'''\n" \
-            "title: \"テスト\"\n" \
-            "title_alt1: \"代替\"\n" \
-            "description: |\n  本文\n" \
-            "tags:\n  - a\n  - b\n" \
-            "category_id: 25\n" \
+            "了解しました。\n"
+            "'''\n"
+            'title: "テスト"\n'
+            'title_alt1: "代替"\n'
+            "description: |\n  本文\n"
+            "tags:\n  - a\n  - b\n"
+            "category_id: 25\n"
             "'''"
         )
 
@@ -37,15 +37,7 @@ class TestMetadataAnalyzerUnit:
     def test_parse_llm_response_handles_code_block_with_preamble(self, temp_run_dir, test_run_id):
         step = self._make_step(temp_run_dir, test_run_id)
 
-        raw = (
-            "はい。\n" \
-            "```yaml\n" \
-            "title: \"foo\"\n" \
-            "description: bar\n" \
-            "tags:\n  - baz\n" \
-            "category_id: 25\n" \
-            "```"
-        )
+        raw = 'はい。\n```yaml\ntitle: "foo"\ndescription: bar\ntags:\n  - baz\ncategory_id: 25\n```'
 
         metadata = step._parse_llm_response(raw)
 

@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.providers.video_effects import (
+    TSUMUGI_OVERLAY_PATH,
     KenBurnsEffect,
     OverlayEffect,
-    TSUMUGI_OVERLAY_PATH,
     TsumugiOverlayEffect,
     VideoEffectContext,
     VideoEffectPipeline,
@@ -133,7 +133,9 @@ class TestTsumugiOverlayAssets:
         repo_root = Path(__file__).resolve().parents[2]
         overlay_path = (repo_root / TSUMUGI_OVERLAY_PATH).resolve()
         subtitles_path = (repo_root / "runs" / "20251013_083832" / "subtitles.srt").resolve()
-        expected_overlay_path = (repo_root / "assets" / "春日部つむぎ立ち絵公式_v2.0" / "春日部つむぎ立ち絵公式_v1.1.1.png").resolve()
+        expected_overlay_path = (
+            repo_root / "assets" / "春日部つむぎ立ち絵公式_v2.0" / "春日部つむぎ立ち絵公式_v1.1.1.png"
+        ).resolve()
         expected_subtitles_path = (repo_root / "runs" / "20251013_083832" / "subtitles.srt").resolve()
 
         assert overlay_path == expected_overlay_path

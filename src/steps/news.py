@@ -2,9 +2,9 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
+from src.core.step import Step
 from src.providers.base import execute_with_fallback
 from src.providers.news import PerplexityNewsProvider
-from src.core.step import Step
 from src.utils.config import NewsProvidersConfig
 
 

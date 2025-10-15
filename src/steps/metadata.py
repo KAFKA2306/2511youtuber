@@ -65,9 +65,7 @@ class MetadataAnalyzer(Step):
             try:
                 llm_metadata = self._generate_metadata_with_llm(news_items, script)
             except Exception as exc:  # noqa: BLE001 - best effort fallback for automation
-                self.logger.warning(
-                    "LLM metadata generation failed for run %s: %s", self.run_id, exc
-                )
+                self.logger.warning("LLM metadata generation failed for run %s: %s", self.run_id, exc)
 
         if llm_metadata:
             title = str(llm_metadata.get("title", fallback_title))

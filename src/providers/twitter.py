@@ -47,7 +47,9 @@ class TwitterClient:
             }
         video_media = self.api.media_upload(filename=str(video_path), media_category="tweet_video")
         image_media = self.api.media_upload(filename=str(image_path))
-        tweet = self.api.update_status(status=text, media_ids=[video_media.media_id_string, image_media.media_id_string])
+        tweet = self.api.update_status(
+            status=text, media_ids=[video_media.media_id_string, image_media.media_id_string]
+        )
         return {
             "id": tweet.id_str,
             "text": tweet.text,

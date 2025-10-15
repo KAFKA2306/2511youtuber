@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from typing import Dict
 
-from src.providers.youtube import YouTubeClient
 from src.core.step import Step
+from src.providers.youtube import YouTubeClient
 
 
 class YouTubeUploader(Step):

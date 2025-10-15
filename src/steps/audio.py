@@ -2,16 +2,18 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
+from src.core.step import Step
 from src.models import Script
 from src.providers.tts import VOICEVOXProvider
-from src.core.step import Step
 
 
 class AudioSynthesizer(Step):
     name = "synthesize_audio"
     output_filename = "audio.wav"
 
-    def __init__(self, run_id: str, run_dir: Path, voicevox_config: Dict, speaker_aliases: Dict[str, List[str]] | None = None):
+    def __init__(
+        self, run_id: str, run_dir: Path, voicevox_config: Dict, speaker_aliases: Dict[str, List[str]] | None = None
+    ):
         super().__init__(run_id, run_dir)
         self.voicevox_config = dict(voicevox_config)
         self.speaker_aliases = speaker_aliases or {}

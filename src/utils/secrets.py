@@ -18,8 +18,7 @@ def load_secret_values(key_basename: str, *, max_keys: int = 10, extra_dirs: Ite
 
     env_files = [Path(__file__).resolve().parents[2] / "config" / ".env"]
     env_files.extend(
-        (candidate / ".env" if candidate.is_dir() else candidate)
-        for candidate in map(Path, extra_dirs or ())
+        (candidate / ".env" if candidate.is_dir() else candidate) for candidate in map(Path, extra_dirs or ())
     )
 
     for env_file in env_files:

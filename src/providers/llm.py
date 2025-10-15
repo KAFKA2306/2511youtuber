@@ -28,9 +28,7 @@ class GeminiProvider:
 
         if model is None:
             if defaults is None or defaults.model is None:
-                raise ValueError(
-                    "GeminiProvider model must be provided or configured under providers.llm.gemini.model"
-                )
+                raise ValueError("GeminiProvider model must be provided or configured under providers.llm.gemini.model")
             model = defaults.model
 
         if temperature is None:
@@ -45,7 +43,7 @@ class GeminiProvider:
 
         # Load fallback model if configured
         self.fallback_model = None
-        if defaults is not None and hasattr(defaults, 'fallback_model') and defaults.fallback_model:
+        if defaults is not None and hasattr(defaults, "fallback_model") and defaults.fallback_model:
             self.fallback_model = self._normalise_model_name(defaults.fallback_model)
 
         key_values = load_secret_values("GEMINI_API_KEY")
@@ -122,7 +120,7 @@ class GeminiProvider:
                 # For other errors, raise immediately
                 raise
 
-            except Exception as e:
+            except Exception:
                 # For non-503 errors, raise immediately
                 raise
 

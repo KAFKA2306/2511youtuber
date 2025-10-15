@@ -24,11 +24,7 @@ class BuzzsproutUploader(Step):
         buzzsprout_config: BuzzsproutStepConfig | Mapping[str, object] | None = None,
     ) -> None:
         super().__init__(run_id, run_dir)
-        data = (
-            buzzsprout_config
-            if isinstance(buzzsprout_config, BuzzsproutStepConfig)
-            else buzzsprout_config or {}
-        )
+        data = buzzsprout_config if isinstance(buzzsprout_config, BuzzsproutStepConfig) else buzzsprout_config or {}
         self.config = BuzzsproutStepConfig.model_validate(data)
 
     def execute(self, inputs: Dict[str, Path]) -> Path:

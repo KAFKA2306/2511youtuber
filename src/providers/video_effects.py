@@ -16,9 +16,7 @@ class VideoEffectContext:
 class VideoEffect:
     name: str = ""
 
-    def apply(
-        self, stream: FilterableStream, context: VideoEffectContext
-    ) -> FilterableStream:
+    def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:
         raise NotImplementedError
 
 

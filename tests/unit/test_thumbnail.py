@@ -1,6 +1,5 @@
 import pytest
 
-from src.models import Script, ScriptSegment
 from src.steps.thumbnail import ThumbnailGenerator
 
 pytestmark = pytest.mark.unit
@@ -12,4 +11,3 @@ class TestThumbnailGeneratorUnit:
         lines = step._wrap_text("これは非常に長い日本語のテキストで、適切に改行される必要があります。", max_chars=8)
         assert len(lines) >= 2
         assert all(len(line) <= 8 for line in lines)
-

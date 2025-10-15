@@ -24,11 +24,7 @@ class PodcastExporter(Step):
     ) -> None:
         super().__init__(run_id, run_dir)
         self.config: PodcastStepConfig
-        config_data = (
-            podcast_config
-            if isinstance(podcast_config, PodcastStepConfig)
-            else podcast_config or {}
-        )
+        config_data = podcast_config if isinstance(podcast_config, PodcastStepConfig) else podcast_config or {}
         self.config = PodcastStepConfig.model_validate(config_data)
 
     def execute(self, inputs: Dict[str, Path]) -> Path:

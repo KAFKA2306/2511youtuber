@@ -13,8 +13,8 @@ from src.steps.podcast import PodcastExporter
 from src.steps.script import ScriptGenerator
 from src.steps.subtitle import SubtitleFormatter
 from src.steps.thumbnail import ThumbnailGenerator
-from src.steps.video import VideoRenderer
 from src.steps.twitter import TwitterPoster
+from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
 from src.utils.config import Config
 from src.utils.discord import post_run_summary

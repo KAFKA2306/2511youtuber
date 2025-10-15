@@ -91,6 +91,7 @@ VideoEffectConfig = Annotated[
     Field(discriminator="type"),
 ]
 
+
 class VideoSubtitleStyleConfig(BaseModel):
     font_path: str | None = None
     font_name: str | None = None

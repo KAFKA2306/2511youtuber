@@ -1,11 +1,13 @@
 import sys
 from pathlib import Path
+
 sys.path.append(str(Path(__file__).parent.parent.parent))
 import json
 import subprocess
 
-from src.steps import twitter
 from src.utils.loader import load_config
+
+from src.steps import twitter
 from src.utils.secrets import load_secret_values
 
 
@@ -59,9 +61,7 @@ def test_post_latest_run(tmp_path, monkeypatch):
     )
 
     run_id = max(p.name for p in run_root.iterdir())
-    poster = twitter.TwitterPoster(
-        run_id=run_id, run_dir=run_root, twitter_config=twitter_config
-    )
+    poster = twitter.TwitterPoster(run_id=run_id, run_dir=run_root, twitter_config=twitter_config)
     output = poster.execute({"render_video": video, "analyze_metadata": metadata})
     result = json.loads(output.read_text(encoding="utf-8"))
     assert "id" in result

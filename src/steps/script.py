@@ -37,11 +37,7 @@ class ScriptContextNotes:
     def from_mapping(cls, data: Mapping[str, Any] | None) -> "ScriptContextNotes":
         if not data:
             return cls()
-        recent = str(
-            data.get("recent_topics_note")
-            or data.get("recent_topic_note")
-            or ""
-        ).strip()
+        recent = str(data.get("recent_topics_note") or data.get("recent_topic_note") or "").strip()
         next_note = str(data.get("next_theme_note") or "").strip()
         return cls(recent_topics_note=recent, next_theme_note=next_note)
 
@@ -54,11 +50,7 @@ class ScriptGenerator(Step):
         super().__init__(run_id, run_dir)
         if speakers_config is None:
             raise ValueError("Speaker configuration is required")
-        data = (
-            speakers_config.model_dump()
-            if hasattr(speakers_config, "model_dump")
-            else dict(speakers_config)
-        )
+        data = speakers_config.model_dump() if hasattr(speakers_config, "model_dump") else dict(speakers_config)
         self.speakers = self._extract_speakers(data)
         self.carryover_notes = self._load_previous_context(run_dir)
         self.provider = GeminiProvider()
@@ -91,9 +83,7 @@ class ScriptGenerator(Step):
 
     def _build_prompt(self, news_items: List[NewsItem]) -> str:
         template = load_prompt_template("script_generation")
-        news_text = "\n\n".join(
-            f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items
-        )
+        news_text = "\n\n".join(f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items)
         side_theme = self._pick_side_theme(news_items)
         recent_note = self.carryover_notes.recent_topics_note or "直近テーマ情報なし"
         next_note = self.carryover_notes.next_theme_note or "視聴者に次回リクエストをさらっと促す"
@@ -113,9 +103,7 @@ class ScriptGenerator(Step):
         if not base.exists():
             return ScriptContextNotes()
 
-        candidates = [
-            p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id
-        ]
+        candidates = [p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id]
         for candidate in candidates:
             notes = ScriptContextNotes()
 
@@ -129,16 +117,12 @@ class ScriptGenerator(Step):
             if not notes.recent_topics_note:
                 metadata_title = self._extract_metadata_title(candidate)
                 if metadata_title:
-                    notes = notes.merge_missing(
-                        ScriptContextNotes(recent_topics_note=metadata_title)
-                    )
+                    notes = notes.merge_missing(ScriptContextNotes(recent_topics_note=metadata_title))
 
             if not notes.recent_topics_note:
                 youtube_title = self._extract_youtube_title(candidate)
                 if youtube_title:
-                    notes = notes.merge_missing(
-                        ScriptContextNotes(recent_topics_note=youtube_title)
-                    )
+                    notes = notes.merge_missing(ScriptContextNotes(recent_topics_note=youtube_title))
 
             if not notes.is_empty():
                 return notes
@@ -171,9 +155,7 @@ class ScriptGenerator(Step):
 
         recent_summary = " / ".join(snippets[:3])[:220]
         trailing = next((s for s in reversed(snippets) if s), "")[:160]
-        return ScriptContextNotes(
-            recent_topics_note=recent_summary, next_theme_note=trailing
-        )
+        return ScriptContextNotes(recent_topics_note=recent_summary, next_theme_note=trailing)
 
     def _safe_read_json(self, path: Path) -> Dict[str, Any] | None:
         if not path.exists():
@@ -236,7 +218,7 @@ class ScriptGenerator(Step):
                 return parsed
 
         stripped = raw.strip()
-        if stripped.startswith("\"") and stripped.endswith("\""):
+        if stripped.startswith('"') and stripped.endswith('"'):
             return self._coerce_to_mapping(stripped[1:-1], max_depth=max_depth - 1)
 
         raise ValueError("Unable to parse script output")

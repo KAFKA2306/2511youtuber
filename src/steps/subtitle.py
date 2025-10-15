@@ -5,8 +5,8 @@ from typing import Dict, List
 
 from pydub import AudioSegment
 
-from src.models import Script
 from src.core.step import Step
+from src.models import Script
 
 
 class SubtitleFormatter(Step):

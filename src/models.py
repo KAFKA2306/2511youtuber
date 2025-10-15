@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel, Field
-from src.core.state import WorkflowResult, WorkflowState
 
 
 class NewsItem(BaseModel):

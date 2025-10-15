@@ -3,11 +3,10 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from PIL import Image
+
 from src.models import NewsItem, Script
 from src.steps.audio import AudioSynthesizer
-from src.steps.metadata import MetadataAnalyzer
 from src.steps.news import NewsCollector
 from src.steps.script import ScriptGenerator
 from src.steps.subtitle import SubtitleFormatter
@@ -61,8 +60,6 @@ class TestScriptGeneratorIntegration:
         assert len(script.segments) >= 3
 
 
-
-
 @pytest.mark.integration
 class TestAudioSynthesizerIntegration:
     def test_audio_synthesis_combines_segments(self, temp_run_dir, test_run_id, sample_script_path):
@@ -109,7 +106,6 @@ class TestAudioSynthesizerIntegration:
 
 @pytest.mark.integration
 class TestSubtitleFormatterIntegration:
-
     def test_timestamp_calculation(self, temp_run_dir, test_run_id):
         step = SubtitleFormatter(run_id=test_run_id, run_dir=temp_run_dir, max_chars_per_line=24)
 

@@ -2,9 +2,6 @@ import types
 
 import pytest
 
-from src.providers.llm import GeminiProvider
-
-
 pytestmark = pytest.mark.unit
 
 
@@ -15,14 +12,6 @@ class DummyResponse(types.SimpleNamespace):
 def _dummy_completion_factory(record):
     def _completion(*args, **kwargs):
         record.append(kwargs.get("api_key"))
-        return DummyResponse(
-            choices=[
-                types.SimpleNamespace(
-                    message=types.SimpleNamespace(content="dummy")
-                )
-            ]
-        )
+        return DummyResponse(choices=[types.SimpleNamespace(message=types.SimpleNamespace(content="dummy"))])
 
     return _completion
-
-

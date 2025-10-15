@@ -1,12 +1,12 @@
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 from pydub import AudioSegment
 
-from src.steps.video import VideoRenderer
 from src.providers.video_effects import TSUMUGI_OVERLAY_PATH
+from src.steps.video import VideoRenderer
 
 pytestmark = pytest.mark.unit
 

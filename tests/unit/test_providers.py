@@ -25,7 +25,6 @@ class MockProvider(Provider):
 
 
 class TestProviderChain:
-
     def test_fallback_to_second_provider(self):
         providers = [
             MockProvider("primary", priority=1, should_fail=True),
@@ -55,7 +54,6 @@ class TestProviderChain:
 
 
 class TestPerplexityNewsProvider:
-
     def test_execute_includes_recency_filter(self, monkeypatch):
         captured_payload: dict = {}
 
@@ -67,7 +65,6 @@ class TestPerplexityNewsProvider:
             captured_payload["json"] = json
 
             class DummyResponse:
-
                 @staticmethod
                 def raise_for_status() -> None:
                     return None
