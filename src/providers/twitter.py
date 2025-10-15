@@ -146,36 +146,37 @@ class TwitterClient:
 
     # ===== 投稿ロジック =========================================================
 
-    def post(self, text: str, video_path: Path) -> Dict:
+    def post(self, text: str, video_path: Path | str | None = None) -> Dict:
         """
-        動画を添付してツイート。
+        ツイートを投稿。動画パスが指定されれば添付する。
         - DRY RUN: ネットワークを叩かず、入力検証のみ行いダミー応答を返す
-        - 本番: v1.1 media upload（動画は chunked）、update_status を実行
+        - 本番: v1.1 media upload（動画は chunked）、v2 create_tweet を実行
         """
-        if not isinstance(video_path, Path):
-            video_path = Path(video_path)
-
-        # 入力検証
-        if not video_path.exists():
-            raise FileNotFoundError(f"Video not found: {video_path}")
-
         if self.dry_run:
             logger.info("[DRY_RUN] tweet: %s", text)
             return {
                 "status": text,
-                "video": str(video_path),
+                "video": str(video_path) if video_path else None,
                 "dry_run": True,
             }
 
         assert self.api is not None, "API v1.1 client not initialized"
         assert self.client is not None, "Client v2 not initialized"
 
-        # ---- メディアアップロード (v1.1)
-        vid_id = self._upload_video(video_path)
+        media_ids = []
+        if video_path:
+            if not isinstance(video_path, Path):
+                video_path = Path(video_path)
+            if not video_path.exists():
+                raise FileNotFoundError(f"Video not found: {video_path}")
+
+            # ---- メディアアップロード (v1.1)
+            vid_id = self._upload_video(video_path)
+            media_ids.append(vid_id)
 
         # ---- ツイート本体 (v2)
         try:
-            response = self.client.create_tweet(text=text, media_ids=[vid_id])
+            response = self.client.create_tweet(text=text, media_ids=media_ids if media_ids else None)
             tweet_data = response.data or {}
         except tweepy.TweepyException as e:
             raise RuntimeError(f"Tweet creation failed: {e}") from e
@@ -183,7 +184,7 @@ class TwitterClient:
         return {
             "id": tweet_data.get("id"),
             "text": tweet_data.get("text"),
-            "media_ids": [vid_id],
+            "media_ids": media_ids,
         }
 
     # ===== 内部: アップロード実装 ================================================
@@ -201,7 +202,6 @@ class TwitterClient:
             media = self.api.media_upload(
                 filename=str(path),
                 media_category="tweet_video",
-                wait_for_completion=True
             )
             return media.media_id_string
         except tweepy.TweepyException as e:
