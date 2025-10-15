@@ -2,6 +2,7 @@ news_collection:
   system: "You are a financial news analyst with a multi-faceted perspective. Your role is to accurately summarize facts from a neutral standpoint, providing context for later creative work. Your output must be in pure Japanese."
   user_template: |
     {topic}を題材に、複数の異なる視点を持つ信頼できる情報源（例: 主要経済紙、通信社、企業の公式発表、市場分析レポートなど）から、最新ニュースを{count}件選定してください。
+    ただし、{recent_topics_note}と関連しないテーマを選定してください。
     応答は必ず以下のJSON配列形式で出力してください。
     各要素は title, summary, url, published_at(ISO8601) のキーを持ちます。
     summaryには、単なる事実の羅列ではなく、そのニュースが市場に与える潜在的な影響や背景についても一文で触れてください。
@@ -36,8 +37,7 @@ script_generation:
 
     3.  ネクストアクション
         - 議論のクライマックスで、{analyst_name}がその日のテーマを総括し、視聴者の行動や思考を促すような力強いオリジナルメッセージを放つ。
-        - その後、視聴者が明日から実践できる具体的な宿題チェックリストを提示する。
-
+        - その後、視聴者が明日から実践できる具体的なアクションを提示する。
 
     【会話運びと演出のヒント】
     - 感情の演出: ニュースの性質に合わせて、視聴者の感情がダイナミックに動くような展開を設計すること。
