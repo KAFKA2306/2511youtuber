@@ -2,12 +2,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from src.steps import twitter
 from src.utils.config import Config
-
-load_dotenv()
 
 
 def test_post_latest_run(tmp_path, monkeypatch):
@@ -51,7 +47,7 @@ def test_post_latest_run(tmp_path, monkeypatch):
 
     config = Config.load("config/default.yaml")
     twitter_config = config.steps.twitter.model_dump()
-    twitter_config["dry_run"] = False
+    twitter_config["dry_run"] = True
     twitter_config["thumbnail_path"] = str(thumb)
 
 
@@ -62,6 +58,7 @@ def test_post_latest_run(tmp_path, monkeypatch):
     )
     output = poster.execute({"render_video": video, "analyze_metadata": metadata})
     result = json.loads(output.read_text(encoding="utf-8"))
-    assert "id" in result
-    assert result["text"] == "タイトル\na b c d e"
-    assert "media_ids" in result
+    assert result["dry_run"] is True
+    assert result["status"] == "タイトル\na b c d e"
+    assert "video" in result
+    assert "image" in result
