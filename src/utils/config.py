@@ -162,6 +162,7 @@ class MetadataStepConfig(BaseModel):
     enabled: bool = False
     use_llm: bool = True
     llm_model: str | None = None
+    fallback_llm_model: str | None = None
     llm_temperature: float | None = None
     llm_max_tokens: int | None = None
     target_keywords: list[str]
@@ -210,6 +211,7 @@ class StepsConfig(BaseModel):
 
 class GeminiProviderConfig(BaseModel):
     model: str
+    fallback_model: str | None = None
     temperature: float
     max_tokens: int
 
