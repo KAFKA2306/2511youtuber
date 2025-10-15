@@ -184,11 +184,11 @@ class TwitterStepConfig(BaseModel):
     enabled: bool = False
     dry_run: bool = True
     clip_duration_seconds: int = 60
-    thumbnail_path: str
-    api_key: str
-    api_secret: str
-    access_token: str
-    access_secret: str
+    thumbnail_path: str | None = None
+    api_key: str | None = None
+    api_secret: str | None = None
+    access_token: str | None = None
+    access_secret: str | None = None
 
 
 class PodcastStepConfig(BaseModel):

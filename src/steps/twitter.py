@@ -18,12 +18,19 @@ class TwitterPoster(Step):
         self,
         run_id: str,
         run_dir: Path,
-        client: TwitterClient,
+        twitter_config: dict | None = None,
+        client: TwitterClient | None = None,
         clip_duration: int = 60,
     ) -> None:
         super().__init__(run_id, run_dir)
-        self.clip_duration = clip_duration
-        self.client = client
+        if client:
+            self.client = client
+            self.clip_duration = clip_duration
+        elif twitter_config:
+            self.clip_duration = twitter_config.get("clip_duration_seconds", 60)
+            self.client = TwitterClient.from_env(dry_run=twitter_config.get("dry_run", False))
+        else:
+            raise ValueError("Either twitter_config or client must be provided")
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         video_path = Path(inputs["render_video"])

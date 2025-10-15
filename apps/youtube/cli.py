@@ -16,6 +16,7 @@ from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.twitter import TwitterPoster
 from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
+from src.providers.twitter import TwitterClient
 from src.utils.config import Config
 from src.utils.discord import post_run_summary
 from src.utils.logger import get_logger
@@ -134,11 +135,14 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             )
         )
         if config.steps.twitter.enabled:
+            twitter_cfg = config.steps.twitter
+            client = TwitterClient.from_env(dry_run=twitter_cfg.dry_run)
             steps.append(
                 TwitterPoster(
                     run_id=run_id,
                     run_dir=run_dir,
-                    twitter_config=config.steps.twitter.model_dump(),
+                    client=client,
+                    clip_duration=twitter_cfg.clip_duration_seconds,
                 )
             )
 
