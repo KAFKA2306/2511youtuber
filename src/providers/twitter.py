@@ -146,29 +146,24 @@ class TwitterClient:
 
     # ===== 投稿ロジック =========================================================
 
-    def post(self, text: str, video_path: Path, image_path: Path) -> Dict:
+    def post(self, text: str, video_path: Path) -> Dict:
         """
-        動画 + 画像（サムネ）を添付してツイート。
+        動画を添付してツイート。
         - DRY RUN: ネットワークを叩かず、入力検証のみ行いダミー応答を返す
         - 本番: v1.1 media upload（動画は chunked）、update_status を実行
         """
         if not isinstance(video_path, Path):
             video_path = Path(video_path)
-        if not isinstance(image_path, Path):
-            image_path = Path(image_path)
 
         # 入力検証
         if not video_path.exists():
             raise FileNotFoundError(f"Video not found: {video_path}")
-        if not image_path.exists():
-            raise FileNotFoundError(f"Image not found: {image_path}")
 
         if self.dry_run:
             logger.info("[DRY_RUN] tweet: %s", text)
             return {
                 "status": text,
                 "video": str(video_path),
-                "image": str(image_path),
                 "dry_run": True,
             }
 
@@ -193,67 +188,21 @@ class TwitterClient:
 
     # ===== 内部: アップロード実装 ================================================
 
-    def _upload_image(self, path: Path) -> str:
-        if not _is_image(path):
-            logger.warning("Image mime-type unknown; attempting upload anyway: %s", path)
-        try:
-            media = self.api.media_upload(filename=str(path))
-            return media.media_id_string
-        except tweepy.TweepyException as e:
-            raise RuntimeError(f"Image upload failed: {e}") from e
-
     def _upload_video(self, path: Path) -> str:
         """
         動画は chunked アップロードで頑健に。
-        ・ファイルが小さくても chunked に統一しておくと将来 5MB 超でも安全
+        ・Tweepy v4 の media_upload が自動で chunked 処理を行う
         ・media_category='tweet_video' を明示
         """
         if not _is_video(path):
             logger.warning("Video mime-type unknown; attempting upload anyway: %s", path)
 
-        total_bytes = _file_size(path)
-        media_type, _ = mimetypes.guess_type(str(path))
-        if not media_type:
-            logger.warning("Could not determine media type for %s, defaulting to video/mp4", path)
-            media_type = "video/mp4"
-
-        fp = open(path, "rb")  # noqa: P201
         try:
-            init = self.api.chunked_upload_init(
-                media_type=media_type,
-                total_bytes=total_bytes,
+            media = self.api.media_upload(
+                filename=str(path),
                 media_category="tweet_video",
+                wait_for_completion=True
             )
-            media_id = init.media_id
-
-            # 4MB チャンクが一般的に安全
-            CHUNK = 4 * 1024 * 1024
-            segment_id = 0
-            fp.seek(0)
-            while True:
-                chunk = fp.read(CHUNK)
-                if not chunk:
-                    break
-                self.api.chunked_upload_append(
-                    media=chunk, media_id=media_id, segment_index=segment_id
-                )
-                segment_id += 1
-
-            fin = self.api.chunked_upload_finalize(media_id)
-            # 処理中（'in_progress'）の場合はポーリング
-            state = getattr(fin, "processing_info", {}).get("state", None)
-            while state == "in_progress":
-                check_after = getattr(fin.processing_info, "check_after_secs", 2)
-                time.sleep(check_after)
-                fin = self.api.get_media_upload_status(media_id)
-                state = getattr(fin, "processing_info", {}).get("state", None)
-
-            if state == "failed":
-                err = getattr(fin.processing_info, "error", {})
-                raise RuntimeError(f"Video processing failed: {err}")
-
-            return str(media_id)
+            return media.media_id_string
         except tweepy.TweepyException as e:
             raise RuntimeError(f"Video upload failed: {e}") from e
-        finally:
-            fp.close()

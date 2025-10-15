@@ -20,11 +20,9 @@ class TwitterPoster(Step):
         run_dir: Path,
         client: TwitterClient,
         clip_duration: int = 60,
-        thumbnail_path: Path | str | None = None,
     ) -> None:
         super().__init__(run_id, run_dir)
         self.clip_duration = clip_duration
-        self.thumbnail_path = Path(thumbnail_path) if thumbnail_path else None
         self.client = client
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
@@ -52,7 +50,7 @@ class TwitterPoster(Step):
         text = payload.get("title", "")
         if suffix:
             text = f"{text}\n{suffix}"
-        result = self.client.post(text, clip_path, self.thumbnail_path)
+        result = self.client.post(text, clip_path)
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -70,7 +68,6 @@ if __name__ == "__main__":
 
     RUN_ID = "20251015_193631"
     RUN_DIR = Path("runs")
-    THUMBNAIL_PATH = RUN_DIR / RUN_ID / "thumbnail.png"
     CLIP_DURATION = 60
     DRY_RUN = False  # Set to True to prevent actual posting
 
@@ -82,7 +79,6 @@ if __name__ == "__main__":
         run_dir=RUN_DIR,
         client=client,
         clip_duration=CLIP_DURATION,
-        thumbnail_path=THUMBNAIL_PATH,
     )
 
     inputs = {
