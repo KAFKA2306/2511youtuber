@@ -1,6 +1,8 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 import json
 import subprocess
-from pathlib import Path
 
 from src.steps import twitter
 from src.utils.loader import load_config
