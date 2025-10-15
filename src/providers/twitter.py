@@ -207,13 +207,17 @@ class TwitterClient:
             logger.warning("Video mime-type unknown; attempting upload anyway: %s", path)
 
         total_bytes = _file_size(path)
+        media_type, _ = mimetypes.guess_type(str(path))
+        if not media_type:
+            logger.warning("Could not determine media type for %s, defaulting to video/mp4", path)
+            media_type = "video/mp4"
+
         fp = open(path, "rb")  # noqa: P201
         try:
             init = self.api.chunked_upload_init(
-                filename=str(path),
-                file=fp,
-                media_category="tweet_video",
+                media_type=media_type,
                 total_bytes=total_bytes,
+                media_category="tweet_video",
             )
             media_id = init.media_id
 
