@@ -57,7 +57,8 @@ class TwitterClient:
     - 本番: OAuth1.1a（consumer/api key/secret + access token/secret）
     - テスト: dry_run=True でネットワークを叩かず I/O だけ検証
     """
-    api: Optional[tweepy.API]
+    api: Optional[tweepy.API]  # For v1.1 media upload
+    client: Optional[tweepy.Client]  # For v2 tweet creation
     dry_run: bool = False
 
     # ===== コンストラクタ群 =====================================================
@@ -75,6 +76,7 @@ class TwitterClient:
         self.dry_run = dry_run
         if dry_run:
             self.api = None
+            self.client = None
             logger.info("TwitterClient initialized in DRY RUN mode.")
             return
 
@@ -84,15 +86,25 @@ class TwitterClient:
                 "Provide API_KEY/API_SECRET/ACCESS_TOKEN/ACCESS_SECRET."
             )
 
-        auth = tweepy.OAuth1UserHandler(api_key, api_secret, access_token, access_secret)
-        self.api = tweepy.API(auth, wait_on_rate_limit=wait_on_rate_limit)
+        # v1.1 API for media uploads
+        auth_v1 = tweepy.OAuth1UserHandler(api_key, api_secret, access_token, access_secret)
+        self.api = tweepy.API(auth_v1, wait_on_rate_limit=wait_on_rate_limit)
 
-        # 軽い疎通（認証ミスを早期検知）
+        # v2 Client for creating tweets
+        self.client = tweepy.Client(
+            consumer_key=api_key,
+            consumer_secret=api_secret,
+            access_token=access_token,
+            access_token_secret=access_secret,
+        )
+
+        # Verify credentials
         try:
-            me = self.api.verify_credentials()
-            logger.info("TwitterClient authenticated as @%s", getattr(me, "screen_name", "unknown"))
-        except Exception as e:  # noqa: BLE001
-            # 215 Bad Authentication data などはここで検知される
+            me_v1 = self.api.verify_credentials()
+            logger.info("Twitter API v1.1 authenticated as @%s", getattr(me_v1, "screen_name", "unknown"))
+            me_v2 = self.client.get_me()
+            logger.info("Twitter API v2 authenticated as @%s", getattr(me_v2.data, "username", "unknown"))
+        except Exception as e:
             raise RuntimeError(f"Twitter authentication failed: {e}") from e
 
     @classmethod
@@ -160,30 +172,23 @@ class TwitterClient:
                 "dry_run": True,
             }
 
-        assert self.api is not None, "API client not initialized"
+        assert self.api is not None, "API v1.1 client not initialized"
+        assert self.client is not None, "Client v2 not initialized"
 
-        # ---- メディアアップロード
-        media_ids: list[str] = []
-
-        # 1) 動画（推奨: yuv420p/h.264）— サイズに応じて chunked
+        # ---- メディアアップロード (v1.1)
         vid_id = self._upload_video(video_path)
-        media_ids.append(vid_id)
 
-        # 2) 画像（png/jpg）— 通常アップロード
-        img_id = self._upload_image(image_path)
-        media_ids.append(img_id)
-
-        # ---- ツイート本体
+        # ---- ツイート本体 (v2)
         try:
-            status = self.api.update_status(status=text, media_ids=media_ids)
+            response = self.client.create_tweet(text=text, media_ids=[vid_id])
+            tweet_data = response.data or {}
         except tweepy.TweepyException as e:
-            # 代表例: BadRequest(215) = 認証不備、403 = メディア規約違反、413/400 = エンコード不適合 等
-            raise RuntimeError(f"Tweet failed: {e}") from e
+            raise RuntimeError(f"Tweet creation failed: {e}") from e
 
         return {
-            "id": getattr(status, "id_str", None) or str(getattr(status, "id", "")),
-            "text": getattr(status, "text", None) or text,
-            "media_ids": media_ids,
+            "id": tweet_data.get("id"),
+            "text": tweet_data.get("text"),
+            "media_ids": [vid_id],
         }
 
     # ===== 内部: アップロード実装 ================================================
@@ -218,7 +223,6 @@ class TwitterClient:
                 media_type=media_type,
                 total_bytes=total_bytes,
                 media_category="tweet_video",
-                file=fp,
             )
             media_id = init.media_id
 
