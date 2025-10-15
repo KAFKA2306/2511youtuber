@@ -15,6 +15,7 @@ from src.steps.subtitle import SubtitleFormatter
 from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
+from src.steps.twitter import TwitterPoster
 from src.utils.config import Config
 from src.utils.discord import post_run_summary
 from src.utils.logger import get_logger
@@ -132,6 +133,15 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 youtube_config=config.steps.youtube.model_dump(),
             )
         )
+
+        if config.steps.twitter.enabled:
+            steps.append(
+                TwitterPoster(
+                    run_id=run_id,
+                    run_dir=run_dir,
+                    twitter_config=config.steps.twitter.model_dump(),
+                )
+            )
 
     if config.steps.podcast.enabled:
         steps.append(

@@ -179,6 +179,17 @@ class YouTubeStepConfig(BaseModel):
     default_tags: list[str] = Field(default_factory=list)
 
 
+class TwitterStepConfig(BaseModel):
+    enabled: bool = False
+    clip_duration_seconds: int = 60
+    chunk_size: int = 5242880
+    api_key_key: str = "TWITTER_API_KEY"
+    api_secret_key: str = "TWITTER_API_SECRET"
+    access_token_key: str = "TWITTER_ACCESS_TOKEN"
+    access_secret_key: str = "TWITTER_ACCESS_SECRET"
+    thumbnail_filename: str = "thumbnail.png"
+
+
 class PodcastStepConfig(BaseModel):
     enabled: bool = False
     feed_title: str = "金融ニュース解説ポッドキャスト"
@@ -205,6 +216,7 @@ class StepsConfig(BaseModel):
     thumbnail: ThumbnailStepConfig
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
+    twitter: TwitterStepConfig
     podcast: PodcastStepConfig
     buzzsprout: BuzzsproutStepConfig
 

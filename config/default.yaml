@@ -125,6 +125,16 @@ steps:
       - "ニュース"
       - "経済"
 
+  twitter:
+    enabled: false
+    clip_duration_seconds: 60
+    chunk_size: 5242880
+    api_key_key: "TWITTER_API_KEY"
+    api_secret_key: "TWITTER_API_SECRET"
+    access_token_key: "TWITTER_ACCESS_TOKEN"
+    access_secret_key: "TWITTER_ACCESS_SECRET"
+    thumbnail_filename: "thumbnail.png"
+
   podcast:
     enabled: false
     feed_title: "金融ニュース解説ポッドキャスト"
