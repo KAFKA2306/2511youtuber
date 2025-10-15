@@ -1,17 +1,18 @@
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).parent.parent.parent))
 import json
 import subprocess
+from pathlib import Path
 
-from src.utils.loader import load_config
+from dotenv import load_dotenv
 
 from src.steps import twitter
-from src.utils.secrets import load_secret_values
+from src.utils.config import Config
+
+load_dotenv()
 
 
 def test_post_latest_run(tmp_path, monkeypatch):
+
+
     run_root = tmp_path / "runs"
     (run_root / "20240101_000000").mkdir(parents=True)
     latest = run_root / "20251015_183513"
@@ -48,20 +49,17 @@ def test_post_latest_run(tmp_path, monkeypatch):
         check=True,
     )
 
-    config = load_config("config/default.yaml")
-    twitter_config = config["steps"]["post_twitter"]
+    config = Config.load("config/default.yaml")
+    twitter_config = config.steps.twitter.model_dump()
     twitter_config["dry_run"] = False
-    load_secret_values(
-        [
-            twitter_config["api_key"],
-            twitter_config["api_secret"],
-            twitter_config["access_token"],
-            twitter_config["access_secret"],
-        ]
-    )
+    twitter_config["thumbnail_path"] = str(thumb)
+
+
 
     run_id = max(p.name for p in run_root.iterdir())
-    poster = twitter.TwitterPoster(run_id=run_id, run_dir=run_root, twitter_config=twitter_config)
+    poster = twitter.TwitterPoster(
+        run_id=run_id, run_dir=run_root, twitter_config=twitter_config
+    )
     output = poster.execute({"render_video": video, "analyze_metadata": metadata})
     result = json.loads(output.read_text(encoding="utf-8"))
     assert "id" in result
