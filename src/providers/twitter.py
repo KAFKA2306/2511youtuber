@@ -218,6 +218,7 @@ class TwitterClient:
                 media_type=media_type,
                 total_bytes=total_bytes,
                 media_category="tweet_video",
+                file=fp,
             )
             media_id = init.media_id
 
@@ -230,7 +231,7 @@ class TwitterClient:
                 if not chunk:
                     break
                 self.api.chunked_upload_append(
-                    file=chunk, media_id=media_id, segment_index=segment_id
+                    media=chunk, media_id=media_id, segment_index=segment_id
                 )
                 segment_id += 1
 
