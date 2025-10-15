@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 
 import yaml
 
+from src.core.io_utils import load_json, load_script, write_text
 from src.core.step import Step
-from src.models import Script
 from src.providers.llm import GeminiProvider, load_prompt_template
 from src.utils.logger import get_logger
 
@@ -16,208 +16,132 @@ from src.utils.logger import get_logger
 class MetadataAnalyzer(Step):
     name = "analyze_metadata"
     output_filename = "metadata.json"
-
     logger = get_logger(__name__)
 
-    def __init__(
-        self,
-        run_id: str,
-        run_dir: Path,
-        metadata_config: Dict | None = None,
-    ) -> None:
+    def __init__(self, run_id: str, run_dir: Path, metadata_config: Dict | None = None):
         super().__init__(run_id, run_dir)
-        metadata_config = metadata_config or {}
-        self.target_keywords: List[str] = list(metadata_config.get("target_keywords", []))
-        self.max_title_length: int = int(metadata_config.get("max_title_length", 50))
-        self.max_description_length: int = int(metadata_config.get("max_description_length", 5000))
-        self.default_tags: List[str] = list(metadata_config.get("default_tags", []))
-        self.use_llm: bool = bool(metadata_config.get("use_llm", True))
-        self.llm_provider: GeminiProvider | None = None
-
-        if self.use_llm:
-            self.llm_provider = GeminiProvider(
-                model=metadata_config.get("llm_model"),
-                temperature=metadata_config.get("llm_temperature"),
-                max_tokens=metadata_config.get("llm_max_tokens"),
+        cfg = metadata_config or {}
+        self.target_keywords = list(cfg.get("target_keywords", []))
+        self.max_title_length = int(cfg.get("max_title_length", 50))
+        self.max_description_length = int(cfg.get("max_description_length", 5000))
+        self.default_tags = list(cfg.get("default_tags", []))
+        self.use_llm = bool(cfg.get("use_llm", True))
+        self.llm_provider = (
+            GeminiProvider(
+                model=cfg.get("llm_model"),
+                temperature=cfg.get("llm_temperature"),
+                max_tokens=cfg.get("llm_max_tokens"),
             )
+            if self.use_llm
+            else None
+        )
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         script_path = inputs.get("generate_script")
-        news_path = inputs.get("collect_news")
-
         if not script_path or not Path(script_path).exists():
             raise ValueError("Script file not found for metadata analysis")
-
-        script = self._load_script(Path(script_path))
-
-        news_items = []
-        if news_path and Path(news_path).exists():
-            news_items = self._load_news(Path(news_path))
+        script = load_script(Path(script_path))
+        news_items = load_json(Path(inputs["collect_news"])) if inputs.get("collect_news") else []
 
         fallback_title = self._build_title(script)
-        fallback_description = self._build_description(script)
-        fallback_tags = self._build_tags_from_script(script)
+        fallback_desc = self._build_description(script)
+        fallback_tags = self._build_tags(script)
         category_id = 25
 
-        llm_metadata: Dict[str, Any] | None = None
-
+        llm_meta = None
         if self.use_llm and self.llm_provider and self.llm_provider.is_available():
             try:
-                llm_metadata = self._generate_metadata_with_llm(news_items, script)
-            except Exception as exc:  # noqa: BLE001 - best effort fallback for automation
+                llm_meta = self._generate_metadata_with_llm(news_items, script)
+            except Exception as exc:
                 self.logger.warning("LLM metadata generation failed for run %s: %s", self.run_id, exc)
 
-        if llm_metadata:
-            title = str(llm_metadata.get("title", fallback_title))
-            description = str(llm_metadata.get("description", fallback_description))
-            normalized_tags = self._normalize_tags(llm_metadata.get("tags"))
-            tags = normalized_tags or fallback_tags
-            category_id = self._safe_category_id(llm_metadata.get("category_id"), category_id)
+        if llm_meta:
+            title = str(llm_meta.get("title", fallback_title))
+            description = str(llm_meta.get("description", fallback_desc))
+            tags = self._normalize_tags(llm_meta.get("tags")) or fallback_tags
+            category_id = int(llm_meta.get("category_id", category_id)) if llm_meta.get("category_id") else category_id
         else:
-            title = fallback_title
-            description = fallback_description
-            tags = fallback_tags
+            title, description, tags = fallback_title, fallback_desc, fallback_tags
 
         output = {
             "title": title[: self.max_title_length],
             "description": description[: self.max_description_length],
             "tags": tags[:30],
             "category_id": category_id,
-            "analysis": {
-                "segments": len(script.segments),
-                "duration_estimate": script.total_duration_estimate,
-            },
+            "analysis": {"segments": len(script.segments), "duration_estimate": script.total_duration_estimate},
         }
+        return Path(write_text(self.get_output_path(), json.dumps(output, ensure_ascii=False, indent=2)))
 
-        output_path = self.get_output_path()
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+    def _generate_metadata_with_llm(self, news_items: List[Dict], script) -> Dict:
+        template = load_prompt_template("metadata_generation")
+        news_summary = self._format_news(news_items)
+        script_excerpt = "\n".join(f"{seg.speaker}: {seg.text}" for seg in script.segments[:5])
+        prompt = template.format(news_items=news_summary, script_excerpt=script_excerpt)
+        return self._parse_response(self.llm_provider.execute(prompt))
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(output, f, ensure_ascii=False, indent=2)
-
-        return output_path
-
-    def _load_script(self, path: Path) -> Script:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        return Script(**data)
-
-    def _load_news(self, path: Path) -> List[Dict]:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-
-    def _generate_metadata_with_llm(self, news_items: List[Dict], script: Script) -> Dict:
-        prompt_template = load_prompt_template("metadata_generation")
-
-        news_summary = self._format_news_for_prompt(news_items)
-        script_excerpt = self._format_script_for_prompt(script)
-
-        prompt = prompt_template.format(news_items=news_summary, script_excerpt=script_excerpt)
-
-        response = self.llm_provider.execute(prompt)
-        metadata = self._parse_llm_response(response)
-
-        return metadata
-
-    def _format_news_for_prompt(self, news_items: List[Dict]) -> str:
+    def _format_news(self, news_items: List[Dict]) -> str:
         if not news_items:
             return "ニュースデータなし"
-
         lines = []
         for i, item in enumerate(news_items[:3], 1):
-            title = item.get("title", "無題")
-            summary = item.get("summary", "")[:200]
-            lines.append(f"{i}. {title}\n   {summary}")
-
+            lines.append(f"{i}. {item.get('title', '無題')}\n   {item.get('summary', '')[:200]}")
         return "\n\n".join(lines)
 
-    def _format_script_for_prompt(self, script: Script) -> str:
-        excerpts = []
-        for segment in script.segments[:5]:
-            excerpts.append(f"{segment.speaker}: {segment.text}")
-
-        return "\n".join(excerpts)
-
-    def _parse_llm_response(self, response: str) -> Dict:
-        data = self._coerce_to_mapping(response)
+    def _parse_response(self, response: str) -> Dict:
+        data = self._coerce_to_dict(response)
         if not isinstance(data, dict):
             raise ValueError("Metadata YAML must be a mapping")
         return data
 
-    def _coerce_to_mapping(self, raw: str, *, max_depth: int = 6) -> Any:
-        if max_depth < 0:
+    def _coerce_to_dict(self, raw: str, depth: int = 6) -> Any:
+        if depth < 0:
             raise ValueError("Maximum recursion depth exceeded during metadata parsing")
-
-        for candidate in self._candidate_payloads(raw):
+        for candidate in self._candidates(raw):
             for loader in (yaml.safe_load, json.loads):
                 try:
                     parsed = loader(candidate)
+                    return self._coerce_to_dict(parsed, depth - 1) if isinstance(parsed, str) else parsed
                 except Exception:
                     continue
-                if isinstance(parsed, str):
-                    return self._coerce_to_mapping(parsed, max_depth=max_depth - 1)
-                return parsed
-
         stripped = raw.strip()
         if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {'"', "'"}:
-            return self._coerce_to_mapping(stripped[1:-1], max_depth=max_depth - 1)
-
+            return self._coerce_to_dict(stripped[1:-1], depth - 1)
         raise ValueError("Unable to parse metadata output")
 
-    def _candidate_payloads(self, raw: str) -> List[str]:
+    def _candidates(self, raw: str) -> List[str]:
         text = raw.strip().lstrip("\ufeff")
-        candidates: List[str] = []
-
-        def add(value: str) -> None:
-            value = value.strip()
-            if value and value not in candidates:
-                candidates.append(value)
-
-        add(text)
-
-        code_block = self._extract_code_block(text)
-        if code_block is not None:
-            add(code_block)
-
-        triple_block = self._extract_triple_quote_block(text)
-        if triple_block is not None:
-            add(triple_block)
-
-        yaml_body = self._extract_yaml_body(text)
-        if yaml_body is not None:
-            add(yaml_body)
-
-        original_candidates = list(candidates)
-        for value in original_candidates:
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
-                add(value[1:-1])
-
-        return candidates
+        candidates = [text]
+        if code := self._extract_code_block(text):
+            candidates.append(code)
+        if triple := self._extract_triple_quote(text):
+            candidates.append(triple)
+        if yaml_body := self._extract_yaml_body(text):
+            candidates.append(yaml_body)
+        for c in list(candidates):
+            if len(c) >= 2 and c[0] == c[-1] and c[0] in {'"', "'"}:
+                candidates.append(c[1:-1])
+        return list(dict.fromkeys(c.strip() for c in candidates if c.strip()))
 
     def _extract_code_block(self, text: str) -> str | None:
         if "```" not in text:
             return None
-        match = re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL)
-        if match is None:
-            return None
-        return match.group(1)
-
-    def _extract_triple_quote_block(self, text: str) -> str | None:
-        match = re.search(r"'''\s*\n?(.*?)\n?'''", text, re.DOTALL)
-        if match:
+        if match := re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL):
             return match.group(1)
-        match = re.search(r'"""\s*\n?(.*?)\n?"""', text, re.DOTALL)
-        if match:
+        return None
+
+    def _extract_triple_quote(self, text: str) -> str | None:
+        if match := re.search(r"'''\s*\n?(.*?)\n?'''", text, re.DOTALL):
+            return match.group(1)
+        if match := re.search(r'"""\s*\n?(.*?)\n?"""', text, re.DOTALL):
             return match.group(1)
         return None
 
     def _extract_yaml_body(self, text: str) -> str | None:
-        match = re.search(r"(?:^|\r?\n)(title:\s.*)", text, re.DOTALL)
-        if match is None:
-            return None
-        return match.group(1)
+        if match := re.search(r"(?:^|\r?\n)(title:\s.*)", text, re.DOTALL):
+            return match.group(1)
+        return None
 
-    def _build_title(self, script: Script) -> str:
+    def _build_title(self, script) -> str:
         base = script.segments[0].text if script.segments else "金融ニュース速報"
         if len(base) > self.max_title_length:
             base = base[: self.max_title_length - 1] + "…"
@@ -225,45 +149,25 @@ class MetadataAnalyzer(Step):
             base = f"{base}｜金融ニュース"
         return base[: self.max_title_length]
 
-    def _build_description(self, script: Script) -> str:
+    def _build_description(self, script) -> str:
         lines = ["本動画では以下のトピックを扱います:"]
-        for segment in script.segments:
-            lines.append(f"{segment.speaker}：{segment.text}")
-        description = "\n".join(lines)
-        if len(description) > self.max_description_length:
-            description = description[: self.max_description_length - 1] + "…"
-        return description
+        for seg in script.segments:
+            lines.append(f"{seg.speaker}：{seg.text}")
+        desc = "\n".join(lines)
+        return desc[: self.max_description_length - 1] + "…" if len(desc) > self.max_description_length else desc
 
-    def _build_tags_from_script(self, script: Script) -> List[str]:
+    def _build_tags(self, script) -> List[str]:
         tags = list(self.default_tags)
-        full_text = "".join(segment.text for segment in script.segments)
-
-        keywords = ["金融", "経済", "ニュース", "投資", "株価", "市場", "速報"]
-        for keyword in keywords:
+        full_text = "".join(seg.text for seg in script.segments)
+        for keyword in ["金融", "経済", "ニュース", "投資", "株価", "市場", "速報"]:
             if keyword in full_text:
                 tags.append(keyword)
-
-        seen = set()
-        unique_tags = []
-        for tag in tags:
-            if tag not in seen:
-                unique_tags.append(tag)
-                seen.add(tag)
-        return unique_tags[:30]
+        return list(dict.fromkeys(tags))[:30]
 
     def _normalize_tags(self, tags: Any) -> List[str]:
         if isinstance(tags, list):
-            cleaned = [str(tag).strip() for tag in tags if str(tag).strip()]
-            if cleaned:
+            if cleaned := [str(tag).strip() for tag in tags if str(tag).strip()]:
                 return cleaned[:30]
         if isinstance(tags, str) and tags.strip():
             return [part.strip() for part in tags.split(",") if part.strip()][:30]
         return []
-
-    def _safe_category_id(self, value: Any, default: int) -> int:
-        try:
-            if value is None or value == "":
-                return default
-            return int(value)
-        except (TypeError, ValueError):
-            return default
