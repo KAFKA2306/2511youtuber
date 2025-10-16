@@ -1,12 +1,60 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
+from PIL.ImageColor import getrgb
 
 from src.core.io_utils import load_json, load_script
 from src.core.step import Step
+
+
+def _get_thumbnail_preset() -> Dict:
+    PRESET_A = {
+        "background_color": "#fef155",
+        "title_color": "#EB001B",
+        "outline_inner_color": "#FFFFFF",
+        "outline_inner_width": 20,
+        "outline_outer_color": "#000000",
+        "outline_outer_width": 20,
+    }
+    PRESET_B = {
+        "background_color": "#000000",
+        "title_color": "#FFD700",
+        "outline_inner_color": "#EB001B",
+        "outline_inner_width": 20,
+        "outline_outer_color": "#000000",
+        "outline_outer_width": 20,
+    }
+    PRESET_CALM_BLACK = {
+        "background_color": "#0B0F19",
+        "title_color": "#FFE16A",
+        "outline_inner_color": "#FFFFFF",
+        "outline_inner_width": 15,
+        "outline_outer_color": "#000000",
+        "outline_outer_width": 20,
+    }
+    PRESET_DEEP_CHARCOAL = {
+        "background_color": "#111827",
+        "title_color": "#FDE047",
+        "outline_inner_color": "#FFFFFF",
+        "outline_inner_width": 15,
+        "outline_outer_color": "#0B0F19",
+        "outline_outer_width": 20,
+    }
+    PRESET_DARK_NAVY_GOLD = {
+        "background_color": "#0A0F1F",
+        "title_color": "#FFD700",
+        "outline_inner_color": "#FFFFFF",
+        "outline_inner_width": 15,
+        "outline_outer_color": "#000000",
+        "outline_outer_width": 20,
+    }
+    return random.choice(
+        [PRESET_A, PRESET_B, PRESET_CALM_BLACK, PRESET_DEEP_CHARCOAL, PRESET_DARK_NAVY_GOLD]
+    )
 
 
 class ThumbnailGenerator(Step):
@@ -16,7 +64,11 @@ class ThumbnailGenerator(Step):
 
     def __init__(self, run_id: str, run_dir: Path, thumbnail_config: Dict | None = None) -> None:
         super().__init__(run_id, run_dir)
+        preset = _get_thumbnail_preset()
         cfg = thumbnail_config or {}
+        for key in preset:
+            cfg.pop(key, None)
+        cfg = {**cfg, **preset}
         self.enabled = bool(cfg.get("enabled", True))
         self.width = int(cfg.get("width", 1280))
         self.height = int(cfg.get("height", 720))
@@ -25,13 +77,17 @@ class ThumbnailGenerator(Step):
         self.subtitle_color = str(cfg.get("subtitle_color", "#FFD166"))
         self.show_subtitle = bool(cfg.get("show_subtitle", True))
         self.padding = int(cfg.get("padding", 80))
-        self.title_font_size = int(cfg.get("title_font_size", 96))
+        self.title_font_size = int(cfg.get("title_font_size", 206))
         self.subtitle_font_size = int(cfg.get("subtitle_font_size", 56))
         self.max_lines = int(cfg.get("max_lines", 3))
         self.max_chars_per_line = int(cfg.get("max_chars_per_line", 12))
         self.font_path = cfg.get("font_path")
         self.overlay_configs = list(cfg.get("overlays", []))
         self.right_guard_band_px = int(cfg.get("right_guard_band_px", 0))
+        self.outline_inner_color = str(cfg.get("outline_inner_color", "#EB001B"))
+        self.outline_inner_width = int(cfg.get("outline_inner_width", 20))
+        self.outline_outer_color = str(cfg.get("outline_outer_color", "#000000"))
+        self.outline_outer_width = int(cfg.get("outline_outer_width", 20))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_path = self.get_output_path()
@@ -45,7 +101,8 @@ class ThumbnailGenerator(Step):
         title = self._resolve_title(metadata, script)
         subtitle = self._resolve_subtitle(metadata, script)
 
-        image = Image.new("RGBA", (self.width, self.height), color=self.background_color)
+        bg_rgb = getrgb(self.background_color) + (255,)
+        image = Image.new("RGBA", (self.width, self.height), color=bg_rgb)
         draw = ImageDraw.Draw(image)
         title_font = self._load_font(self.title_font_size)
         subtitle_font = self._load_font(self.subtitle_font_size)
@@ -137,8 +194,25 @@ class ThumbnailGenerator(Step):
         lines = self._wrap_text(text, font, max_width)
         y = top
         for i, line in enumerate(lines):
-            draw.text((self.padding, y), line, fill=color, font=font)
-            bbox = draw.textbbox((self.padding, y), line, font=font)
+            x = self.padding
+            draw.text(
+                (x, y),
+                line,
+                fill=self.outline_outer_color,
+                font=font,
+                stroke_width=self.outline_outer_width,
+                stroke_fill=self.outline_outer_color,
+            )
+            draw.text(
+                (x, y),
+                line,
+                fill=self.outline_inner_color,
+                font=font,
+                stroke_width=self.outline_inner_width,
+                stroke_fill=self.outline_inner_color,
+            )
+            draw.text((x, y), line, fill=color, font=font)
+            bbox = draw.textbbox((x, y), line, font=font)
             y = bbox[3] + (max(4, self.padding // 4) if i < len(lines) - 1 else 0)
         return y
 
