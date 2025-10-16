@@ -50,7 +50,20 @@ steps:
         max_zoom: 1.2
         hold_frame_factor: 1.0
         pan_mode: "center"
-      - type: "tsumugi_overlay"
+      - type: "multi_overlay"
+        overlays:
+          - image_path: "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
+            anchor: "bottom_right"
+            height_ratio: 0.85
+            offset:
+              right: 20
+              bottom: 0
+          - image_path: "assets/zundamon.webp"
+            anchor: "bottom_left"
+            height_ratio: 0.51
+            offset:
+              left: 20
+              bottom: 0
     subtitles:
       font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
       font_name: "Zen Maru Gothic"
