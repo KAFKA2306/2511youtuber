@@ -142,7 +142,10 @@ class ScriptGenerator(Step):
         data = self._coerce_to_dict(raw.strip(), depth)
         if not isinstance(data, dict):
             raise ValueError("Script output must be a mapping")
-        return Script(**data)
+        script = Script(**data)
+        for seg in script.segments:
+            seg.text = re.sub(r'。(?![\r\n]|$)', '。\n', seg.text)
+        return script
 
     def _coerce_to_dict(self, raw: str, depth: int) -> Any:
         if depth < 0:

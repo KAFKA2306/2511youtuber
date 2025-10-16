@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from src.models import NewsItem, ScriptSegment, WorkflowState
+from src.models import NewsItem, ScriptSegment
 
 pytestmark = pytest.mark.unit
 
@@ -16,6 +16,45 @@ class TestScriptSegment:
     def test_accepts_non_japanese_text(self):
         segment = ScriptSegment(speaker="ずんだもん", text="Hello world")
         assert segment.text == "Hello world"
+
+    def test_sentence_break_insertion(self, tmp_path):
+        from src.steps.script import ScriptGenerator
+
+        speakers = {
+            "analyst": {"name": "田中"},
+            "reporter": {"name": "鈴木"},
+            "narrator": {"name": "ナレーター"}
+        }
+        gen = ScriptGenerator("test", tmp_path, speakers_config=speakers)
+        raw = '{"segments": [{"speaker": "田中", "text": "今日は晴れです。明日は雨です。"}]}'
+        script = gen._parse_and_validate(raw)
+        assert script.segments[0].text == "今日は晴れです。\n明日は雨です。"
+
+    def test_sentence_break_preserves_existing(self, tmp_path):
+        from src.steps.script import ScriptGenerator
+
+        speakers = {
+            "analyst": {"name": "田中"},
+            "reporter": {"name": "鈴木"},
+            "narrator": {"name": "ナレーター"}
+        }
+        gen = ScriptGenerator("test", tmp_path, speakers_config=speakers)
+        raw = '{"segments": [{"speaker": "田中", "text": "今日は晴れです。\\n明日は雨です。"}]}'
+        script = gen._parse_and_validate(raw)
+        assert script.segments[0].text == "今日は晴れです。\n明日は雨です。"
+
+    def test_sentence_break_preserves_end_period(self, tmp_path):
+        from src.steps.script import ScriptGenerator
+
+        speakers = {
+            "analyst": {"name": "田中"},
+            "reporter": {"name": "鈴木"},
+            "narrator": {"name": "ナレーター"}
+        }
+        gen = ScriptGenerator("test", tmp_path, speakers_config=speakers)
+        raw = '{"segments": [{"speaker": "田中", "text": "今日は晴れです。"}]}'
+        script = gen._parse_and_validate(raw)
+        assert script.segments[0].text == "今日は晴れです。"
 
 
 class TestNewsItem:
