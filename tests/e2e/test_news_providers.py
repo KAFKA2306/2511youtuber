@@ -21,6 +21,12 @@ class TestNewsProviders:
         news = gemini.execute(query="日本の最新金融ニュース", count=2)
         assert len(news) == 2
         assert all(item.title for item in news)
+        assert all(item.url.startswith("http") for item in news)
+        assert all(item.summary for item in news)
+        for item in news:
+            print(f"\nGot real news: {item.title[:60]}")
+            print(f"  URL: {item.url}")
+            print(f"  Published: {item.published_at}")
 
     def test_perplexity_news_collection(self):
         perplexity = PerplexityNewsProvider()

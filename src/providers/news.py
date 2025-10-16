@@ -34,9 +34,11 @@ class PerplexityNewsProvider:
     def is_available(self) -> bool:
         return bool(self.api_keys)
 
-    def execute(self, query: str = "", count: int = 3, **kwargs) -> List[NewsItem]:
+    def execute(self, query: str = "", count: int = 3) -> List[NewsItem]:
         topic = query or "最新の日本の金融・経済ニュース"
-        prompt = self.prompts["user_template"].format(topic=topic, count=count, recent_topics_note="過去7日間に取り上げたテーマ")
+        prompt = self.prompts["user_template"].format(
+            topic=topic, count=count, recent_topics_note="過去7日間に取り上げたテーマ"
+        )
         api_key = self.api_keys[0]
 
         payload = {
@@ -100,15 +102,22 @@ class GeminiNewsProvider:
     def is_available(self) -> bool:
         return bool(self.api_keys)
 
-    def execute(self, query: str = "", count: int = 3, **kwargs) -> List[NewsItem]:
+    def execute(self, query: str = "", count: int = 3) -> List[NewsItem]:
+        from datetime import timedelta
+
         topic = query or "最新の日本の金融・経済ニュース"
-        prompt = f"{self.prompts['system']}\n\n{self.prompts['user_template'].format(topic=topic, count=count, recent_topics_note='過去7日間に取り上げたテーマ')}"
+        one_week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        user_prompt = self.prompts["user_template"].format(
+            topic=topic, count=count, recent_topics_note="過去7日間に取り上げたテーマ"
+        )
+        prompt = f"{self.prompts['system']}\n\n{user_prompt} after:{one_week_ago}"
         response = litellm.completion(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             api_key=self.api_keys[0],
+            tools=[{"googleSearch": {}}],
         )
         content = response.choices[0].message.content
         parsed = json.loads(content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip())
