@@ -11,50 +11,52 @@ from src.core.io_utils import load_json, load_script
 from src.core.step import Step
 
 
-def _get_thumbnail_preset() -> Dict:
-    PRESET_A = {
+PRESETS = [
+    {
         "background_color": "#fef155",
         "title_color": "#EB001B",
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 30,
         "outline_outer_color": "#000000",
         "outline_outer_width": 0,
-    }
-    PRESET_B = {
+    },
+    {
         "background_color": "#000000",
         "title_color": "#FFD700",
         "outline_inner_color": "#EB001B",
         "outline_inner_width": 30,
         "outline_outer_color": "#000000",
         "outline_outer_width": 0,
-    }
-    PRESET_CALM_BLACK = {
+    },
+    {
         "background_color": "#0B0F19",
         "title_color": "#FFE16A",
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#000000",
         "outline_outer_width": 0,
-    }
-    PRESET_DEEP_CHARCOAL = {
+    },
+    {
         "background_color": "#111827",
         "title_color": "#FDE047",
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#0B0F19",
         "outline_outer_width": 0,
-    }
-    PRESET_DARK_NAVY_GOLD = {
+    },
+    {
         "background_color": "#0A0F1F",
         "title_color": "#FFD700",
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#000000",
         "outline_outer_width": 0,
-    }
-    return random.choice(
-        [PRESET_A, PRESET_B, PRESET_CALM_BLACK, PRESET_DEEP_CHARCOAL, PRESET_DARK_NAVY_GOLD]
-    )
+    },
+]
+
+
+def _select_random_preset() -> Dict:
+    return random.choice(PRESETS)
 
 
 class ThumbnailGenerator(Step):
@@ -64,11 +66,8 @@ class ThumbnailGenerator(Step):
 
     def __init__(self, run_id: str, run_dir: Path, thumbnail_config: Dict | None = None) -> None:
         super().__init__(run_id, run_dir)
-        preset = _get_thumbnail_preset()
-        cfg = thumbnail_config or {}
-        for key in preset:
-            cfg.pop(key, None)
-        cfg = {**cfg, **preset}
+        preset = _select_random_preset()
+        cfg = {**preset, **(thumbnail_config or {})}
         self.enabled = bool(cfg.get("enabled", True))
         self.width = int(cfg.get("width", 1280))
         self.height = int(cfg.get("height", 720))
