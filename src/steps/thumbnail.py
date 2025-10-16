@@ -18,7 +18,7 @@ def _get_thumbnail_preset() -> Dict:
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 30,
         "outline_outer_color": "#000000",
-        "outline_outer_width": 30,
+        "outline_outer_width": 0,
     }
     PRESET_B = {
         "background_color": "#000000",
@@ -26,7 +26,7 @@ def _get_thumbnail_preset() -> Dict:
         "outline_inner_color": "#EB001B",
         "outline_inner_width": 30,
         "outline_outer_color": "#000000",
-        "outline_outer_width": 30,
+        "outline_outer_width": 0,
     }
     PRESET_CALM_BLACK = {
         "background_color": "#0B0F19",
@@ -34,7 +34,7 @@ def _get_thumbnail_preset() -> Dict:
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#000000",
-        "outline_outer_width": 30,
+        "outline_outer_width": 0,
     }
     PRESET_DEEP_CHARCOAL = {
         "background_color": "#111827",
@@ -42,7 +42,7 @@ def _get_thumbnail_preset() -> Dict:
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#0B0F19",
-        "outline_outer_width": 30,
+        "outline_outer_width": 0,
     }
     PRESET_DARK_NAVY_GOLD = {
         "background_color": "#0A0F1F",
@@ -50,7 +50,7 @@ def _get_thumbnail_preset() -> Dict:
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#000000",
-        "outline_outer_width": 30,
+        "outline_outer_width": 0,
     }
     return random.choice(
         [PRESET_A, PRESET_B, PRESET_CALM_BLACK, PRESET_DEEP_CHARCOAL, PRESET_DARK_NAVY_GOLD]
