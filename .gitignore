@@ -47,3 +47,4 @@ htmlcov/
 *.swp
 *.swo
 *~
+nohup.out
