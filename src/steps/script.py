@@ -81,7 +81,7 @@ class ScriptGenerator(Step):
             side_theme=side_theme[0],
             side_theme_summary=side_theme[1],
             recent_topics_note=self.carryover_notes.recent_topics_note or "直近テーマ情報なし",
-            next_theme_note=self.carryover_notes.next_theme_note or "視聴者に次回リクエストをさらっと促す",
+            next_theme_note="今日のテーマから派生する新しい視点や発見の余地",
         )
 
     def _load_previous_context(self, run_dir: Path) -> ScriptContextNotes:
