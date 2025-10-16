@@ -1,79 +1,23 @@
 # Gemini Code Assistant Context
 
-## Project Overview
+## Project snapshot
+`youtube-ai-v2` generates narrated Japanese finance videos by composing modular workflow steps. The CLI entry point in `src/main.py` defers to `apps.youtube.run`, which assembles step instances, hands them to the `WorkflowOrchestrator`, and writes artefacts beneath `runs/<run_id>/`. Each step inherits from `src.core.step.Step`, declaring the artifact filename that downstream steps consume.【F:src/main.py†L1-L25】【F:apps/youtube/cli.py†L24-L111】【F:src/core/step.py†L1-L33】
 
-This project, `youtube-ai-v2`, is a Python application designed to automatically generate high-quality Japanese-language YouTube videos from financial news articles. It is a complete rewrite of a previous project, focusing on simplicity, resilience, and modularity.
+The default pipeline covers news collection, Gemini-powered script generation, Voicevox audio synthesis, subtitle formatting, and FFmpeg rendering. Optional steps add metadata, thumbnails, YouTube uploads, Twitter clips, podcast exports, and Buzzsprout publishing when enabled in configuration.【F:apps/youtube/cli.py†L64-L111】【F:src/steps/video.py†L1-L63】【F:config/default.yaml†L61-L159】
 
-The core workflow consists of 5 distinct, checkpointed steps:
-1.  **NewsCollector**: Fetches financial news articles.
-2.  **ScriptGenerator**: Uses the Gemini LLM to generate a video script from the news.
-3.  **AudioSynthesizer**: Converts the script to audio using a TTS engine (VOICEVOX).
-4.  **SubtitleFormatter**: Creates SRT subtitle files from the script.
-5.  **VideoRenderer**: Renders the final video using FFmpeg, combining a background, subtitles, and Ken Burns effects.
+## Key files
+- `config/default.yaml` — workflow toggles, provider endpoints, subtitle/video settings.【F:config/default.yaml†L1-L168】
+- `config/prompts.yaml` — prompt templates used by news, script, and metadata providers.【F:src/providers/news.py†L1-L49】
+- `src/utils/config.py` — typed configuration models and loader utilities.【F:src/utils/config.py†L1-L204】
+- `docs/system_overview.md` — architecture and dependency reference.【F:docs/system_overview.md†L1-L46】
+- `docs/operations.md` — setup, execution, testing, and maintenance commands.【F:docs/operations.md†L1-L41】
 
-The system is highly configurable through YAML files and is designed with clear separation of concerns, using a provider pattern for external services like LLMs and TTS.
-
-## Building and Running
-
-The project uses `uv` for dependency and environment management.
-
-### Setup
-
-1.  **Install dependencies:**
-    ```bash
-    uv sync
-    ```
-2.  **Configure environment:**
-    *   Copy the example `.env` file:
-        ```bash
-        cp config/.env.example config/.env
-        ```
-    *   Edit `config/.env` and add your `GEMINI_API_KEY`.
-
-### Running the Main Workflow
-
-To run the entire video generation workflow:
+## Running and testing
 ```bash
-uv run python -m src.main
+uv sync                               # install dependencies
+cp config/.env.example config/.env    # provide Gemini/Perplexity/etc. keys
+uv run python -m src.main             # execute the YouTube workflow
+uv run pytest -m unit                 # run fast tests
+uv run pytest -m "unit or integration"
 ```
-or
-```bash
-python src/main.py
-```
-Output files for each run are stored in a timestamped directory within `runs/`.
-
-### Running Tests
-
-The project has a comprehensive test suite divided into unit, integration, and end-to-end tests.
-
-*   **Run all tests:**
-    ```bash
-    pytest -v
-    ```
-*   **Run only unit tests (fastest):**
-    ```bash
-    pytest tests/unit -v
-    ```
-*   **Run unit and integration tests:**
-    ```bash
-    pytest tests/unit tests/integration -v
-    ```
-*   **Run end-to-end tests (requires a valid `GEMINI_API_KEY`):**
-    ```bash
-    pytest tests/e2e -v
-    ```
-
-## Development Conventions
-
-*   **Dependency Management**: `uv` is used for managing dependencies, as defined in `pyproject.toml`.
-*   **Linting & Formatting**: `ruff` is used for linting. Check for issues with:
-    ```bash
-    ruff check .
-    ```
-*   **Testing**: `pytest` is the testing framework. New features should be accompanied by tests. Test files are located in the `tests/` directory and are categorized into `unit`, `integration`, and `e2e`.
-*   **Configuration**: All configuration is managed through YAML files in the `config/` directory. Secrets are managed via a `.env` file. No hardcoding of settings.
-*   **Modularity**: The project follows a modular design. External services are abstracted into "providers" (`src/providers/`) and the main workflow is broken down into "steps" (`src/steps/`). This allows for easier testing and modification.
-*   **Automation**: A cron job is set up to run the video generation process automatically at 7:00, 12:00, and 17:00 daily.
-    ```bash
-    0 7,12,17 * * * cd /home/kafka/projects/2510youtuber/youtube-ai-v2 && /home/kafka/.local/bin/uv run python -m src.main >> /home/kafka/projects/2510youtuber/youtube-ai-v2/logs/cron.log 2>&1
-    ```
+End-to-end tests (`pytest -m e2e`) require valid Gemini credentials and any optional provider keys configured in the environment.【F:config/.env.example†L1-L21】【F:pytest.ini†L1-L11】
