@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import List
 
+import litellm
 import requests
 
 from src.models import NewsItem
@@ -13,6 +14,7 @@ from src.utils.secrets import load_secret_values
 
 class PerplexityNewsProvider:
     name = "perplexity"
+    priority = 10
     api_url = "https://api.perplexity.ai/chat/completions"
 
     def __init__(
@@ -34,7 +36,7 @@ class PerplexityNewsProvider:
 
     def execute(self, query: str = "", count: int = 3, **kwargs) -> List[NewsItem]:
         topic = query or "最新の日本の金融・経済ニュース"
-        prompt = self.prompts["user_template"].format(topic=topic, count=count)
+        prompt = self.prompts["user_template"].format(topic=topic, count=count, recent_topics_note="過去7日間に取り上げたテーマ")
         api_key = self.api_keys[0]
 
         payload = {
@@ -82,3 +84,43 @@ class PerplexityNewsProvider:
         if not value:
             return datetime.now(timezone.utc)
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+class GeminiNewsProvider:
+    name = "gemini"
+    priority = 5
+
+    def __init__(self, model: str = "gemini/gemini-2.0-flash-exp", temperature: float = 0.2, max_tokens: int = 2048):
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.api_keys = load_secret_values("GEMINI_API_KEY")
+        self.prompts = load_prompts()["news_collection"]
+
+    def is_available(self) -> bool:
+        return bool(self.api_keys)
+
+    def execute(self, query: str = "", count: int = 3, **kwargs) -> List[NewsItem]:
+        topic = query or "最新の日本の金融・経済ニュース"
+        prompt = f"{self.prompts['system']}\n\n{self.prompts['user_template'].format(topic=topic, count=count, recent_topics_note='過去7日間に取り上げたテーマ')}"
+        response = litellm.completion(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            api_key=self.api_keys[0],
+        )
+        content = response.choices[0].message.content
+        parsed = json.loads(content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip())
+        items = [
+            NewsItem(
+                title=e.get("title", "").strip(),
+                summary=e.get("summary", "").strip(),
+                url=e.get("url", "").strip(),
+                published_at=datetime.fromisoformat(e.get("published_at", "").strip().replace("Z", "+00:00"))
+                if e.get("published_at", "").strip()
+                else datetime.now(timezone.utc),
+            )
+            for e in parsed
+        ]
+        return items[:count]

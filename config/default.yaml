@@ -166,7 +166,7 @@ providers:
   news:
     perplexity:
       enabled: true
-      model: "sonar-pro" #"sonar"
+      model: "sonar" #"sonar-pro"
       temperature: 0.2
       max_tokens: 2048
       search_recency_filter: "week"

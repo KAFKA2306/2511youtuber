@@ -68,11 +68,6 @@ class TwitterClient:
             access_token_secret=access_secret,
         )
 
-        me_v1 = self.api.verify_credentials()
-        logger.info("Twitter API v1.1 authenticated as @%s", getattr(me_v1, "screen_name", "unknown"))
-        me_v2 = self.client.get_me()
-        logger.info("Twitter API v2 authenticated as @%s", getattr(me_v2.data, "username", "unknown"))
-
     @classmethod
     def from_config(cls, config: Dict, *, dry_run: bool) -> "TwitterClient":
         return cls(

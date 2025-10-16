@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Dict, List
 
 from src.core.step import Step
-from src.providers.base import execute_with_fallback
-from src.providers.news import PerplexityNewsProvider
+from src.providers.base import Provider, execute_with_fallback
+from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
 from src.utils.config import NewsProvidersConfig
 
 
@@ -33,8 +33,8 @@ class NewsCollector(Step):
             json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
         return output_path
 
-    def _build_providers(self) -> List[PerplexityNewsProvider]:
-        providers: List[PerplexityNewsProvider] = []
+    def _build_providers(self) -> List[Provider]:
+        providers: List[Provider] = []
         config = self.providers_config
         if config and config.perplexity and config.perplexity.enabled:
             providers.append(
@@ -45,4 +45,7 @@ class NewsCollector(Step):
                     search_recency_filter=config.perplexity.search_recency_filter,
                 )
             )
-        return providers or [PerplexityNewsProvider()]
+        else:
+            providers.append(PerplexityNewsProvider())
+        providers.append(GeminiNewsProvider())
+        return providers
