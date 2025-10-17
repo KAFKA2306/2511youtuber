@@ -1,5 +1,8 @@
 # Repository Guidelines
 
+要因を調査して根本対策。エラーハンドリング禁止。抜本的な課題を解決。コメント禁止。最小のコードにしつつ、目標を達成する
+常に最小のコードベース、効率的なディレクトリ構成に改善する。
+
 ## Project Structure & Module Organization
 - Source code for the v2 workflow lives in `src/`, with `main.py` as the CLI entrypoint, `workflow.py` orchestrating steps, and individual step/provider logic under `src/steps/` and `src/providers/`.
 - Shared contracts and data models are defined in `src/models.py`; utilities (configuration, logging, secrets) sit in `src/utils/`.
