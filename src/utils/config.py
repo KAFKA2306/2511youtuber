@@ -125,6 +125,9 @@ class VideoSubtitleStyleConfig(BaseModel):
     bold: int | None = None
     italic: int | None = None
     alignment: int | None = None
+    margin_l: int | None = None
+    margin_r: int | None = None
+    margin_v: int | None = None
     model_config = ConfigDict(extra="allow")
 
 

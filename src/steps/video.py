@@ -59,6 +59,8 @@ class VideoRenderer(Step):
         return output_path
 
     def _build_subtitle_style(self, config: Dict) -> str:
+        if hasattr(config, "model_dump"):
+            config = config.model_dump()
         font_name = str(config.get("font_name") or "").strip()
         if not font_name and (font_path := config.get("font_path")):
             font_name = Path(str(font_path)).stem.replace("_", " ")
@@ -75,6 +77,9 @@ class VideoRenderer(Step):
         for key in ("Shadow", "Bold", "Italic", "Alignment"):
             if (val := config.get(key.lower())) is not None:
                 parts.append(f"{key}={val}")
+        for key, ass_key in (("margin_l", "MarginL"), ("margin_r", "MarginR"), ("margin_v", "MarginV")):
+            if (val := config.get(key)) is not None:
+                parts.append(f"{ass_key}={int(val)}")
         return ",".join(parts)
 
     def _resolve_fonts_dir(self, config: Dict) -> str | None:

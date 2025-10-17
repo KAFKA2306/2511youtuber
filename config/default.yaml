@@ -73,6 +73,9 @@ steps:
       primary_colour: "&HFFFFFF&"
       outline_colour: "&H000000&"
       outline: 2
+      margin_l: 360
+      margin_r: 480
+      margin_v: 120
 
   thumbnail:
     enabled: true
