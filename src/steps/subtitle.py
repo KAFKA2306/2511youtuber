@@ -81,29 +81,18 @@ class SubtitleFormatter(Step):
     def _wrap_visual_line(self, line: str, limit: int) -> List[str]:
         if not line:
             return [""]
-        parts = re.split(r'(。)', line)
+        sentences = re.split(r'(?<=。)', line)
         segments, current, width = [], [], 0
-        for part in parts:
-            if not part:
+        for sentence in sentences:
+            if not sentence:
                 continue
-            part_w = sum(2 if unicodedata.east_asian_width(c) in ("F", "W") else 1 for c in part)
-            if current and width + part_w > limit:
-                if width > 0:
-                    segments.append("".join(current))
-                if part_w > limit:
-                    for char in part:
-                        char_w = 2 if unicodedata.east_asian_width(char) in ("F", "W") else 1
-                        if current and width + char_w > limit:
-                            segments.append("".join(current))
-                            current, width = [char], char_w
-                        else:
-                            current.append(char)
-                            width += char_w
-                else:
-                    current, width = [part], part_w
+            sentence_w = sum(2 if unicodedata.east_asian_width(c) in ("F", "W") else 1 for c in sentence)
+            if current and width + sentence_w > limit:
+                segments.append("".join(current))
+                current, width = [sentence], sentence_w
             else:
-                current.append(part)
-                width += part_w
+                current.append(sentence)
+                width += sentence_w
         if current:
             segments.append("".join(current))
         return segments or [""]

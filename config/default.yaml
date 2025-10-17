@@ -84,7 +84,7 @@ steps:
     show_subtitle: false
     accent_color: "#EF476F"
     padding: 80
-    max_lines: 3
+    max_lines: 4
     max_chars_per_line: 12
     title_font_size: 96
     subtitle_font_size: 56
