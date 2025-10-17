@@ -65,6 +65,23 @@ class VideoOverlayConfig(BaseModel):
     offset: VideoOverlayOffsetConfig | None = None
 
 
+class MultiOverlayItemConfig(BaseModel):
+    enabled: bool = True
+    image_path: str
+    anchor: str = "bottom_right"
+    height_ratio: float | None = None
+    width_ratio: float | None = None
+    height: int | None = None
+    width: int | None = None
+    offset: VideoOverlayOffsetConfig | None = None
+
+
+class MultiOverlayEffectConfig(BaseModel):
+    type: Literal["multi_overlay"] = "multi_overlay"
+    enabled: bool = True
+    overlays: list[VideoOverlayConfig | MultiOverlayItemConfig] = Field(default_factory=list)
+
+
 class TsumugiOverlayConfig(BaseModel):
     type: Literal["tsumugi_overlay"] = "tsumugi_overlay"
     enabled: bool = True
@@ -87,7 +104,12 @@ class KenBurnsEffectConfig(BaseModel):
 
 
 VideoEffectConfig = Annotated[
-    Union[KenBurnsEffectConfig, VideoOverlayConfig, TsumugiOverlayConfig],
+    Union[
+        KenBurnsEffectConfig,
+        VideoOverlayConfig,
+        TsumugiOverlayConfig,
+        MultiOverlayEffectConfig,
+    ],
     Field(discriminator="type"),
 ]
 

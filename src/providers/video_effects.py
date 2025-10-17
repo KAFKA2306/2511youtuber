@@ -178,7 +178,14 @@ class MultiOverlayEffect(VideoEffect):
     name = "multi_overlay"
 
     def __init__(self, overlays: List[Dict]):
-        self.overlays = [OverlayEffect(**o) for o in overlays]
+        items: List[OverlayEffect] = []
+        for overlay in overlays:
+            data = overlay.model_dump() if hasattr(overlay, "model_dump") else dict(overlay)
+            if not data.get("enabled", True):
+                continue
+            params = {k: v for k, v in data.items() if k not in {"type", "enabled"}}
+            items.append(OverlayEffect(**params))
+        self.overlays = items
 
     def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:
         for overlay in self.overlays:
