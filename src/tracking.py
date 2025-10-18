@@ -8,6 +8,12 @@ from typing import Any, Dict, List
 from aim import Run
 
 
+def _repo_path() -> Path:
+    base = Path(__file__).resolve().parents[1] / ".aim"
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
 def load_lines(path: Path) -> List[str]:
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".json":
@@ -52,10 +58,9 @@ class AimTracker:
 
     def __init__(self, run_id: str | None = None):
         self.run_id = run_id or ""
-        kwargs: Dict[str, Any] = {"experiment": "youtube-ai-v2"}
+        self._run = Run(repo=_repo_path(), experiment="youtube-ai-v2")
         if self.run_id:
-            kwargs["run_hash"] = self.run_id
-        self._run = Run(**kwargs)
+            self._run["run_id"] = self.run_id
 
     def track_prompt(
         self,
@@ -106,7 +111,8 @@ class AimTracker:
             if not prev_lines and not curr_lines:
                 continue
             diff = diff_stats(prev_lines, curr_lines)
-            self._run.track(diff, name=f"{label}_diff")
+            for metric, value in diff.items():
+                self._run.track(value, name=f"{label}_diff_{metric}")
             self._run[f"{label}_diff"] = diff
 
     def track_metrics(self, metrics: Dict[str, float]) -> None:

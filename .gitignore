@@ -48,3 +48,7 @@ htmlcov/
 *.swo
 *~
 nohup.out
+.aim/
+*sqlite
+aim/
+*sql*
