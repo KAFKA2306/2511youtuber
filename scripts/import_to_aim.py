@@ -1,54 +1,45 @@
+from __future__ import annotations
+
+import json
 from pathlib import Path
 
 from aim import Run
 
-from src.core.io_utils import load_json
+from src.tracking import diff_stats, load_lines
 
 
-def import_historical_runs(runs_dir: Path = Path("runs")):
+def main() -> None:
+    root = Path(__file__).resolve().parents[1]
+    runs_dir = root / "runs"
     if not runs_dir.exists():
         return
-
-    for run_path in sorted(runs_dir.iterdir()):
-        if not run_path.is_dir():
-            continue
-
-        run_id = run_path.name
-        state_file = run_path / "state.json"
-        if not state_file.exists():
-            continue
-
-        state = load_json(state_file)
-        if not state or state.get("status") != "completed":
-            continue
-
+    previous: dict[str, list[str]] = {}
+    for run_dir in sorted(p for p in runs_dir.iterdir() if p.is_dir()):
+        run_id = run_dir.name
         run = Run(run_hash=run_id, experiment="youtube-ai-v2")
-
-        if "started_at" in state:
-            run["started_at"] = state["started_at"]
-        if "completed_at" in state:
-            run["completed_at"] = state["completed_at"]
-
-        news_data = load_json(run_path / "news.json")
-        if news_data:
-            run["news_count"] = len(news_data)
-            run["news_titles"] = [item.get("title", "") for item in news_data[:3]]
-
-        script_data = load_json(run_path / "script.json")
-        if script_data:
-            segments = script_data.get("segments", [])
-            run["script_segments"] = len(segments)
-            run["script_sample"] = "\n".join(
-                f"{seg.get('speaker', '')}: {seg.get('text', '')[:50]}" for seg in segments[:3]
-            )
-
-        metadata_data = load_json(run_path / "metadata.json")
-        if metadata_data:
-            run["title"] = metadata_data.get("title", "")
-            run["tags"] = metadata_data.get("tags", [])
-
+        state_path = run_dir / "state.json"
+        if state_path.exists():
+            run["state"] = json.loads(state_path.read_text(encoding="utf-8"))
+        for step, filename in (
+            ("collect_news", "news.json"),
+            ("generate_script", "script.json"),
+            ("generate_metadata", "metadata.json"),
+        ):
+            path = run_dir / filename
+            if not path.exists():
+                continue
+            content = path.read_text(encoding="utf-8")
+            run[f"{step}_output"] = content[:10000]
+            if step in {"generate_script", "generate_metadata"}:
+                current_lines = load_lines(path)
+                previous_lines = previous.get(step)
+                if previous_lines:
+                    diff = diff_stats(previous_lines, current_lines)
+                    run.track(diff, name=f"{step}_diff")
+                    run[f"{step}_diff"] = diff
+                previous[step] = current_lines
         run.close()
 
 
 if __name__ == "__main__":
-    import_historical_runs()
+    main()

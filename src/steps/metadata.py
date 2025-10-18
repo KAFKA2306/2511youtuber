@@ -88,8 +88,9 @@ class MetadataAnalyzer(Step):
         tracker.track_prompt(
             step_name="generate_metadata",
             template_name="metadata_generation",
+            prompt=prompt,
             inputs={"news_count": len(news_items), "script_segments": len(script.segments)},
-            output=raw_output[:1000],
+            output=raw_output,
             model=self.llm_provider.model,
             duration=duration,
         )

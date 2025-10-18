@@ -73,8 +73,9 @@ class ScriptGenerator(Step):
         tracker.track_prompt(
             step_name="generate_script",
             template_name="script_generation",
+            prompt=prompt,
             inputs={"news_count": len(news_items), "recent_topics": self.carryover_notes.recent_topics_note[:200]},
-            output=raw_output[:2000],
+            output=raw_output,
             model=self.provider.model,
             duration=duration,
         )

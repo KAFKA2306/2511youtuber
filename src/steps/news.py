@@ -28,6 +28,7 @@ class NewsCollector(Step):
         self.providers_config = providers_config
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
+        prompt = json.dumps({"query": self.query, "count": self.count}, ensure_ascii=False)
         tracker = AimTracker.get_instance(self.run_id)
         start = time.time()
         news_items = execute_with_fallback(self._build_providers(), query=self.query, count=self.count)
@@ -36,8 +37,9 @@ class NewsCollector(Step):
         tracker.track_prompt(
             step_name="collect_news",
             template_name="news_collection",
+            prompt=prompt,
             inputs={"query": self.query, "count": self.count},
-            output=json.dumps([{"title": item.title} for item in news_items], ensure_ascii=False)[:1000],
+            output=json.dumps([{"title": item.title} for item in news_items], ensure_ascii=False),
             model="perplexity/gemini",
             duration=duration,
         )

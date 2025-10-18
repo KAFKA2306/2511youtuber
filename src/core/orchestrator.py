@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List
@@ -34,7 +35,7 @@ class WorkflowOrchestrator:
 
         prev_outputs = self._load_previous_outputs()
         if prev_outputs:
-            tracker.track_diff(self.run_id, prev_outputs, self.state.outputs)
+            tracker.track_diff(prev_outputs, self.state.outputs)
 
         tracker.track_metrics({"workflow_duration": duration, "steps_count": len(self.state.completed_steps)})
         tracker.finalize()
@@ -55,8 +56,13 @@ class WorkflowOrchestrator:
         )
         for candidate in candidates:
             state_path = candidate / "state.json"
-            if state_path.exists():
-                prev_state = WorkflowState.load_or_create("", candidate.parent)
-                if prev_state.status == "completed":
-                    return {k: Path(v) for k, v in prev_state.outputs.items()}
+            if not state_path.exists():
+                continue
+            data = json.loads(state_path.read_text(encoding="utf-8"))
+            if data.get("status") != "completed":
+                continue
+            outputs = data.get("outputs")
+            if not isinstance(outputs, dict):
+                continue
+            return {k: Path(v) for k, v in outputs.items() if v}
         return {}
