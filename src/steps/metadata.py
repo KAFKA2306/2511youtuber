@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -10,6 +11,7 @@ import yaml
 from src.core.io_utils import load_json, load_script, write_text
 from src.core.step import Step
 from src.providers.llm import GeminiProvider, load_prompt_template
+from src.tracking import AimTracker
 from src.utils.logger import get_logger
 
 
@@ -77,7 +79,22 @@ class MetadataAnalyzer(Step):
         news_summary = self._format_news(news_items)
         script_excerpt = "\n".join(f"{seg.speaker}: {seg.text}" for seg in script.segments[:5])
         prompt = template.format(news_items=news_summary, script_excerpt=script_excerpt)
-        return self._parse_response(self.llm_provider.execute(prompt))
+
+        tracker = AimTracker.get_instance(self.run_id)
+        start = time.time()
+        raw_output = self.llm_provider.execute(prompt)
+        duration = time.time() - start
+
+        tracker.track_prompt(
+            step_name="generate_metadata",
+            template_name="metadata_generation",
+            inputs={"news_count": len(news_items), "script_segments": len(script.segments)},
+            output=raw_output[:1000],
+            model=self.llm_provider.model,
+            duration=duration,
+        )
+
+        return self._parse_response(raw_output)
 
     def _format_news(self, news_items: List[Dict]) -> str:
         if not news_items:

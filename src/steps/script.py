@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping
@@ -10,6 +11,7 @@ from src.core.io_utils import load_json, write_text
 from src.core.step import Step
 from src.models import NewsItem, Script
 from src.providers.llm import GeminiProvider, load_prompt_template
+from src.tracking import AimTracker
 
 
 @dataclass
@@ -60,7 +62,23 @@ class ScriptGenerator(Step):
         news_items = [NewsItem(**item) for item in load_json(news_path)]
         if not self.provider.is_available():
             raise ValueError("Gemini provider is not available")
-        raw_output = self.provider.execute(prompt=self._build_prompt(news_items))
+
+        prompt = self._build_prompt(news_items)
+        tracker = AimTracker.get_instance(self.run_id)
+
+        start = time.time()
+        raw_output = self.provider.execute(prompt=prompt)
+        duration = time.time() - start
+
+        tracker.track_prompt(
+            step_name="generate_script",
+            template_name="script_generation",
+            inputs={"news_count": len(news_items), "recent_topics": self.carryover_notes.recent_topics_note[:200]},
+            output=raw_output[:2000],
+            model=self.provider.model,
+            duration=duration,
+        )
+
         script = self._parse_and_validate(raw_output)
         generated_notes = self._context_from_segments(script.segments)
         script = script.model_copy(update=generated_notes.to_mapping())

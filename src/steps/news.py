@@ -1,10 +1,12 @@
 import json
+import time
 from pathlib import Path
 from typing import Dict, List
 
 from src.core.step import Step
 from src.providers.base import Provider, execute_with_fallback
 from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
+from src.tracking import AimTracker
 from src.utils.config import NewsProvidersConfig
 
 
@@ -26,7 +28,20 @@ class NewsCollector(Step):
         self.providers_config = providers_config
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
+        tracker = AimTracker.get_instance(self.run_id)
+        start = time.time()
         news_items = execute_with_fallback(self._build_providers(), query=self.query, count=self.count)
+        duration = time.time() - start
+
+        tracker.track_prompt(
+            step_name="collect_news",
+            template_name="news_collection",
+            inputs={"query": self.query, "count": self.count},
+            output=json.dumps([{"title": item.title} for item in news_items], ensure_ascii=False)[:1000],
+            model="perplexity/gemini",
+            duration=duration,
+        )
+
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
