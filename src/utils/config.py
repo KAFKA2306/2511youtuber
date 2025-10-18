@@ -173,7 +173,6 @@ class ThumbnailStepConfig(BaseModel):
     background_color: str
     title_color: str
     subtitle_color: str
-    accent_color: str
     padding: int = 80
     max_lines: int = 3
     max_chars_per_line: int = 12

@@ -55,8 +55,15 @@ PRESETS = [
 ]
 
 
-def _select_random_preset() -> Dict:
-    return random.choice(PRESETS)
+def _palette_candidates(config: Dict | None) -> List[Dict]:
+    if not config:
+        return PRESETS
+    raw = config.get("palettes") or config.get("presets")
+    if isinstance(raw, list):
+        candidates = [item for item in raw if isinstance(item, dict)]
+        if candidates:
+            return candidates
+    return PRESETS
 
 
 class ThumbnailGenerator(Step):
@@ -66,8 +73,10 @@ class ThumbnailGenerator(Step):
 
     def __init__(self, run_id: str, run_dir: Path, thumbnail_config: Dict | None = None) -> None:
         super().__init__(run_id, run_dir)
-        preset = _select_random_preset()
-        cfg = {**preset, **(thumbnail_config or {})}
+        cfg = dict(thumbnail_config or {})
+        if cfg.get("randomize_palette", True):
+            palette = random.choice(_palette_candidates(cfg))
+            cfg.update(palette)
         self.enabled = bool(cfg.get("enabled", True))
         self.width = int(cfg.get("width", 1280))
         self.height = int(cfg.get("height", 720))
