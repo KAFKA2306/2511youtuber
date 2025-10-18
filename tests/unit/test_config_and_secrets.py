@@ -60,7 +60,6 @@ def test_config_load_round_trip(tmp_path: Path) -> None:
                 "background_color": "#ffffff",
                 "title_color": "#111111",
                 "subtitle_color": "#333333",
-                "accent_color": "#ff9900",
                 "overlays": [
                     {
                         "name": "badge",
