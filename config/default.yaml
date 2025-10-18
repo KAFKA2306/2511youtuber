@@ -123,15 +123,12 @@ steps:
       - "金融"
       - "経済"
       - "投資"
-      - "株価"
-      - "円安"
-      - "円高"
+      - "株"
     max_title_length: 50
     max_description_length: 5000
     default_tags:
-      - "金融ニュース"
-      - "日本経済"
-      - "経済解説"
+      - "金融"
+      - "経済"
       - "投資"
 
   youtube:
@@ -191,7 +188,6 @@ providers:
       temperature: 0.2
       max_tokens: 2048
       search_recency_filter: "week"
-
 
 logging:
   level: "INFO"
