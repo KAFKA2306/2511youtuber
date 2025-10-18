@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR reuter OR yahoo finance OR https://kafkafinancialgroup.hatenablog.com/ OR CNBC OR 経済政策 OR 金融政策"
+    query: "bloomberg OR reuter OR finance OR https://kafkafinancialgroup.hatenablog.com/"
 
   script:
     min_duration: 300
