@@ -175,12 +175,19 @@ class ScriptGenerator(Step):
             for loader in (yaml.safe_load, json.loads):
                 try:
                     parsed = loader(candidate)
-                    return self._coerce_to_dict(parsed, depth - 1) if isinstance(parsed, str) else parsed
+                    if isinstance(parsed, str):
+                        return self._coerce_to_dict(parsed, depth - 1)
+                    if isinstance(parsed, dict) and "segments" not in parsed:
+                        if mapped := self._dialog_segments_from_mapping(parsed):
+                            return {"segments": mapped}
+                    return parsed
                 except Exception:
                     continue
         stripped = raw.strip()
         if stripped.startswith('"') and stripped.endswith('"'):
             return self._coerce_to_dict(stripped[1:-1], depth - 1)
+        if fallback := self._dialog_segments_from_text(stripped):
+            return {"segments": fallback}
         raise ValueError("Unable to parse script output")
 
     def _candidates(self, raw: str) -> List[str]:
@@ -240,6 +247,60 @@ class ScriptGenerator(Step):
         if match := re.search(r"(?:^|\r?\n)(segments:.*)", text, re.DOTALL):
             return match.group(1)
         return None
+
+    def _dialog_segments_from_text(self, text: str) -> List[Dict[str, str]] | None:
+        token = re.compile(r"^(?P<speaker>[^：:]+)[：:](?P<line>.+)$")
+        base = self._speaker_aliases()
+        segments: List[Dict[str, str]] = []
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            match = token.match(line)
+            if not match:
+                if segments:
+                    segments[-1]["text"] += "\n" + line
+                continue
+            speaker_key = match.group("speaker").strip().replace(" ", "")
+            speaker = base.get(speaker_key)
+            if not speaker:
+                continue
+            payload = match.group("line").strip()
+            if not payload:
+                continue
+            segments.append({"speaker": speaker, "text": payload})
+        return segments or None
+
+    def _dialog_segments_from_mapping(self, data: Dict) -> List[Dict[str, str]] | None:
+        base = self._speaker_aliases()
+        segments: List[Dict[str, str]] = []
+        for key, value in data.items():
+            speaker_key = str(key).strip().replace(" ", "")
+            speaker = base.get(speaker_key)
+            if not speaker:
+                continue
+            text_value = str(value).strip()
+            if not text_value:
+                continue
+            segments.append({"speaker": speaker, "text": text_value})
+        return segments or None
+
+    def _speaker_aliases(self) -> Dict[str, str]:
+        aliases: Dict[str, str] = {}
+        for value in self.speakers.values():
+            primary = str(value).strip()
+            cleaned = primary.replace(" ", "")
+            aliases[primary] = primary
+            aliases[cleaned] = primary
+            if cleaned.endswith("さん"):
+                aliases[cleaned[:-1]] = primary
+            if cleaned.endswith("ちゃん"):
+                aliases[cleaned[:-2]] = primary
+        narrator = self.speakers.get("narrator")
+        if narrator:
+            aliases.setdefault("ナレーション", narrator)
+            aliases.setdefault("ナレーター", narrator)
+        return aliases
 
     def _pick_side_theme(self, news_items: List[NewsItem]) -> tuple[str, str]:
         for item in news_items:

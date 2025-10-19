@@ -19,7 +19,13 @@ from src.steps.script import ScriptGenerator
 
 
 def _parser() -> ScriptGenerator:
-    return ScriptGenerator.__new__(ScriptGenerator)
+    parser = ScriptGenerator.__new__(ScriptGenerator)
+    parser.speakers = {
+        "analyst": "春日部つむぎ",
+        "reporter": "ずんだもん",
+        "narrator": "玄野武宏",
+    }
+    return parser
 
 
 def test_parse_handles_colon_in_text() -> None:
@@ -47,3 +53,17 @@ segments：
     assert result.segments[0].speaker == "春日部つむぎ"
     assert ":" in result.segments[0].text
     assert "金利" in result.segments[0].text
+
+
+def test_parse_recovers_from_plain_dialogue() -> None:
+    raw = """
+春日部つむぎ: 今夜の銅市況は荒れてるよ
+ずんだもん: どう影響が出るのだ？
+玄野武宏: 市場の揺らぎを整理します
+"""
+    result = _parser()._parse_and_validate(raw)
+    assert [seg.speaker for seg in result.segments] == [
+        "春日部つむぎ",
+        "ずんだもん",
+        "玄野武宏",
+    ]
