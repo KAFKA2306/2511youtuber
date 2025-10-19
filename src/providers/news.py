@@ -8,6 +8,7 @@ import litellm
 import requests
 
 from src.models import NewsItem
+from src.providers.base import has_credentials
 from src.utils.config import load_prompts
 from src.utils.secrets import load_secret_values
 
@@ -30,9 +31,7 @@ class PerplexityNewsProvider:
         self.search_recency_filter = search_recency_filter
         self.api_keys = load_secret_values("PERPLEXITY_API_KEY")
         self.prompts = load_prompts()["news_collection"]
-
-    def is_available(self) -> bool:
-        return bool(self.api_keys)
+    is_available = has_credentials
 
     def execute(self, query: str = "", count: int = 3) -> List[NewsItem]:
         topic = query or "最新の日本の金融・経済ニュース"
@@ -98,9 +97,7 @@ class GeminiNewsProvider:
         self.max_tokens = max_tokens
         self.api_keys = load_secret_values("GEMINI_API_KEY")
         self.prompts = load_prompts()["news_collection"]
-
-    def is_available(self) -> bool:
-        return bool(self.api_keys)
+    is_available = has_credentials
 
     def execute(self, query: str = "", count: int = 3) -> List[NewsItem]:
         from datetime import timedelta

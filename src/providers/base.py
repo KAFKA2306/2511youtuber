@@ -1,6 +1,10 @@
 from typing import Any, Iterable, Protocol, Sequence
 
 
+def has_credentials(provider: object) -> bool:
+    return bool(getattr(provider, "api_keys", ()))
+
+
 class Provider(Protocol):
     name: str
 

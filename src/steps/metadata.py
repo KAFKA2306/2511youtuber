@@ -13,6 +13,7 @@ from src.core.step import Step
 from src.providers.llm import GeminiProvider, load_prompt_template
 from src.tracking import AimTracker
 from src.utils.logger import get_logger
+from src.utils.text import extract_code_block
 
 
 class MetadataAnalyzer(Step):
@@ -129,7 +130,7 @@ class MetadataAnalyzer(Step):
     def _candidates(self, raw: str) -> List[str]:
         text = raw.strip().lstrip("\ufeff")
         candidates = [text]
-        if code := self._extract_code_block(text):
+        if code := extract_code_block(text):
             candidates.append(code)
         if triple := self._extract_triple_quote(text):
             candidates.append(triple)
@@ -139,13 +140,6 @@ class MetadataAnalyzer(Step):
             if len(c) >= 2 and c[0] == c[-1] and c[0] in {'"', "'"}:
                 candidates.append(c[1:-1])
         return list(dict.fromkeys(c.strip() for c in candidates if c.strip()))
-
-    def _extract_code_block(self, text: str) -> str | None:
-        if "```" not in text:
-            return None
-        if match := re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL):
-            return match.group(1)
-        return None
 
     def _extract_triple_quote(self, text: str) -> str | None:
         if match := re.search(r"'''\s*\n?(.*?)\n?'''", text, re.DOTALL):

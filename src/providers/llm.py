@@ -5,6 +5,7 @@ from pathlib import Path
 import litellm
 import yaml
 
+from src.providers.base import has_credentials
 from src.utils.secrets import load_secret_values
 
 
@@ -50,8 +51,7 @@ class GeminiProvider:
         self.api_keys = list(key_values)
         self._keys = deque(self.api_keys)
 
-    def is_available(self) -> bool:
-        return bool(self.api_keys)
+    is_available = has_credentials
 
     def execute(self, prompt: str, **kwargs) -> str:
         if not self._keys:

@@ -12,6 +12,7 @@ from src.core.step import Step
 from src.models import NewsItem, Script
 from src.providers.llm import GeminiProvider, load_prompt_template
 from src.tracking import AimTracker
+from src.utils.text import extract_code_block
 
 
 @dataclass
@@ -184,7 +185,7 @@ class ScriptGenerator(Step):
     def _candidates(self, raw: str) -> List[str]:
         text = raw.strip().lstrip("\ufeff")
         candidates = [text]
-        if code := self._extract_code_block(text):
+        if code := extract_code_block(text):
             candidates.append(code)
         if segments := self._extract_segments_block(text):
             candidates.append(segments)
@@ -192,13 +193,6 @@ class ScriptGenerator(Step):
             if len(c) >= 2 and c[0] == c[-1] and c[0] in {'"', "'"}:
                 candidates.append(c[1:-1])
         return list(dict.fromkeys(c.strip() for c in candidates if c.strip()))
-
-    def _extract_code_block(self, text: str) -> str | None:
-        if "```" not in text:
-            return None
-        if match := re.search(r"```(?:[a-zA-Z0-9_-]+)?\s*\n(.*?)```", text, re.DOTALL):
-            return match.group(1)
-        return None
 
     def _extract_segments_block(self, text: str) -> str | None:
         if "segments:" not in text:

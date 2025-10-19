@@ -95,7 +95,7 @@ steps:
     outline_inner_color: "#EB001B"
     outline_inner_width: 2
     outline_outer_color: "#000000"
-    outline_outer_width: 5
+    outline_outer_width: 0
     overlays:
       - name: "character"
         enabled: true

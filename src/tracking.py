@@ -72,19 +72,20 @@ class AimTracker:
         model: str = "",
         duration: float = 0.0,
     ) -> None:
-        payload: Dict[str, Any] = {
+        details: Dict[str, Any] = {
             "duration": duration,
             "prompt_length": len(prompt),
             "output_length": len(output),
         }
         if template_name:
-            payload["template"] = template_name
+            details["template"] = template_name
         if model:
-            payload["model"] = model
+            details["model"] = model
         for key, value in inputs.items():
             if isinstance(value, (int, float)):
-                payload[f"input_{key}"] = value
-        self._run.track(payload, name=f"{step_name}_prompt")
+                details[f"input_{key}"] = value
+
+        self._run[f"{step_name}_details"] = details
         self._run[f"{step_name}_template"] = template_name
         self._run[f"{step_name}_prompt"] = prompt[:10000]
         self._run[f"{step_name}_inputs"] = {str(k): self._serialize(v) for k, v in inputs.items()}
