@@ -131,6 +131,12 @@ class VideoSubtitleStyleConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class VideoIntroOutroConfig(BaseModel):
+    enabled: bool = False
+    intro_path: str | None = None
+    outro_path: str | None = None
+
+
 class VideoStepConfig(BaseModel):
     resolution: str
     fps: int
@@ -139,6 +145,7 @@ class VideoStepConfig(BaseModel):
     crf: int
     effects: list[VideoEffectConfig] = Field(default_factory=list)
     subtitles: VideoSubtitleStyleConfig | None = None
+    intro_outro: VideoIntroOutroConfig | None = None
 
 
 class SubtitleStepConfig(BaseModel):

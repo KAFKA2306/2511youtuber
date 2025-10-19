@@ -16,8 +16,9 @@ Each step subclasses `src.core.step.Step`, which standardises output locations u
 | 3 | `AudioSynthesizer` | Use VOICEVOX to synthesise each script segment and concatenate them into a single WAV file. | `audio.wav` |
 | 4 | `SubtitleFormatter` | Estimate per-line timing by text length and wrap Japanese text to fit the configured on-screen width, emitting SRT captions. | `subtitles.srt` |
 | 5 | `VideoRenderer` | Render an FFmpeg colour source with Ken Burns overlays, apply optional image overlays, and burn in subtitles while muxing audio. | `video.mp4` |
+| 6 | `IntroOutroConcatenator` (config gated) | Prepend and append branded clips around the rendered video when `steps.video.intro_outro.enabled` is true. | `video_intro_outro.mp4` |
 
-【F:src/steps/news.py†L1-L48】【F:src/providers/base.py†L1-L38】【F:src/steps/script.py†L1-L130】【F:src/steps/audio.py†L1-L36】【F:src/steps/subtitle.py†L1-L72】【F:src/steps/video.py†L1-L63】
+【F:src/steps/news.py†L1-L48】【F:src/providers/base.py†L1-L38】【F:src/steps/script.py†L1-L130】【F:src/steps/audio.py†L1-L36】【F:src/steps/subtitle.py†L1-L72】【F:src/steps/video.py†L1-L63】【F:src/steps/intro_outro.py†L1-L76】
 
 ### Optional extensions
 Additional artefacts are generated when the corresponding configuration flags are enabled:
@@ -27,7 +28,7 @@ Additional artefacts are generated when the corresponding configuration flags ar
 - `YouTubeUploader`, `TwitterPoster`, `PodcastExporter`, and `BuzzsproutUploader` publish deliverables using provider clients when their configs are enabled.【F:apps/youtube/cli.py†L64-L111】
 
 ## Configuration
-`Config.load` reads `config/default.yaml`, validates strongly typed step/provider settings, and exposes helper methods for secret resolution and prompt loading. Each step consumes only the portion of the config it needs (e.g., speaker aliases, subtitle width, video effects), keeping runtime behaviour transparent.【F:src/utils/config.py†L1-L204】【F:config/default.yaml†L1-L159】
+`Config.load` reads `config/default.yaml`, validates strongly typed step/provider settings, and exposes helper methods for secret resolution and prompt loading. Each step consumes only the portion of the config it needs (e.g., speaker aliases, subtitle width, intro/outro clip toggles, video effects), keeping runtime behaviour transparent.【F:src/utils/config.py†L1-L204】【F:config/default.yaml†L1-L159】
 
 The config file also declares provider endpoints (VOICEVOX server URL, Gemini models, Perplexity options) and workflow defaults such as checkpoint output directories and logging format.【F:config/default.yaml†L1-L168】【F:src/utils/config.py†L204-L257】
 

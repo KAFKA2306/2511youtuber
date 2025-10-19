@@ -16,6 +16,7 @@ from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.twitter import TwitterPoster
 from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
+from src.steps.intro_outro import IntroOutroConcatenator
 from src.providers.twitter import TwitterClient
 from src.utils.config import Config
 from src.utils.discord import post_run_summary
@@ -113,6 +114,20 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             video_config=video_config,
         ),
     ]
+
+    intro_cfg = video_cfg.intro_outro
+    if intro_cfg and intro_cfg.enabled:
+        steps.append(
+            IntroOutroConcatenator(
+                run_id=run_id,
+                run_dir=run_dir,
+                intro_path=intro_cfg.intro_path,
+                outro_path=intro_cfg.outro_path,
+                codec=video_cfg.codec,
+                preset=video_cfg.preset,
+                crf=video_cfg.crf,
+            )
+        )
 
     if metadata_cfg.get("enabled", False):
         steps.append(MetadataAnalyzer(run_id=run_id, run_dir=run_dir, metadata_config=metadata_cfg))

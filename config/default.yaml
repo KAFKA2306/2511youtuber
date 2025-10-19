@@ -16,6 +16,7 @@ steps:
         name: "春日部つむぎ"
         aliases:
           - "春日部つむぎ"
+          - "かすかべ つむぎ"
           - "つむぎ"
       reporter:
         name: "ずんだもん"
@@ -43,6 +44,10 @@ steps:
     codec: "libx264"
     preset: "medium"
     crf: 23
+    intro_outro:
+      enabled: true
+      intro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/やっほー春日部紬だよー今日も見てくれてありがとう.mp4"
+      outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/ありがとう.mp4"
     effects:
       - type: "ken_burns"
         enabled: true
@@ -165,7 +170,7 @@ steps:
 
   youtube:
     enabled: true
-    dry_run: false
+    dry_run: true
     default_visibility: "public"
     category_id: 25
     max_title_length: 100

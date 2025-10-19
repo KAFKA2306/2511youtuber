@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict
 
+from src.core.media_utils import resolve_video_input
 from src.core.step import Step
 from src.providers.twitter import TwitterClient
 
@@ -33,7 +34,7 @@ class TwitterPoster(Step):
             raise ValueError("Either twitter_config or client must be provided")
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
-        video_path = Path(inputs["render_video"])
+        video_path = resolve_video_input(inputs)
         metadata_path = Path(inputs["analyze_metadata"])
         clip_path = self.run_dir / self.run_id / "twitter_clip.mp4"
         clip_path.parent.mkdir(parents=True, exist_ok=True)

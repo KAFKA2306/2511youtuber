@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict
 
+from src.core.media_utils import resolve_video_input
 from src.core.step import Step
 from src.providers.youtube import YouTubeClient
 
@@ -32,12 +33,13 @@ class YouTubeUploader(Step):
         )
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
-        video_path = inputs.get("render_video")
-        metadata_path = inputs.get("analyze_metadata")
+        video_path = resolve_video_input(inputs)
+        metadata_value = inputs.get("analyze_metadata")
+        if not metadata_value:
+            raise ValueError("Metadata file not found for YouTube upload")
 
-        if not video_path or not Path(video_path).exists():
-            raise ValueError("Video file not found for YouTube upload")
-        if not metadata_path or not Path(metadata_path).exists():
+        metadata_path = Path(metadata_value)
+        if not metadata_path.exists():
             raise ValueError("Metadata file not found for YouTube upload")
 
         with open(metadata_path, encoding="utf-8") as f:

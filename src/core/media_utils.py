@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import Dict
 
 from pydub import AudioSegment
 
@@ -18,3 +19,15 @@ def find_ffmpeg_binary() -> str:
 
 def sanitize_path_for_ffmpeg(path: Path) -> str:
     return str(path).replace("\\", "/").replace(":", "\\:")
+
+
+def resolve_video_input(inputs: Dict[str, str | Path], *, required: bool = True) -> Path | None:
+    for key in ("concat_intro_outro", "render_video"):
+        path = inputs.get(key)
+        if path:
+            candidate = Path(path)
+            if candidate.exists():
+                return candidate
+    if required:
+        raise FileNotFoundError("Video source not found")
+    return None

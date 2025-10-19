@@ -400,34 +400,124 @@ providers:
 YouTube動画の**導入**、**幕間**、**終了後**に挿入する10秒以下の定型動画を生成するためのプロンプト設計。
 ブランド認知とプロフェッショナルな印象を与え、視聴者の離脱を防ぐことが目的。
 
-### 1. 導入動画（イントロ）
+### 1. 導入動画（イントロ）- 春日部つむぎ 3パターン
 
-**意図:**
-- チャンネルブランディングの確立
-- 視聴者の注意を引きつける
-- 動画のトーンを設定（金融ニュース解説）
+**設計方針:**
+- キャラクターの世界観を確立し、視聴者を自然にニュース本編へ導く
+- 動き・視線・環境音で心理的な流れを作る（静→気づき→誘い）
+- 完全ひらがなで発音の一貫性を確保
+- 15秒で完結、再利用可能
 
-**場面:**
-- 動画開始直後（0-5秒）
-- サムネイルから本編への橋渡し
+---
 
-**プロンプト:**
+#### パターンA: 「駅ホームの朝」
+
+**意図:** 社会へ出ていく始まり、日常からニュースへの接続
+
+**Soraプロンプト:**
 ```
-A sleek financial news broadcast intro: golden light beams sweep across a dark blue futuristic stock market background with subtle digital ticker symbols flowing horizontally. The camera smoothly zooms in toward a centered glowing emblem showing abstract currency symbols (¥, $, €) in a minimalist design. Ambient particles drift gently. Professional, modern, high-tech aesthetic. 5 seconds. 1080p.
+Morning light spreads across a quiet train platform.
+Tsumugi steps forward, adjusting her bag strap and looking at the horizon line where tracks converge.
+「あさの　ひかりが　かわると、　せかいの　はなしも　すこし　かわりますね。」
+
+She walks slowly along the yellow safety line, faint train sounds in the distance.
+「きょうも　たくさんの　ひとが　うごいて、　すうじが　うまれています。」
+
+She stops, opens her notebook, pages flutter gently in the wind.
+「その　ひとつひとつに、　いみが　かくれているかも。」
+
+She looks at the camera with a soft smile, closing the notebook.
+「さあ、　きょうの　ニュースを　いっしょに　みていきましょう。」
+
+Visual: soft anime lighting, mint-green accents, gentle depth of field, warm morning tone
+Audio: faint platform ambience, light wind, breathing pauses every 3 seconds
+Camera: slow dolly-in from side angle, steady framing
+Duration: 15 seconds, 1080p
 ```
 
-**日本語訳:**
-洗練された金融ニュース放送イントロ: 暗い青色の未来的な株式市場背景に、金色の光線が横切る。微妙なデジタルティッカーシンボルが水平に流れる。カメラは中央の輝く紋章（抽象的な通貨記号 ¥, $, € のミニマルデザイン）に向かってスムーズにズームイン。周囲には粒子が穏やかに漂う。プロフェッショナル、モダン、ハイテク美学。5秒。1080p。
+**コスト:** 15秒 × $0.50 = **$7.50**（初回のみ、以降再利用で$0）
 
-**技術仕様:**
-- 時間: 5秒
+---
+
+#### パターンB: 「屋上の朝」
+
+**意図:** 視点をひらく静かな覚醒、上を向くことで希望と知性を表現
+
+**Soraプロンプト:**
+```
+Morning light spreads across a city rooftop.
+A light breeze moves a line of laundry beside the railings.
+Tsumugi steps into the sunlight, closing the door behind her.
+She takes a quiet breath and looks up at the sky.
+「ひかりが　すこし　かわりましたね。きょうの　そらは　やさしいいろです。」
+
+She walks slowly to the edge, placing her hands on the cool metal rail.
+Cars move far below, faint and distant.
+「ひとも　まちも、　いつも　うごいています。すうじも　その　こえの　ひとつです。」
+
+The wind rises, brushing through her hair. She opens her notebook and the pages flutter.
+「でも　きょうの　いみを　つくるのは、　いまを　みている　わたしたちです。」
+
+She closes the notebook gently and smiles at the horizon.
+「さあ、　あたらしいいちにちを　いっしょに　はじめましょう。」
+
+Visual: rooftop morning, soft anime lighting, blue sky gradient, distant cityscape
+Audio: wind, faint traffic below, bird calls, natural breathing pauses
+Camera: slow walk-in from door to rail, gentle parallax
+Duration: 15 seconds, 1080p
+```
+
+**コスト:** 15秒 × $0.50 = **$7.50**（初回のみ）
+
+---
+
+#### パターンC: 「夜の図書室」
+
+**意図:** 内なる静けさと知性、灯りで語る構成、落ち着きと惹きつけのバランス
+
+**Soraプロンプト:**
+```
+A quiet library after sunset.
+Soft desk light spills across the wooden table.
+Tsumugi turns a page, pauses, and looks toward the window where the city lights flicker beyond the glass.
+「よるの　まちって、　ちょっと　ほっとしますね。」
+
+She sets down her pen and leans her cheek on her hand.
+Her eyes follow the slow movement of a clock's second hand.
+「きょうも　たくさんの　できごとが　すぎていきました。すうじも　その　きおくの　ひとつです。」
+
+She closes the book softly. Dust motes float in the warm light.
+「でも　そのなかに、　あしたを　つくる　ヒントが　かくれているのかも。」
+
+She looks at the camera and smiles faintly, the desk light glowing behind her.
+「いっしょに　みつけに　いきましょう。　きょうのニュースです。」
+
+Visual: warm desk lamp glow, dark library shelves, soft bokeh, dust particles
+Audio: quiet ambience, faint clock tick, page turn, gentle breathing pauses
+Camera: static then slow push-in on tsumugi's face
+Duration: 15 seconds, 1080p
+```
+
+**コスト:** 15秒 × $0.50 = **$7.50**（初回のみ）
+
+---
+
+**技術仕様（共通）:**
+- 時間: 15秒
 - 解像度: 1080p
-- スタイル: ミニマル、未来的、金融ニュース専門
-- 音声: なし（別途BGM追加）
+- スタイル: アニメ風、柔らかい照明、ミント/青/金色のアクセント
+- 音声: 環境音のみ（BGMは後処理で追加）
+- セリフ: 完全ひらがな（Voicevox音声合成で自然な発音）
 
-**コスト（Sora Pro 1080p）:**
-- 5秒 × $0.50 = **$2.50/動画**
-- 再利用可能（全動画で同一イントロ使用）
+**運用戦略:**
+- 3パターンをローテーション（飽き防止）
+- 朝配信→A/B、夜配信→C など時間帯で使い分け
+- 初回合計コスト: $7.50 × 3 = **$22.50**
+- 100動画での追加コスト: $0.225/動画
+
+**実装:**
+- `config/default.yaml`の`steps.video.intro_outro.intro_paths`に3パターンのパスを配列で設定
+- `src/steps/video.py`でランダムまたは時刻ベースで選択
 
 ### 2. 幕間動画（トランジション）
 
@@ -458,67 +548,155 @@ A 3-second transition sequence: abstract geometric shapes (cubes, hexagons) in m
 - 3秒 × $0.50 = **$1.50/動画**
 - 2-3パターン生成して使い分け可能
 
-### 3. 終了動画（アウトロ）
+### 3. 終了動画（アウトロ）- 春日部つむぎ 2パターン
 
-**意図:**
-- チャンネル登録・高評価を促す
-- 視聴者に満足感を与える
-- 次回動画への期待感を醸成
+**設計方針:**
+- 視聴者に満足感と次回への期待を与える
+- チャンネル登録・高評価の自然な誘導
+- キャラクターの温かみで締めくくる
 
-**場面:**
-- 動画終了直前（最後の10秒）
-- スクリプト終了後
+---
 
-**プロンプト:**
+#### パターンA: 「教室の夕暮れ」
+
+**意図:** 1日の終わり、学びの充実感、次への期待
+
+**Soraプロンプト:**
 ```
-A professional financial news outro: the camera slowly pulls back from a minimalist desk setup with a glowing holographic display showing upward trending charts. Soft bokeh lights in gold and blue twinkle in the background. A subtle text placeholder area appears in the center (empty space for overlay graphics). The scene fades to dark blue with gentle light rays. Calm, reassuring, forward-looking tone. 8 seconds. 1080p.
+Late afternoon in a quiet classroom.
+Golden sunlight streams through the window, casting long shadows across desks.
+Tsumugi closes her notebook, stretches gently, and looks toward the window.
+「きょうの　ニュース、　どうでしたか？」
+
+She walks to the window, traces her finger along the glass where light patterns shift.
+「すうじの　むこうに　ひとが　いて、　ものがたりが　ある。　それを　かんじられたら　うれしいです。」
+
+She turns back to the camera, soft smile, holding her notebook to her chest.
+「また　あした、　あたらしい　はっけんを　いっしょに　さがしましょうね。」
+
+Light fades to warm orange, gentle fade to dark with text placeholder in center.
+
+Visual: warm afternoon light, soft anime aesthetic, mint-green bag on desk
+Audio: quiet classroom ambience, faint clock tick, bird calls fading
+Camera: static then slow dolly-in, gentle fade-out
+Duration: 12 seconds, 1080p
 ```
 
-**日本語訳:**
-プロフェッショナルな金融ニュースアウトロ: カメラはミニマルなデスクセットアップからゆっくりと引く。ホログラフィックディスプレイには上昇トレンドのチャートが輝く。金色と青色の柔らかいボケ光が背景できらめく。中央には微妙なテキストプレースホルダーエリアが表示（オーバーレイグラフィック用の空白）。シーンは暗い青にフェードし、優しい光線が差し込む。穏やか、安心感、未来志向のトーン。8秒。1080p。
+**コスト:** 12秒 × $0.50 = **$6.00**（初回のみ）
 
-**技術仕様:**
-- 時間: 8秒
+---
+
+#### パターンB: 「図書室の閉館」
+
+**意図:** 静かな満足感、知識の余韻、また会いましょうの約束
+
+**Soraプロンプト:**
+```
+A library at closing time, soft desk lamp glowing.
+Tsumugi gathers her books and stacks them neatly, pausing to look at the spines.
+「きょうも　いろんな　かずが　ありましたね。　でも　それは　ぜんぶ　ひとの　いとなみです。」
+
+She stands, adjusts her cardigan, and walks toward the camera with books in hand.
+「この　ちしきが、　あしたの　あなたの　せんたくを　すこしでも　てつだえたら。」
+
+She stops at the doorway, looks back with a gentle smile, and turns off the desk lamp.
+「それじゃ、　また　つぎの　ニュースで。　おつかれさまでした。」
+
+Fade to dark blue with soft light rays, text placeholder appears.
+
+Visual: warm lamp glow fading to darkness, library shelves silhouette
+Audio: quiet footsteps, book sounds, light switch click, gentle breathing
+Camera: follow tsumugi's walk, fade to black
+Duration: 12 seconds, 1080p
+```
+
+**コスト:** 12秒 × $0.50 = **$6.00**（初回のみ）
+
+---
+
+**技術仕様（共通）:**
+- 時間: 12秒
 - 解像度: 1080p
-- スタイル: 未来的、安心感、穏やか
-- 音声: なし（アウトロBGM追加）
-- 後処理: テキストオーバーレイ（「チャンネル登録」「高評価」）をFFmpegで追加
+- スタイル: アニメ風、夕暮れ/夜の温かい照明
+- 音声: 環境音のみ（アウトロBGMは後処理で追加）
+- セリフ: 完全ひらがな
+- 後処理: テキストオーバーレイ（「チャンネル登録・高評価お願いします」「次回もお楽しみに」）
 
-**コスト（Sora Pro 1080p）:**
-- 8秒 × $0.50 = **$4.00/動画**
-- 全動画で再利用可能
+**運用戦略:**
+- 朝配信→パターンA、夜配信→パターンB
+- 初回合計コスト: $6.00 × 2 = **$12.00**
+- 100動画での追加コスト: $0.12/動画
 
-### プロンプト設計の原則
+**実装:**
+- `config/default.yaml`の`steps.video.intro_outro.outro_paths`に2パターンのパスを配列で設定
+- FFmpegでテキストオーバーレイを追加（drawtext filter使用）
 
-1. **具体的な視覚要素:** 抽象的な指示（"かっこいい"）ではなく、具体的な要素（"golden light beams", "metallic silver cubes"）を指定
-2. **カメラワーク明示:** "camera zooms in", "camera pulls back"など動きを明記
-3. **色彩指定:** ブランドカラー（金色、青色）を統一
-4. **時間厳守:** "5 seconds", "3 seconds"と明記（Soraの最大20秒に対して短めに設定）
-5. **解像度指定:** "1080p"を明記
-6. **トーン指示:** "professional", "modern", "calm"など雰囲気を明示
-7. **テキスト非表示:** 動画内にテキストを生成させない（Soraのテキスト生成精度が不安定なため、後処理でオーバーレイ）
+### プロンプト設計の原則（春日部つむぎイントロ/アウトロ向け）
+
+1. **具体的な動作シーケンス:** "tsumugi closes notebook" → "walks to window" → "looks at camera" のように段階的に動きを指定
+2. **環境の細部:** "sunlight filtering through hair", "pages flutter in wind" など小さな動きで臨場感を出す
+3. **視線の流れ:** "gazes out window" → "turns to camera" → "soft smile" で視聴者を自然に巻き込む
+4. **完全ひらがなセリフ:** Voicevox音声合成の発音安定性のため、漢字・カタカナを使わない
+5. **心理的トーン:** "calm yet curious", "intelligent warmth" で感情の方向性を明示
+6. **呼吸のタイミング:** "breathing pauses every 3 seconds" でリズムを作る
+7. **カメラワーク:** "slow dolly-in", "gentle parallax", "static then push-in" で視覚的な変化を設計
+8. **時間配分:** 15秒を3-4秒ずつに分割し、各セクションに明確な目的を持たせる
+9. **音響設計:** "faint platform ambience", "light wind", "clock tick" で世界観を補強
+10. **色彩と照明:** "mint-green accents", "warm morning tone", "soft bokeh" でキャラクター設定と統一
 
 ### 実装時の考慮事項
 
 **再利用戦略:**
-- イントロ・アウトロは全動画で同一のものを使用
-- 幕間は2-3パターン生成し、ランダムまたは文脈に応じて選択
+- イントロ3パターン + 幕間3パターン + アウトロ2パターン = 合計8動画クリップ
+- ローテーション・時間帯・文脈で自動選択
+- 初回生成後は全動画で再利用（追加コストなし）
 
-**コスト最適化:**
-- 初回生成: $2.50 + $1.50×3 + $4.00 = **$11.00**（イントロ1本、幕間3本、アウトロ1本）
-- 以降の動画: **$0**（再利用）
-- 動画100本あたりの追加コスト: $0.11/動画
+**コスト最適化（Sora Pro 1080p）:**
+- イントロ3本: $7.50 × 3 = **$22.50**
+- 幕間3本: $1.50 × 3 = **$4.50**
+- アウトロ2本: $6.00 × 2 = **$12.00**
+- **合計初回投資: $39.00**
+- 100動画での追加コスト: $0.39/動画（再利用）
+
+**Luma Dream Machine代替（96%コスト削減）:**
+- イントロ15秒（10秒×2リクエスト）: $0.20 × 2 × 3 = **$1.20**
+- 幕間3秒（10秒→トリミング）: $0.20 × 3 = **$0.60**
+- アウトロ12秒（10秒×2リクエスト）: $0.20 × 2 × 2 = **$0.80**
+- **合計初回投資（Luma）: $2.60**
+- Sora比96%削減、100動画での追加コスト: $0.026/動画
+
+**推奨戦略:**
+1. まずLumaで全8パターン生成（$2.60）
+2. 品質確認後、必要なパターンのみSoraで再生成
+3. 最高品質が必要な場合のみSora全面採用（$39.00）
 
 **FFmpegでの合成:**
 ```python
 # src/steps/video.py での実装例
-def add_standardized_clips(intro_path: str, main_path: str, outro_path: str, output_path: str):
+import random
+from datetime import datetime
+
+def select_intro_clip(config: dict) -> str:
+    hour = datetime.now().hour
+    if 5 <= hour < 12:
+        return random.choice([
+            config["intro_paths"]["station"],
+            config["intro_paths"]["rooftop"]
+        ])
+    else:
+        return config["intro_paths"]["library"]
+
+def select_outro_clip(config: dict) -> str:
+    hour = datetime.now().hour
+    return config["outro_paths"]["classroom"] if hour < 18 else config["outro_paths"]["library"]
+
+def add_intro_outro(intro: str, main: str, outro: str, output: str):
     ffmpeg.concat(
-        ffmpeg.input(intro_path),
-        ffmpeg.input(main_path),
-        ffmpeg.input(outro_path),
-        v=1, a=0
-    ).output(output_path, vcodec='libx264', preset='medium', crf=23).run()
+        ffmpeg.input(intro),
+        ffmpeg.input(main),
+        ffmpeg.input(outro),
+        v=1, a=1
+    ).output(output, vcodec='libx264', preset='medium', crf=23).run()
 ```
 
 **設定ファイル:**
@@ -526,38 +704,53 @@ def add_standardized_clips(intro_path: str, main_path: str, outro_path: str, out
 # config/default.yaml
 steps:
   video:
-    standardized_clips:
-      intro:
+    intro_outro:
+      enabled: true
+      intro_paths:
+        station: "assets/video/intro_station_15sec.mp4"
+        rooftop: "assets/video/intro_rooftop_15sec.mp4"
+        library: "assets/video/intro_library_15sec.mp4"
+      transition_paths:
+        - "assets/video/transition_geometric_3sec.mp4"
+        - "assets/video/transition_v2_3sec.mp4"
+        - "assets/video/transition_v3_3sec.mp4"
+      outro_paths:
+        classroom: "assets/video/outro_classroom_12sec.mp4"
+        library: "assets/video/outro_library_12sec.mp4"
+      outro_overlay:
         enabled: true
-        path: "assets/video/intro_5sec.mp4"
-      transition:
-        enabled: true
-        paths:
-          - "assets/video/transition_3sec_v1.mp4"
-          - "assets/video/transition_3sec_v2.mp4"
-          - "assets/video/transition_3sec_v3.mp4"
-      outro:
-        enabled: true
-        path: "assets/video/outro_8sec.mp4"
-        overlay_text: true
-        overlay_template: "チャンネル登録・高評価お願いします"
+        text: "チャンネル登録・高評価お願いします\n次回もお楽しみに"
+        font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
+        font_size: 48
+        color: "white"
+        position: "center"
 ```
 
-### 代替手段（コスト削減）
+**Voicevox音声合成統合:**
+```python
+# イントロ/アウトロのセリフを事前に音声合成
+from src.providers.tts import VoicevoxProvider
 
-**Luma Dream Machine（$0.20/10秒）での生成:**
-- イントロ5秒: **$0.10**
-- 幕間3秒: **$0.06** × 3 = **$0.18**
-- アウトロ8秒: **$0.16**
-- 合計: **$0.44**（Soraの$11.00と比較して96%削減）
+voicevox = VoicevoxProvider(speaker_id=8)  # 春日部つむぎ
 
-**プロンプト調整（Luma用）:**
-同じプロンプトをそのまま使用可能。Lumaは10秒制限のため、イントロとアウトロを10秒版として生成し、後処理でトリミング。
+intro_lines = [
+    "あさの　ひかりが　かわると、　せかいの　はなしも　すこし　かわりますね。",
+    "きょうも　たくさんの　ひとが　うごいて、　すうじが　うまれています。"
+]
 
-**推奨戦略:**
-1. まずLumaで生成（$0.44）
-2. 品質が不十分な場合のみSora使用（API公開後）
-3. 初回のみコストをかけ、以降は無限に再利用
+for i, line in enumerate(intro_lines):
+    audio = voicevox.synthesize(line)
+    audio.export(f"assets/audio/intro_line_{i}.wav", format="wav")
+```
+
+**音声とSora動画の統合:**
+Soraで生成した動画（環境音のみ）に、Voicevoxで合成した音声をFFmpegでミックス。
+
+```bash
+ffmpeg -i intro_station_visual.mp4 -i intro_station_audio.wav \
+  -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 \
+  intro_station_15sec.mp4
+```
 
 ---
 
@@ -575,4 +768,9 @@ steps:
 ## 更新履歴
 
 - 2025-10-19: 初版作成（Pexels/Pixabay実装状況、Veo/Sora/Runway/Luma調査結果）
-- 2025-10-19: 定型短尺動画のプロンプト設計追加（イントロ・幕間・アウトロの具体的なプロンプトと実装戦略）
+- 2025-10-19: 定型短尺動画のプロンプト設計を全面刷新
+  - イントロ3パターン（駅ホーム/屋上/図書室）15秒
+  - アウトロ2パターン（教室/図書室）12秒
+  - 春日部つむぎのキャラクター世界観を反映
+  - 動作シーケンス・視線の流れ・完全ひらがなセリフで設計
+  - Lumaでの代替案（96%コスト削減）と実装コード例を追加

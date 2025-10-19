@@ -5,6 +5,7 @@ from typing import Iterable
 
 import requests
 
+from src.core.media_utils import resolve_video_input
 from src.utils.secrets import load_secret_values
 
 
@@ -61,8 +62,8 @@ def post_run_summary(
     upload_path = outputs.get("upload_youtube")
     youtube_url = _youtube_url(Path(upload_path)) if upload_path else None
     if not youtube_url:
-        render_path = outputs.get("render_video")
-        youtube_url = str(render_path) if render_path else None
+        video_path = resolve_video_input(outputs, required=False)
+        youtube_url = str(video_path) if video_path else None
 
     lines: list[str] = []
     if youtube_url:
