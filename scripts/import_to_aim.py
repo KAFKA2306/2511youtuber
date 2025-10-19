@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from aim import Run
@@ -22,26 +23,50 @@ def main() -> None:
         run["run_id"] = run_id
         state_path = run_dir / "state.json"
         if state_path.exists():
-            run["state"] = json.loads(state_path.read_text(encoding="utf-8"))
-        for step, filename in (
-            ("collect_news", "news.json"),
-            ("generate_script", "script.json"),
-            ("generate_metadata", "metadata.json"),
-        ):
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            run["state"] = state
+            start = state.get("started_at")
+            end = state.get("completed_at")
+            if start and end:
+                duration = (
+                    datetime.fromisoformat(end) - datetime.fromisoformat(start)
+                ).total_seconds()
+                run.track(duration, name="workflow_duration")
+            steps = state.get("completed_steps")
+            if isinstance(steps, list):
+                run.track(len(steps), name="steps_count")
+        targets = {
+            "output_news": "news.json",
+            "output_script": "script.json",
+            "output_metadata": "metadata.json",
+            "output_youtube": "youtube.json",
+            "output_tweet": "tweet.json",
+            "output_query": "query.json",
+        }
+        payloads: dict[str, object] = {}
+        for key, filename in targets.items():
             path = run_dir / filename
             if not path.exists():
                 continue
-            content = path.read_text(encoding="utf-8")
-            run[f"{step}_output"] = content[:10000]
-            if step in {"generate_script", "generate_metadata"}:
-                current_lines = load_lines(path)
-                previous_lines = previous.get(step)
-                if previous_lines:
-                    diff = diff_stats(previous_lines, current_lines)
-                    for metric, value in diff.items():
-                        run.track(value, name=f"{step}_diff_{metric}")
-                    run[f"{step}_diff"] = diff
-                previous[step] = current_lines
+            payloads[key] = json.loads(path.read_text(encoding="utf-8"))
+        for key, data in payloads.items():
+            run[key] = data
+        for step, key in (("generate_script", "output_script"), ("generate_metadata", "output_metadata")):
+            data = payloads.get(key)
+            path = run_dir / targets[key]
+            if not data or not path.exists():
+                continue
+            current_lines = load_lines(path)
+            previous_lines = previous.get(step)
+            if previous_lines:
+                diff = diff_stats(previous_lines, current_lines)
+                for metric, value in diff.items():
+                    run.track(value, name=f"{step}_diff_{metric}")
+                run[f"{step}_diff"] = diff
+            previous[step] = current_lines
+        news = payloads.get("output_news")
+        if isinstance(news, list):
+            run.track(len(news), name="news_count")
         run.close()
 
 
