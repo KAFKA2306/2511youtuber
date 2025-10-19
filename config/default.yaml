@@ -74,8 +74,8 @@ steps:
       outline_colour: "&H000000&"
       outline: 2
       alignment: 2
-      margin_l: 0
-      margin_r: 0
+      margin_l: 0 #400
+      margin_r: 0 #480
       margin_v: 10
 
   thumbnail:
