@@ -7,6 +7,7 @@ news_collection:
     各要素は title, summary, url, published_at(ISO8601) のキーを持ちます。
     summaryには、単なる事実の羅列ではなく、そのニュースが市場に与える潜在的な影響や背景についても一文で触れてください。
     不要な説明やコードブロック記法は含めないでください。
+    自然な日本語で記述してください。
 
 script_generation:
   system: |
