@@ -48,5 +48,7 @@ def apply_thumbnail_overlay(
     framerate = fps or 25
     overlay_stream = ffmpeg.input(str(thumbnail_path), loop=1, framerate=framerate)
     overlay_stream = overlay_stream.filter("scale", width, height)
+    overlay_stream = overlay_stream.filter("trim", duration=duration)
+    overlay_stream = overlay_stream.filter("setpts", "PTS-STARTPTS")
     enable = f"lte(t,{duration})"
-    return stream.overlay(overlay_stream, x=0, y=0, enable=enable)
+    return stream.overlay(overlay_stream, x=0, y=0, enable=enable, eof_action="pass")

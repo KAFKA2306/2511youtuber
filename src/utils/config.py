@@ -131,11 +131,18 @@ class VideoSubtitleStyleConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class VideoIntroThumbnailClipConfig(BaseModel):
+    enabled: bool = False
+    duration_seconds: float = 0.0
+    source_key: str = "generate_thumbnail"
+
+
 class VideoIntroOutroConfig(BaseModel):
     enabled: bool = False
     intro_path: str | None = None
     outro_path: str | None = None
     twitter_outro_path: str | None = None
+    thumbnail_clip: VideoIntroThumbnailClipConfig | None = None
 
 
 class VideoThumbnailFlashConfig(BaseModel):

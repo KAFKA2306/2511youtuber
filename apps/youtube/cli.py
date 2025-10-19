@@ -146,6 +146,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 preset=video_cfg.preset,
                 crf=video_cfg.crf,
                 thumbnail_overlay=video_config.get("thumbnail_overlay"),
+                thumbnail_clip=video_config.get("intro_outro", {}).get("thumbnail_clip"),
             )
         )
 

@@ -49,6 +49,10 @@ steps:
       intro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/おはようございます。今日も世界の動きを見てみましょう.mp4"
       outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/チャンネル登録と通知オンをお願いします.mp4"
       twitter_outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/続きはYoutube.mp4"
+      thumbnail_clip:
+        enabled: true
+        duration_seconds: 0.1
+        source_key: "generate_thumbnail"
     effects:
       - type: "ken_burns"
         enabled: true
