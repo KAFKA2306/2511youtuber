@@ -93,6 +93,7 @@ def test_config_load_round_trip(tmp_path: Path) -> None:
                 "enabled": True,
                 "dry_run": True,
                 "clip_duration_seconds": 45,
+                "start_offset_seconds": 1.5,
                 "thumbnail_path": "assets/thumb.png",
             },
             "podcast": {

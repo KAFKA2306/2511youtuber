@@ -223,6 +223,7 @@ class TwitterStepConfig(BaseModel):
     enabled: bool = False
     dry_run: bool = True
     clip_duration_seconds: int = 60
+    start_offset_seconds: float = 0.0
     thumbnail_path: str | None = None
     api_key: str | None = None
     api_secret: str | None = None

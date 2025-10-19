@@ -22,6 +22,7 @@ class TwitterPoster(Step):
         twitter_config: dict | None = None,
         client: TwitterClient | None = None,
         clip_duration: int = 60,
+        start_offset_seconds: float = 0.0,
         outro_path: str | None = None,
         codec: str | None = None,
         preset: str | None = None,
@@ -32,12 +33,17 @@ class TwitterPoster(Step):
         sample_rate: int | None = None,
     ) -> None:
         super().__init__(run_id, run_dir)
+        self.clip_duration = clip_duration
+        self.start_offset = start_offset_seconds
+        dry_run = False
+        if twitter_config:
+            self.clip_duration = twitter_config.get("clip_duration_seconds", self.clip_duration)
+            self.start_offset = twitter_config.get("start_offset_seconds", self.start_offset)
+            dry_run = twitter_config.get("dry_run", False)
         if client:
             self.client = client
-            self.clip_duration = clip_duration
         elif twitter_config:
-            self.clip_duration = twitter_config.get("clip_duration_seconds", 60)
-            self.client = TwitterClient.from_env(dry_run=twitter_config.get("dry_run", False))
+            self.client = TwitterClient.from_env(dry_run=dry_run)
         else:
             raise ValueError("Either twitter_config or client must be provided")
         self.outro_path = Path(outro_path) if outro_path else None
@@ -54,20 +60,47 @@ class TwitterPoster(Step):
         metadata_path = Path(inputs["analyze_metadata"])
         clip_path = self.run_dir / self.run_id / "twitter_clip.mp4"
         clip_path.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(video_path),
-                "-t",
-                str(self.clip_duration),
-                "-c",
-                "copy",
-                str(clip_path),
-            ],
-            check=True,
-        )
+        clip_cmd = ["ffmpeg", "-y"]
+        if self.start_offset > 0:
+            clip_cmd.extend(["-ss", str(self.start_offset)])
+        clip_cmd.extend(["-i", str(video_path), "-t", str(self.clip_duration)])
+        if self.start_offset > 0 and all(
+            value is not None
+            for value in (
+                self.codec,
+                self.preset,
+                self.crf,
+                self.width,
+                self.height,
+                self.fps,
+                self.sample_rate,
+            )
+        ):
+            filters = [
+                f"scale={self.width}:{self.height}",
+                "setsar=1",
+                f"fps={self.fps}",
+            ]
+            clip_cmd.extend(
+                [
+                    "-vf",
+                    ",".join(filters),
+                    "-c:v",
+                    self.codec,
+                    "-preset",
+                    self.preset,
+                    "-crf",
+                    str(self.crf),
+                    "-c:a",
+                    "aac",
+                    "-ar",
+                    str(self.sample_rate),
+                ]
+            )
+        else:
+            clip_cmd.extend(["-c", "copy"])
+        clip_cmd.append(str(clip_path))
+        subprocess.run(clip_cmd, check=True)
         if self.outro_path:
             final_path = clip_path.with_name("twitter_clip_with_outro.mp4")
             filter_expr = (

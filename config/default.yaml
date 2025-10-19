@@ -119,7 +119,7 @@ steps:
         outline_inner_color: "#0B0F19"
         outline_inner_width: 1
         outline_outer_color: "#000000"
-        outline_outer_width: 0
+        outline_outer_width: 1
       - background_color: "#0B0F19"
         title_color: "#E5FCF4"
         outline_inner_color: "#000000"
@@ -189,6 +189,7 @@ steps:
     enabled: true
     dry_run: false
     clip_duration_seconds: 60
+    start_offset_seconds: 0.1
 
   podcast:
     enabled: false
