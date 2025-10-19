@@ -1,6 +1,7 @@
 import json
 import re
 import time
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping
@@ -189,10 +190,49 @@ class ScriptGenerator(Step):
             candidates.append(code)
         if segments := self._extract_segments_block(text):
             candidates.append(segments)
-        for c in list(candidates):
-            if len(c) >= 2 and c[0] == c[-1] and c[0] in {'"', "'"}:
-                candidates.append(c[1:-1])
-        return list(dict.fromkeys(c.strip() for c in candidates if c.strip()))
+        enriched: List[str] = []
+        for c in candidates:
+            enriched.extend(self._candidate_variants(c))
+        final = []
+        seen = set()
+        for c in enriched:
+            trimmed = c.strip()
+            if trimmed and trimmed not in seen:
+                seen.add(trimmed)
+                final.append(trimmed)
+        return final
+
+    def _candidate_variants(self, text: str) -> List[str]:
+        variants = [text]
+        if len(text) >= 2 and text[0] == text[-1] and text[0] in ("\"", "'"):
+            variants.append(text[1:-1])
+        normalized = unicodedata.normalize("NFKC", text).replace("　", " ")
+        if normalized != text:
+            variants.append(normalized)
+        quoted = self._quote_text_lines(text)
+        if quoted != text:
+            variants.append(quoted)
+        normalized_quoted = self._quote_text_lines(normalized)
+        if normalized_quoted not in variants:
+            variants.append(normalized_quoted)
+        return variants
+
+    def _quote_text_lines(self, text: str) -> str:
+        lines = []
+        pattern = re.compile(r"^(\s*text:\s*)(.+?)\s*$")
+        for line in text.splitlines():
+            match = pattern.match(line)
+            if not match:
+                lines.append(line)
+                continue
+            prefix, value = match.groups()
+            stripped = value.strip()
+            if not stripped or stripped[0] in {'"', "'", '|', '>'}:
+                lines.append(line)
+                continue
+            escaped = stripped.replace('"', '\\"')
+            lines.append(f"{prefix}\"{escaped}\"")
+        return "\n".join(lines)
 
     def _extract_segments_block(self, text: str) -> str | None:
         if "segments:" not in text:

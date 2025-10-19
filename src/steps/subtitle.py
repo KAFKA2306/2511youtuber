@@ -3,6 +3,8 @@ import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
+from PIL import ImageFont
+
 from src.core.io_utils import load_script, validate_input_files, write_text
 from src.core.media_utils import get_audio_duration
 from src.core.step import Step
@@ -12,9 +14,24 @@ class SubtitleFormatter(Step):
     name = "prepare_subtitles"
     output_filename = "subtitles.srt"
 
-    def __init__(self, run_id: str, run_dir: Path, *, max_chars_per_line: int):
+    def __init__(
+        self,
+        run_id: str,
+        run_dir: Path,
+        *,
+        max_chars_per_line: int,
+        width_per_char_pixels: int,
+        wrap_width_pixels: int | None = None,
+        font_path: str | None = None,
+        font_size: int | None = None,
+    ):
         super().__init__(run_id, run_dir)
         self.max_chars_per_line = max_chars_per_line
+        self.width_per_char_pixels = width_per_char_pixels
+        self.wrap_width_pixels = wrap_width_pixels
+        self.font_path = Path(font_path) if font_path else None
+        self.font_size = font_size
+        self._font: ImageFont.ImageFont | None = None
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         validate_input_files(inputs, "generate_script", "synthesize_audio")
@@ -82,17 +99,85 @@ class SubtitleFormatter(Step):
         if not line:
             return [""]
         sentences = re.split(r'(?<=。)', line)
-        segments, current, width = [], [], 0
+        segments, current = [], ""
         for sentence in sentences:
             if not sentence:
                 continue
-            sentence_w = sum(2 if unicodedata.east_asian_width(c) in ("F", "W") else 1 for c in sentence)
-            if current and width + sentence_w > limit:
-                segments.append("".join(current))
-                current, width = [sentence], sentence_w
-            else:
-                current.append(sentence)
-                width += sentence_w
+            for chunk in self._split_by_width(sentence, limit):
+                if not chunk:
+                    continue
+                tentative = current + chunk
+                if current and self._exceeds_limits(tentative, limit):
+                    segments.append(current)
+                    current = chunk
+                else:
+                    current = tentative
         if current:
-            segments.append("".join(current))
-        return segments or [""]
+            segments.append(current)
+        cleaned = [seg for seg in segments if seg]
+        return cleaned or [""]
+
+    def _split_by_width(self, text: str, limit: int) -> List[str]:
+        if not text:
+            return [""]
+        if limit <= 0 and not self.wrap_width_pixels:
+            return [text]
+        chunks, current = [], ""
+        for char in text:
+            tentative = current + char
+            if current and self._exceeds_limits(tentative, limit):
+                chunks.append(current)
+                current = char
+            elif not current and self._exceeds_limits(tentative, limit):
+                chunks.append(char)
+                current = ""
+            else:
+                current = tentative
+        if current:
+            chunks.append(current)
+        return chunks or [""]
+
+    def _visual_width(self, text: str) -> int:
+        return sum(2 if unicodedata.east_asian_width(c) in ("F", "W") else 1 for c in text)
+
+    def _text_width(self, text: str) -> int:
+        font = self._load_font()
+        if font:
+            if hasattr(font, "getlength"):
+                return int(font.getlength(text))
+            bbox = font.getbbox(text)
+            return int(bbox[2] - bbox[0])
+        return self._visual_width(text) * self.width_per_char_pixels
+
+    def _load_font(self) -> ImageFont.ImageFont | None:
+        if not self.font_path or not self.font_path.exists():
+            return None
+        if self._font is None:
+            size = self.font_size or 24
+            self._font = ImageFont.truetype(str(self.font_path), size)
+        return self._font
+
+    def _exceeds_limits(self, text: str, limit: int) -> bool:
+        if limit > 0 and self._visual_width(text) > limit:
+            return True
+        if self.wrap_width_pixels and self._text_width(text) > self.wrap_width_pixels:
+            return True
+        return False
+
+    @staticmethod
+    def estimate_max_chars_per_line(
+        resolution: str,
+        width_per_char_pixels: int,
+        min_visual_width: int,
+        max_visual_width: int,
+        margin_l: int | None = None,
+        margin_r: int | None = None,
+    ) -> int:
+        safe = SubtitleFormatter.safe_pixel_width(resolution, margin_l, margin_r)
+        base = int(max(safe, 0) / width_per_char_pixels) if width_per_char_pixels else min_visual_width
+        return max(min_visual_width, min(max_visual_width, base))
+
+    @staticmethod
+    def safe_pixel_width(resolution: str, margin_l: int | None, margin_r: int | None) -> int:
+        width = int(resolution.lower().split("x", 1)[0].strip())
+        return max(width - int(margin_l or 0) - int(margin_r or 0), 0)

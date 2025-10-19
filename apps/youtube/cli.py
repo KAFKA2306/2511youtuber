@@ -81,6 +81,12 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     voicevox_config.pop("enabled", None)
     video_config = video_cfg.model_dump()
     video_config["effects"] = [effect.model_dump() for effect in video_cfg.effects]
+    subtitle_style = video_cfg.subtitles
+    margin_l = subtitle_style.margin_l if subtitle_style else 0
+    margin_r = subtitle_style.margin_r if subtitle_style else 0
+    wrap_width_pixels = SubtitleFormatter.safe_pixel_width(video_cfg.resolution, margin_l, margin_r)
+    font_path = subtitle_style.font_path if subtitle_style else None
+    font_size = subtitle_style.font_size if subtitle_style else None
 
     steps: List = [
         NewsCollector(
@@ -100,12 +106,18 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
         SubtitleFormatter(
             run_id=run_id,
             run_dir=run_dir,
-            max_chars_per_line=_estimate_max_chars_per_line(
+            max_chars_per_line=SubtitleFormatter.estimate_max_chars_per_line(
                 video_cfg.resolution,
                 subtitle_cfg.width_per_char_pixels,
                 subtitle_cfg.min_visual_width,
                 subtitle_cfg.max_visual_width,
+                margin_l=margin_l,
+                margin_r=margin_r,
             ),
+            width_per_char_pixels=subtitle_cfg.width_per_char_pixels,
+            wrap_width_pixels=wrap_width_pixels,
+            font_path=font_path,
+            font_size=font_size,
         ),
         VideoRenderer(
             run_id=run_id,
@@ -169,14 +181,6 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
 
 def _create_run_id() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
-
-
-def _estimate_max_chars_per_line(
-    resolution: str, width_per_char_pixels: int, min_visual_width: int, max_visual_width: int
-) -> int:
-    width = int(resolution.lower().split("x", 1)[0].strip())
-    base = int(width / width_per_char_pixels)
-    return max(min_visual_width, min(max_visual_width, base))
 
 
 def _speaker_aliases(speakers) -> dict[str, List[str]]:

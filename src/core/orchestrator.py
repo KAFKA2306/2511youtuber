@@ -20,33 +20,59 @@ class WorkflowOrchestrator:
     def execute(self) -> WorkflowResult:
         start_time = datetime.now()
         tracker = AimTracker.get_instance(self.run_id)
+        current_step: Step | None = None
 
-        for step in self.steps:
-            if step.name in self.state.completed_steps:
-                continue
+        try:
+            for step in self.steps:
+                current_step = step
+                if step.name in self.state.completed_steps:
+                    continue
 
-            output_path = step.run(self.state.outputs)
-            self.state.mark_completed(step.name, str(output_path))
+                output_path = step.run(self.state.outputs)
+                self.state.mark_completed(step.name, str(output_path))
+                self.state.save(self.run_dir)
+
+            self.state.mark_success()
             self.state.save(self.run_dir)
+            duration = (datetime.now() - start_time).total_seconds()
 
-        self.state.mark_success()
-        self.state.save(self.run_dir)
-        duration = (datetime.now() - start_time).total_seconds()
+            prev_outputs = self._load_previous_outputs()
+            if prev_outputs:
+                tracker.track_diff(prev_outputs, self.state.outputs)
 
-        prev_outputs = self._load_previous_outputs()
-        if prev_outputs:
-            tracker.track_diff(prev_outputs, self.state.outputs)
+            tracker.track_status("success")
+            tracker.track_metrics(
+                {"workflow_duration": duration, "steps_completed": len(self.state.completed_steps)}
+            )
+            tracker.finalize()
 
-        tracker.track_metrics({"workflow_duration": duration, "steps_count": len(self.state.completed_steps)})
-        tracker.finalize()
+            return WorkflowResult(
+                status="success",
+                run_id=self.run_id,
+                outputs=self.state.outputs,
+                errors=self.state.errors,
+                duration_seconds=duration,
+            )
+        except Exception as exc:  # noqa: BLE001
+            error_step = current_step.name if current_step else "unknown"
+            error_message = f"{error_step}: {type(exc).__name__}: {exc}"
+            self.state.mark_failed(error_message)
+            self.state.save(self.run_dir)
+            duration = (datetime.now() - start_time).total_seconds()
 
-        return WorkflowResult(
-            status="success",
-            run_id=self.run_id,
-            outputs=self.state.outputs,
-            errors=self.state.errors,
-            duration_seconds=duration,
-        )
+            tracker.track_status("failed", failed_step=error_step, error=error_message)
+            tracker.track_metrics(
+                {"workflow_duration": duration, "steps_completed": len(self.state.completed_steps)}
+            )
+            tracker.finalize()
+
+            return WorkflowResult(
+                status="failed",
+                run_id=self.run_id,
+                outputs=self.state.outputs,
+                errors=self.state.errors,
+                duration_seconds=duration,
+            )
 
     def _load_previous_outputs(self) -> Dict[str, Path]:
         if not self.run_dir.exists():

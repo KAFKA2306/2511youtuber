@@ -120,6 +120,11 @@ class AimTracker:
         for name, value in metrics.items():
             self._run.track(value, name=name)
 
+    def track_status(self, status: str, **fields: Any) -> None:
+        self._run["status"] = status
+        for key, value in fields.items():
+            self._run[f"status_{key}"] = self._serialize(value)
+
     def finalize(self) -> None:
         if self._run:
             self._run.close()
