@@ -10,49 +10,50 @@ from PIL.ImageColor import getrgb
 from src.core.io_utils import load_json, load_script
 from src.core.step import Step
 
-
 PRESETS = [
     {
-        "background_color": "#fef155",
-        "title_color": "#EB001B",
+        "background_color": "#FFE14A",   # 定番の鮮やか黄
+        "title_color": "#C62828",        # 深めの赤
         "outline_inner_color": "#FFFFFF",
-        "outline_inner_width": 30,
+        "outline_inner_width": 1,
         "outline_outer_color": "#000000",
         "outline_outer_width": 0,
     },
     {
-        "background_color": "#000000",
-        "title_color": "#FFD700",
-        "outline_inner_color": "#EB001B",
-        "outline_inner_width": 30,
-        "outline_outer_color": "#000000",
-        "outline_outer_width": 0,
-    },
-    {
-        "background_color": "#0B0F19",
-        "title_color": "#FFE16A",
-        "outline_inner_color": "#FFFFFF",
+        "background_color": "#B71C1C",   # 定番クリムゾン
+        "title_color": "#FFC107",        # 標準ゴールド
+        "outline_inner_color": "#0B0F19",
         "outline_inner_width": 15,
         "outline_outer_color": "#000000",
-        "outline_outer_width": 0,
+        "outline_outer_width": 1,
     },
     {
-        "background_color": "#111827",
-        "title_color": "#FDE047",
-        "outline_inner_color": "#FFFFFF",
-        "outline_inner_width": 15,
+        "background_color": "#0B0F19",   # 定番ダークネイビー
+        "title_color": "#E5FCF4",        # 柔らかい黄
+        "outline_inner_color": "#000000",
+        "outline_inner_width": 2,
+        "outline_outer_color": "#000000",
+        "outline_outer_width": 1,
+    },
+    {
+        "background_color": "#0D1D40",   # チャコール/スレート
+        "title_color": "#FACC15",        # やや落ち着いた黄
+        "outline_inner_color": "#000000",
+        "outline_inner_width": 0,
         "outline_outer_color": "#0B0F19",
         "outline_outer_width": 0,
     },
     {
-        "background_color": "#0A0F1F",
-        "title_color": "#FFD700",
+        "background_color": "#0A0F1F",   # 濃紺
+        "title_color": "#E31C23",        # コークレッド寄せ
         "outline_inner_color": "#FFFFFF",
         "outline_inner_width": 15,
         "outline_outer_color": "#000000",
         "outline_outer_width": 0,
     },
 ]
+
+
 
 
 def _palette_candidates(config: Dict | None) -> List[Dict]:

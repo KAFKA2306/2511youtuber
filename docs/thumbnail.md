@@ -2,7 +2,8 @@
 
 ## Step
 - Implementation sits in `src/steps/thumbnail.py`, where `ThumbnailGenerator` (`src/steps/thumbnail.py:69`) extends `Step` (`src/core/step.py:12`) and writes `run_dir/run_id/thumbnail.png` via `Step.get_output_path` (`src/core/step.py:21`).
-- Palette randomisation uses `cfg.get("randomize_palette", True)` (`src/steps/thumbnail.py:77`) and `PRESETS` (`src/steps/thumbnail.py:14`). When true it samples with `random.choice`, otherwise it honours explicit `palettes` or `presets` entries in the provided config (`src/steps/thumbnail.py:58`).
+- Palette randomisation evaluation lives in `_palette_candidates` (`src/steps/thumbnail.py:58`) and uses `cfg.get("randomize_palette", True)` (`src/steps/thumbnail.py:77`) plus `PRESETS` (`src/steps/thumbnail.py:14`). When true it samples with `random.choice`, otherwise it honours explicit `palettes` or `presets` entries in the provided config.
+- `PRESETS` lives in code as the fallback palette store; customise by defining `steps.thumbnail.palettes` in config to avoid hard-coded values at runtime.
 - `PRESETS` bundles five dictionaries consumed by `_palette_candidates`:
   - `{'background_color': '#fef155', 'title_color': '#EB001B', 'outline_inner_color': '#FFFFFF', 'outline_inner_width': 30, 'outline_outer_color': '#000000', 'outline_outer_width': 0}` (`src/steps/thumbnail.py:14`).
   - `{'background_color': '#000000', 'title_color': '#FFD700', 'outline_inner_color': '#EB001B', 'outline_inner_width': 30, 'outline_outer_color': '#000000', 'outline_outer_width': 0}` (`src/steps/thumbnail.py:23`).
