@@ -46,7 +46,7 @@ steps:
     crf: 23
     intro_outro:
       enabled: true
-      intro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/やっほー春日部紬だよー今日も見てくれてありがとう.mp4"
+      intro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/おはようございます。今日も世界の動きを見てみましょう.mp4"
       outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/ありがとう.mp4"
     effects:
       - type: "ken_burns"
