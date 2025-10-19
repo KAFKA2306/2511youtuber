@@ -56,7 +56,11 @@ class TwitterPoster(Step):
         self.sample_rate = sample_rate
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
-        video_path = resolve_video_input(inputs)
+        base_video = inputs.get("concat_intro_outro")
+        if base_video and Path(base_video).exists():
+            video_path = Path(base_video)
+        else:
+            video_path = resolve_video_input(inputs)
         metadata_path = Path(inputs["analyze_metadata"])
         clip_path = self.run_dir / self.run_id / "twitter_clip.mp4"
         clip_path.parent.mkdir(parents=True, exist_ok=True)
