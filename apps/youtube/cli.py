@@ -89,6 +89,9 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     wrap_width_pixels = SubtitleFormatter.safe_pixel_width(video_cfg.resolution, margin_l, margin_r)
     font_path = subtitle_style.font_path if subtitle_style else None
     font_size = subtitle_style.font_size if subtitle_style else None
+    resolution_values = video_cfg.resolution.lower().split('x')
+    video_width = int(resolution_values[0])
+    video_height = int(resolution_values[1])
 
     steps: List = [
         NewsCollector(
@@ -163,8 +166,8 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                     codec=video_cfg.codec,
                     preset=video_cfg.preset,
                     crf=video_cfg.crf,
-                    width=int(video_cfg.resolution.split('x')[0]),
-                    height=int(video_cfg.resolution.split('x')[1]),
+                    width=video_width,
+                    height=video_height,
                     fps=video_cfg.fps,
                     sample_rate=audio_cfg.sample_rate,
                 )
