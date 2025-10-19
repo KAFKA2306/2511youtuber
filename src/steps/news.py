@@ -46,8 +46,12 @@ class NewsCollector(Step):
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = [item.model_dump(mode="json") for item in news_items]
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+        query_path = output_path.with_name("query.json")
+        with open(query_path, "w", encoding="utf-8") as f:
+            json.dump({"query": self.query, "count": self.count}, f, ensure_ascii=False, indent=2)
         return output_path
 
     def _build_providers(self) -> List[Provider]:

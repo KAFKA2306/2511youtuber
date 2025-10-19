@@ -161,6 +161,8 @@ class ScriptGenerator(Step):
         data = self._coerce_to_dict(raw.strip(), depth)
         if not isinstance(data, dict):
             raise ValueError("Script output must be a mapping")
+        if "segments" in data:
+            data["segments"] = self._normalize_segments(data.get("segments"))
         script = Script(**data)
         for seg in script.segments:
             seg.text = re.sub(r'。(?![\r\n]|$)', '。\n', seg.text)
@@ -206,6 +208,23 @@ class ScriptGenerator(Step):
         if match := re.search(r"(?:^|\r?\n)(segments:.*)", text, re.DOTALL):
             return match.group(1)
         return None
+
+    def _normalize_segments(self, segments: Any) -> List[Dict[str, str]]:
+        if not isinstance(segments, list):
+            return []
+        normalized: List[Dict[str, str]] = []
+        for item in segments:
+            if isinstance(item, dict):
+                text = item.get("text") or item.get("line") or item.get("content")
+                if isinstance(text, list):
+                    text = "\n".join(str(value) for value in text if value)
+                if not text:
+                    continue
+                speaker = item.get("speaker") or item.get("role") or item.get("name") or ""
+                normalized.append({"speaker": str(speaker) or self.speakers["narrator"], "text": str(text)})
+            elif isinstance(item, str) and item.strip():
+                normalized.append({"speaker": self.speakers["narrator"], "text": item})
+        return normalized
 
     def _pick_side_theme(self, news_items: List[NewsItem]) -> tuple[str, str]:
         for item in news_items:
