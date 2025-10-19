@@ -393,6 +393,174 @@ providers:
 
 ---
 
+## 定型短尺動画のプロンプト設計（Sora用）
+
+### 概要
+
+YouTube動画の**導入**、**幕間**、**終了後**に挿入する10秒以下の定型動画を生成するためのプロンプト設計。
+ブランド認知とプロフェッショナルな印象を与え、視聴者の離脱を防ぐことが目的。
+
+### 1. 導入動画（イントロ）
+
+**意図:**
+- チャンネルブランディングの確立
+- 視聴者の注意を引きつける
+- 動画のトーンを設定（金融ニュース解説）
+
+**場面:**
+- 動画開始直後（0-5秒）
+- サムネイルから本編への橋渡し
+
+**プロンプト:**
+```
+A sleek financial news broadcast intro: golden light beams sweep across a dark blue futuristic stock market background with subtle digital ticker symbols flowing horizontally. The camera smoothly zooms in toward a centered glowing emblem showing abstract currency symbols (¥, $, €) in a minimalist design. Ambient particles drift gently. Professional, modern, high-tech aesthetic. 5 seconds. 1080p.
+```
+
+**日本語訳:**
+洗練された金融ニュース放送イントロ: 暗い青色の未来的な株式市場背景に、金色の光線が横切る。微妙なデジタルティッカーシンボルが水平に流れる。カメラは中央の輝く紋章（抽象的な通貨記号 ¥, $, € のミニマルデザイン）に向かってスムーズにズームイン。周囲には粒子が穏やかに漂う。プロフェッショナル、モダン、ハイテク美学。5秒。1080p。
+
+**技術仕様:**
+- 時間: 5秒
+- 解像度: 1080p
+- スタイル: ミニマル、未来的、金融ニュース専門
+- 音声: なし（別途BGM追加）
+
+**コスト（Sora Pro 1080p）:**
+- 5秒 × $0.50 = **$2.50/動画**
+- 再利用可能（全動画で同一イントロ使用）
+
+### 2. 幕間動画（トランジション）
+
+**意図:**
+- 話題の切り替わりを視覚的に示す
+- 視聴者に短い休憩を与える
+- 離脱率を下げる（視覚的刺激で飽きさせない）
+
+**場面:**
+- 異なるニューストピック間（例: FOMCニュース → 日銀政策の切り替え）
+- 長い動画（10分以上）の中盤
+
+**プロンプト:**
+```
+A 3-second transition sequence: abstract geometric shapes (cubes, hexagons) in metallic silver and deep blue colors rotate smoothly in 3D space against a dark gradient background. Subtle motion blur creates a sense of speed. The shapes align into a grid formation, then dissolve into particles. Clean, modern, business-oriented design. 3 seconds. 1080p.
+```
+
+**日本語訳:**
+3秒のトランジションシーケンス: メタリックシルバーと深い青色の抽象的な幾何学形状（立方体、六角形）が暗いグラデーション背景の3D空間で滑らかに回転。微妙なモーションブラーが速度感を演出。形状はグリッド状に整列し、その後粒子に分解。クリーン、モダン、ビジネス指向のデザイン。3秒。1080p。
+
+**技術仕様:**
+- 時間: 3秒
+- 解像度: 1080p
+- スタイル: 抽象的、ビジネスライク
+- 音声: なし（トランジション音を別途追加）
+
+**コスト（Sora Pro 1080p）:**
+- 3秒 × $0.50 = **$1.50/動画**
+- 2-3パターン生成して使い分け可能
+
+### 3. 終了動画（アウトロ）
+
+**意図:**
+- チャンネル登録・高評価を促す
+- 視聴者に満足感を与える
+- 次回動画への期待感を醸成
+
+**場面:**
+- 動画終了直前（最後の10秒）
+- スクリプト終了後
+
+**プロンプト:**
+```
+A professional financial news outro: the camera slowly pulls back from a minimalist desk setup with a glowing holographic display showing upward trending charts. Soft bokeh lights in gold and blue twinkle in the background. A subtle text placeholder area appears in the center (empty space for overlay graphics). The scene fades to dark blue with gentle light rays. Calm, reassuring, forward-looking tone. 8 seconds. 1080p.
+```
+
+**日本語訳:**
+プロフェッショナルな金融ニュースアウトロ: カメラはミニマルなデスクセットアップからゆっくりと引く。ホログラフィックディスプレイには上昇トレンドのチャートが輝く。金色と青色の柔らかいボケ光が背景できらめく。中央には微妙なテキストプレースホルダーエリアが表示（オーバーレイグラフィック用の空白）。シーンは暗い青にフェードし、優しい光線が差し込む。穏やか、安心感、未来志向のトーン。8秒。1080p。
+
+**技術仕様:**
+- 時間: 8秒
+- 解像度: 1080p
+- スタイル: 未来的、安心感、穏やか
+- 音声: なし（アウトロBGM追加）
+- 後処理: テキストオーバーレイ（「チャンネル登録」「高評価」）をFFmpegで追加
+
+**コスト（Sora Pro 1080p）:**
+- 8秒 × $0.50 = **$4.00/動画**
+- 全動画で再利用可能
+
+### プロンプト設計の原則
+
+1. **具体的な視覚要素:** 抽象的な指示（"かっこいい"）ではなく、具体的な要素（"golden light beams", "metallic silver cubes"）を指定
+2. **カメラワーク明示:** "camera zooms in", "camera pulls back"など動きを明記
+3. **色彩指定:** ブランドカラー（金色、青色）を統一
+4. **時間厳守:** "5 seconds", "3 seconds"と明記（Soraの最大20秒に対して短めに設定）
+5. **解像度指定:** "1080p"を明記
+6. **トーン指示:** "professional", "modern", "calm"など雰囲気を明示
+7. **テキスト非表示:** 動画内にテキストを生成させない（Soraのテキスト生成精度が不安定なため、後処理でオーバーレイ）
+
+### 実装時の考慮事項
+
+**再利用戦略:**
+- イントロ・アウトロは全動画で同一のものを使用
+- 幕間は2-3パターン生成し、ランダムまたは文脈に応じて選択
+
+**コスト最適化:**
+- 初回生成: $2.50 + $1.50×3 + $4.00 = **$11.00**（イントロ1本、幕間3本、アウトロ1本）
+- 以降の動画: **$0**（再利用）
+- 動画100本あたりの追加コスト: $0.11/動画
+
+**FFmpegでの合成:**
+```python
+# src/steps/video.py での実装例
+def add_standardized_clips(intro_path: str, main_path: str, outro_path: str, output_path: str):
+    ffmpeg.concat(
+        ffmpeg.input(intro_path),
+        ffmpeg.input(main_path),
+        ffmpeg.input(outro_path),
+        v=1, a=0
+    ).output(output_path, vcodec='libx264', preset='medium', crf=23).run()
+```
+
+**設定ファイル:**
+```yaml
+# config/default.yaml
+steps:
+  video:
+    standardized_clips:
+      intro:
+        enabled: true
+        path: "assets/video/intro_5sec.mp4"
+      transition:
+        enabled: true
+        paths:
+          - "assets/video/transition_3sec_v1.mp4"
+          - "assets/video/transition_3sec_v2.mp4"
+          - "assets/video/transition_3sec_v3.mp4"
+      outro:
+        enabled: true
+        path: "assets/video/outro_8sec.mp4"
+        overlay_text: true
+        overlay_template: "チャンネル登録・高評価お願いします"
+```
+
+### 代替手段（コスト削減）
+
+**Luma Dream Machine（$0.20/10秒）での生成:**
+- イントロ5秒: **$0.10**
+- 幕間3秒: **$0.06** × 3 = **$0.18**
+- アウトロ8秒: **$0.16**
+- 合計: **$0.44**（Soraの$11.00と比較して96%削減）
+
+**プロンプト調整（Luma用）:**
+同じプロンプトをそのまま使用可能。Lumaは10秒制限のため、イントロとアウトロを10秒版として生成し、後処理でトリミング。
+
+**推奨戦略:**
+1. まずLumaで生成（$0.44）
+2. 品質が不十分な場合のみSora使用（API公開後）
+3. 初回のみコストをかけ、以降は無限に再利用
+
+---
+
 ## 参考リンク
 
 - [Pexels API Documentation](https://www.pexels.com/api/documentation/)
@@ -407,3 +575,4 @@ providers:
 ## 更新履歴
 
 - 2025-10-19: 初版作成（Pexels/Pixabay実装状況、Veo/Sora/Runway/Luma調査結果）
+- 2025-10-19: 定型短尺動画のプロンプト設計追加（イントロ・幕間・アウトロの具体的なプロンプトと実装戦略）
