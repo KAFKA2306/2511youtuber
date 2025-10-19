@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Dict, Iterable, List, Tuple, Type
 
 from ffmpeg.nodes import FilterableStream
+
+from src.utils.config import Config
 
 
 @dataclass(frozen=True)
@@ -21,8 +24,27 @@ class VideoEffect:
 
 
 EFFECT_REGISTRY: Dict[str, Type[VideoEffect]] = {}
-TSUMUGI_OVERLAY_PATH = "assets/春日部つむぎ立ち絵公式_v2.0/春日部つむぎ立ち絵公式_v1.1.1.png"
-TSUMUGI_OVERLAY_OFFSET = {"right": 20, "bottom": 0}
+
+
+@lru_cache(maxsize=1)
+def _subtitle_margins() -> Tuple[int, int]:
+    cfg = Config.load()
+    video_cfg = cfg.steps.video
+    style = video_cfg.subtitles
+    if style is None:
+        return 0, 0
+    left = int(style.margin_l or 0)
+    right = int(style.margin_r or 0)
+    return left, right
+
+
+def _offset_value(offset: Dict[str, int] | None, key: str) -> int:
+    if not offset:
+        return 0
+    raw = offset.get(key)
+    if raw is None:
+        return 0
+    return int(raw)
 
 
 def register_effect(effect_cls: Type[VideoEffect]) -> Type[VideoEffect]:
@@ -115,7 +137,23 @@ def _overlay_position(
         y = vh - oh - bottom
     else:
         y = (vh - oh) // 2 + top - bottom
-    return max(0, x), max(0, y)
+    left_margin, right_margin = _subtitle_margins()
+    safe_left = left_margin
+    safe_right = vw - right_margin
+    if "left" in anchor:
+        x = min(max(0, x), max(0, safe_left - ow))
+    elif "right" in anchor:
+        x = max(min(vw - ow, x), min(vw - ow, safe_right))
+    else:
+        left_space = max(0, safe_left - ow)
+        right_space = max(0, vw - safe_right - ow)
+        if right_space >= left_space:
+            x = max(min(vw - ow, x), min(vw - ow, safe_right))
+        else:
+            x = min(max(0, x), max(0, safe_left - ow))
+    x = max(0, min(x, vw - ow))
+    y = max(0, min(y, vh - oh))
+    return x, y
 
 
 @register_effect
@@ -148,7 +186,7 @@ class OverlayEffect(VideoEffect):
         orig_w = int(probe["streams"][0]["width"])
         orig_h = int(probe["streams"][0]["height"])
         video_w, video_h = context.resolution
-        overlay_w, overlay_h = self._dimensions(orig_w, orig_h, video_w, video_h)
+        overlay_w, overlay_h = self._dimensions(orig_w, orig_h, video_w, video_h, self.offset)
 
         if (overlay_w, overlay_h) != (orig_w, orig_h):
             overlay_stream = overlay_stream.filter("scale", overlay_w, overlay_h)
@@ -156,7 +194,14 @@ class OverlayEffect(VideoEffect):
         x, y = _overlay_position(context.resolution, (overlay_w, overlay_h), self.anchor, self.offset)
         return stream.overlay(overlay_stream, x=x, y=y)
 
-    def _dimensions(self, orig_w: int, orig_h: int, video_w: int, video_h: int) -> Tuple[int, int]:
+    def _dimensions(
+        self,
+        orig_w: int,
+        orig_h: int,
+        video_w: int,
+        video_h: int,
+        offset: Dict[str, int] | None = None,
+    ) -> Tuple[int, int]:
         w, h = orig_w, orig_h
         if self.height:
             h = max(int(self.height), 1)
@@ -170,6 +215,27 @@ class OverlayEffect(VideoEffect):
         elif self.width_ratio:
             w = max(int(round(video_w * float(self.width_ratio))), 1)
             h = max(int(round(orig_h * (w / orig_w))), 1)
+        left_margin, right_margin = _subtitle_margins()
+        left_offset = max(_offset_value(offset, "left"), 0)
+        right_offset = max(_offset_value(offset, "right"), 0)
+        if "left" in self.anchor:
+            bound = max(left_margin - left_offset, 0)
+        elif "right" in self.anchor:
+            bound = max(right_margin - right_offset, 0)
+        else:
+            bound = max(max(left_margin - left_offset, 0), max(right_margin - right_offset, 0))
+        if bound and bound > 0 and w > bound:
+            scale = bound / w
+            w = max(int(round(w * scale)), 1)
+            h = max(int(round(h * scale)), 1)
+        if w > video_w:
+            scale = video_w / w
+            w = max(int(round(w * scale)), 1)
+            h = max(int(round(h * scale)), 1)
+        if h > video_h:
+            scale = video_h / h
+            h = max(int(round(h * scale)), 1)
+            w = max(int(round(w * scale)), 1)
         return w, h
 
 

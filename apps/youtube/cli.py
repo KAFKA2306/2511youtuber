@@ -106,18 +106,6 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
         SubtitleFormatter(
             run_id=run_id,
             run_dir=run_dir,
-            max_chars_per_line=SubtitleFormatter.estimate_max_chars_per_line(
-                video_cfg.resolution,
-                subtitle_cfg.width_per_char_pixels,
-                subtitle_cfg.min_visual_width,
-                subtitle_cfg.max_visual_width,
-                margin_l=margin_l,
-                margin_r=margin_r,
-            ),
-            width_per_char_pixels=subtitle_cfg.width_per_char_pixels,
-            wrap_width_pixels=wrap_width_pixels,
-            font_path=font_path,
-            font_size=font_size,
         ),
         VideoRenderer(
             run_id=run_id,

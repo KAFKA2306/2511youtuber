@@ -1,9 +1,7 @@
-import re
-import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
-from PIL import ImageFont
+from PIL import Image, ImageFont
 
 from src.core.io_utils import load_script, validate_input_files, write_text
 from src.core.media_utils import get_audio_duration
@@ -19,18 +17,46 @@ class SubtitleFormatter(Step):
         run_id: str,
         run_dir: Path,
         *,
-        max_chars_per_line: int,
-        width_per_char_pixels: int,
+        max_chars_per_line: int | None = None,
+        width_per_char_pixels: int | None = None,
         wrap_width_pixels: int | None = None,
         font_path: str | None = None,
         font_size: int | None = None,
     ):
         super().__init__(run_id, run_dir)
+        from src.utils.config import Config
+        config = Config.load()
+        video_cfg = config.steps.video
+        subtitle_cfg = config.steps.subtitle
+        style_cfg = video_cfg.subtitles
+
+        margin_l = int(style_cfg.margin_l or 0)
+        margin_r = int(style_cfg.margin_r or 0)
+
+        self.font_path = Path(font_path or style_cfg.font_path) if (font_path or style_cfg.font_path) else None
+        self.font_size = font_size or style_cfg.font_size or 24
+
+        overlay_l, overlay_r = self._overlay_guard(video_cfg.effects, video_cfg.resolution)
+        margin_l = max(margin_l, overlay_l)
+        margin_r = max(margin_r, overlay_r)
+
+        safe_width = self.safe_pixel_width(video_cfg.resolution, margin_l, margin_r)
+        target_width = max(int(safe_width * 0.8), 1)
+
+        char_pixels = int(width_per_char_pixels or subtitle_cfg.width_per_char_pixels)
+        char_pixels = max(char_pixels // 2, 1)
+
+        if wrap_width_pixels is None:
+            wrap_width_pixels = target_width
+
+        if max_chars_per_line is None:
+            estimated = target_width // char_pixels if char_pixels else subtitle_cfg.max_visual_width * 2
+            limit = subtitle_cfg.max_visual_width * 2
+            max_chars_per_line = max(subtitle_cfg.min_visual_width, min(limit, estimated))
+
         self.max_chars_per_line = max_chars_per_line
-        self.width_per_char_pixels = width_per_char_pixels
+        self.width_per_char_pixels = char_pixels
         self.wrap_width_pixels = wrap_width_pixels
-        self.font_path = Path(font_path) if font_path else None
-        self.font_size = font_size
         self._font: ImageFont.ImageFont | None = None
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
@@ -74,7 +100,8 @@ class SubtitleFormatter(Step):
         for i, ts in enumerate(timestamps, start=1):
             lines.append(f"{i}")
             lines.append(f"{self._format_timestamp(ts['start'])} --> {self._format_timestamp(ts['end'])}")
-            lines.extend(self._wrap_text(ts["text"]))
+            wrapped = self._wrap_text(ts["text"])
+            lines.extend(wrapped)
             lines.append("")
         return "\n".join(lines)
 
@@ -86,98 +113,75 @@ class SubtitleFormatter(Step):
         return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
     def _wrap_text(self, text: str) -> List[str]:
-        wrapped = []
+        limit = max(self.max_chars_per_line, 1)
+        wrapped: List[str] = []
         for raw_line in text.split("\n"):
             line = raw_line.strip()
             if not line:
                 wrapped.append("")
                 continue
-            wrapped.extend(self._wrap_visual_line(line, self.max_chars_per_line))
+            start = 0
+            while start < len(line):
+                wrapped.append(line[start : start + limit])
+                start += limit
         return wrapped or [""]
 
-    def _wrap_visual_line(self, line: str, limit: int) -> List[str]:
-        if not line:
-            return [""]
-        sentences = re.split(r'(?<=。)', line)
-        segments, current = [], ""
-        for sentence in sentences:
-            if not sentence:
-                continue
-            for chunk in self._split_by_width(sentence, limit):
-                if not chunk:
-                    continue
-                tentative = current + chunk
-                if current and self._exceeds_limits(tentative, limit):
-                    segments.append(current)
-                    current = chunk
-                else:
-                    current = tentative
-        if current:
-            segments.append(current)
-        cleaned = [seg for seg in segments if seg]
-        return cleaned or [""]
-
-    def _split_by_width(self, text: str, limit: int) -> List[str]:
-        if not text:
-            return [""]
-        if limit <= 0 and not self.wrap_width_pixels:
-            return [text]
-        chunks, current = [], ""
-        for char in text:
-            tentative = current + char
-            if current and self._exceeds_limits(tentative, limit):
-                chunks.append(current)
-                current = char
-            elif not current and self._exceeds_limits(tentative, limit):
-                chunks.append(char)
-                current = ""
-            else:
-                current = tentative
-        if current:
-            chunks.append(current)
-        return chunks or [""]
-
-    def _visual_width(self, text: str) -> int:
-        return sum(2 if unicodedata.east_asian_width(c) in ("F", "W") else 1 for c in text)
-
     def _text_width(self, text: str) -> int:
-        font = self._load_font()
-        if font:
-            if hasattr(font, "getlength"):
-                return int(font.getlength(text))
-            bbox = font.getbbox(text)
-            return int(bbox[2] - bbox[0])
-        return self._visual_width(text) * self.width_per_char_pixels
+        return len(text) * self.width_per_char_pixels
 
     def _load_font(self) -> ImageFont.ImageFont | None:
         if not self.font_path or not self.font_path.exists():
             return None
         if self._font is None:
-            size = self.font_size or 24
-            self._font = ImageFont.truetype(str(self.font_path), size)
+            self._font = ImageFont.truetype(str(self.font_path), self.font_size or 24)
         return self._font
-
-    def _exceeds_limits(self, text: str, limit: int) -> bool:
-        if limit > 0 and self._visual_width(text) > limit:
-            return True
-        if self.wrap_width_pixels and self._text_width(text) > self.wrap_width_pixels:
-            return True
-        return False
-
-    @staticmethod
-    def estimate_max_chars_per_line(
-        resolution: str,
-        width_per_char_pixels: int,
-        min_visual_width: int,
-        max_visual_width: int,
-        margin_l: int | None = None,
-        margin_r: int | None = None,
-    ) -> int:
-        safe = SubtitleFormatter.safe_pixel_width(resolution, margin_l, margin_r)
-        base = int(max(safe, 0) / width_per_char_pixels) if width_per_char_pixels else min_visual_width
-        return max(min_visual_width, min(max_visual_width, base))
 
     @staticmethod
     def safe_pixel_width(resolution: str, margin_l: int | None, margin_r: int | None) -> int:
         width = int(resolution.lower().split("x", 1)[0].strip())
         return max(width - int(margin_l or 0) - int(margin_r or 0), 0)
+
+    def _overlay_guard(self, effects, resolution: str) -> tuple[int, int]:
+        width, height = map(int, resolution.split("x"))
+        margin_l = 0
+        margin_r = 0
+        for effect in effects:
+            if getattr(effect, "type", None) != "overlay" or not getattr(effect, "enabled", False):
+                continue
+            image_path = getattr(effect, "image_path", None)
+            if not image_path:
+                continue
+            path = Path(str(image_path))
+            if not path.exists():
+                continue
+            with Image.open(path) as img:
+                orig_w, orig_h = img.size
+            overlay_w = orig_w
+            overlay_h = orig_h
+            height_ratio = getattr(effect, "height_ratio", None)
+            width_ratio = getattr(effect, "width_ratio", None)
+            height_abs = getattr(effect, "height", None)
+            width_abs = getattr(effect, "width", None)
+            if height_ratio:
+                overlay_h = int(height * float(height_ratio))
+                overlay_w = int(orig_w * overlay_h / orig_h)
+            elif width_ratio:
+                overlay_w = int(width * float(width_ratio))
+                overlay_h = int(orig_h * overlay_w / orig_w)
+            elif height_abs:
+                overlay_h = int(height_abs)
+                overlay_w = int(orig_w * overlay_h / orig_h)
+            elif width_abs:
+                overlay_w = int(width_abs)
+                overlay_h = int(orig_h * overlay_w / orig_w)
+            anchor = getattr(effect, "anchor", "") or ""
+            offset = getattr(effect, "offset", None)
+            if hasattr(offset, "model_dump"):
+                offset = offset.model_dump()
+            offset = offset or {}
+            padding = 20
+            if "left" in anchor:
+                margin_l = max(margin_l, int(offset.get("left") or 0) + overlay_w + padding)
+            elif "right" in anchor:
+                margin_r = max(margin_r, int(offset.get("right") or 0) + overlay_w + padding)
+        return margin_l, margin_r

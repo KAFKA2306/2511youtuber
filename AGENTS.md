@@ -1,7 +1,8 @@
 # Repository Guidelines
 
-要因を調査して根本対策。エラーハンドリング禁止。抜本的な課題を解決。コメント禁止。最小のコードにしつつ、目標を達成する
-常に最小のコードベース、効率的なディレクトリ構成に改善する。
+要因を調査して根本対策。エラーハンドリング禁止。抜本的な課題を解決。コメント禁止。最小のコードにしつつ、目標を達成する。常に最小のコードベース、効率的なディレクトリ構成に改善する。
+DRYの原則に準拠。config/default.yamlを変更するだけで、意図通りに全体の動作が変更できなければならない。ハードコーディング禁止。
+
 
 ## Project Structure & Module Organization
 - Source code for the v2 workflow lives in `src/`, with `main.py` as the CLI entrypoint, `workflow.py` orchestrating steps, and individual step/provider logic under `src/steps/` and `src/providers/`.

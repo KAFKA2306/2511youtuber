@@ -67,7 +67,10 @@ class VideoRenderer(Step):
         if not font_name:
             font_name = "Noto Sans CJK JP"
 
+        width, height = map(int, self.resolution.split("x"))
         parts = [
+            f"PlayResX={width}",
+            f"PlayResY={height}",
             f"FontName={font_name}",
             f"FontSize={int(config.get('font_size', 24))}",
             f"PrimaryColour={config.get('primary_colour', '&HFFFFFF&')}",

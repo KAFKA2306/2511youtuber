@@ -35,7 +35,7 @@ steps:
   subtitle:
     width_per_char_pixels: 70
     min_visual_width: 16
-    max_visual_width: 80
+    max_visual_width: 40
 
   video:
     resolution: "1920x1080"
@@ -69,13 +69,14 @@ steps:
     subtitles:
       font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
       font_name: "Zen Maru Gothic"
-      font_size: 24
+      font_size: 72
       primary_colour: "&HFFFFFF&"
       outline_colour: "&H000000&"
       outline: 2
-      margin_l: 360
-      margin_r: 480
-      margin_v: 120
+      alignment: 2
+      margin_l: 0
+      margin_r: 0
+      margin_v: 10
 
   thumbnail:
     enabled: true
