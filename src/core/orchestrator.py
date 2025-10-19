@@ -37,7 +37,6 @@ class WorkflowOrchestrator:
         if prev_outputs:
             tracker.track_diff(prev_outputs, self.state.outputs)
 
-        tracker.track_outputs(self.state.outputs)
         tracker.track_metrics({"workflow_duration": duration, "steps_count": len(self.state.completed_steps)})
         tracker.finalize()
 

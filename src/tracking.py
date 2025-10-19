@@ -72,19 +72,20 @@ class AimTracker:
         model: str = "",
         duration: float = 0.0,
     ) -> None:
-        metrics = {
+        payload: Dict[str, Any] = {
             "duration": duration,
             "prompt_length": len(prompt),
             "output_length": len(output),
         }
+        if template_name:
+            payload["template"] = template_name
+        if model:
+            payload["model"] = model
         for key, value in inputs.items():
             if isinstance(value, (int, float)):
-                metrics[f"input_{key}"] = value
-        for name, value in metrics.items():
-            self._run.track(value, name=f"{step_name}_prompt_{name}")
+                payload[f"input_{key}"] = value
+        self._run.track(payload, name=f"{step_name}_prompt")
         self._run[f"{step_name}_template"] = template_name
-        if model:
-            self._run[f"{step_name}_model"] = model
         self._run[f"{step_name}_prompt"] = prompt[:10000]
         self._run[f"{step_name}_inputs"] = {str(k): self._serialize(v) for k, v in inputs.items()}
         self._run[f"{step_name}_output"] = output[:10000]
@@ -117,30 +118,6 @@ class AimTracker:
     def track_metrics(self, metrics: Dict[str, float]) -> None:
         for name, value in metrics.items():
             self._run.track(value, name=name)
-
-    def track_outputs(self, outputs: Dict[str, Any]) -> None:
-        targets = {
-            "news": outputs.get("collect_news"),
-            "script": outputs.get("generate_script"),
-            "metadata": outputs.get("analyze_metadata") or outputs.get("generate_metadata"),
-            "youtube": outputs.get("upload_youtube"),
-            "tweet": outputs.get("post_twitter"),
-        }
-        for label, value in targets.items():
-            if not value:
-                continue
-            path = Path(value)
-            if not path.exists():
-                continue
-            if path.suffix == ".json":
-                self._run[f"output_{label}"] = json.loads(path.read_text(encoding="utf-8"))
-            else:
-                self._run[f"output_{label}"] = str(path)
-        news_path = targets.get("news")
-        if news_path:
-            query_path = Path(news_path).with_name("query.json")
-            if query_path.exists():
-                self._run["output_query"] = json.loads(query_path.read_text(encoding="utf-8"))
 
     def finalize(self) -> None:
         if self._run:

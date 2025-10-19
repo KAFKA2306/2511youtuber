@@ -193,40 +193,10 @@ class MultiOverlayEffect(VideoEffect):
         return stream
 
 
-@register_effect
-class TsumugiOverlayEffect(VideoEffect):
-    name = "tsumugi_overlay"
-
-    def __init__(
-        self,
-        image_path: str = TSUMUGI_OVERLAY_PATH,
-        anchor: str = "bottom_right",
-        height_ratio: float | None = 0.85,
-        width_ratio: float | None = None,
-        height: int | None = None,
-        width: int | None = None,
-        offset: Dict[str, int] | None = None,
-    ):
-        base_offset = offset.model_dump(exclude_none=True) if hasattr(offset, "model_dump") else offset
-        self.overlay = OverlayEffect(
-            image_path=image_path or TSUMUGI_OVERLAY_PATH,
-            anchor=anchor,
-            height_ratio=height_ratio,
-            width_ratio=width_ratio,
-            height=height,
-            width=width,
-            offset=dict(base_offset or TSUMUGI_OVERLAY_OFFSET),
-        )
-
-    def apply(self, stream: FilterableStream, context: VideoEffectContext) -> FilterableStream:
-        return self.overlay.apply(stream, context)
-
-
 __all__ = [
     "KenBurnsEffect",
     "OverlayEffect",
     "MultiOverlayEffect",
-    "TsumugiOverlayEffect",
     "VideoEffect",
     "VideoEffectContext",
     "VideoEffectPipeline",
