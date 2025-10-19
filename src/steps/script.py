@@ -186,6 +186,8 @@ class ScriptGenerator(Step):
         stripped = raw.strip()
         if stripped.startswith('"') and stripped.endswith('"'):
             return self._coerce_to_dict(stripped[1:-1], depth - 1)
+        if fallback_yaml := self._segments_from_yaml_like(stripped):
+            return {"segments": fallback_yaml}
         if fallback := self._dialog_segments_from_text(stripped):
             return {"segments": fallback}
         raise ValueError("Unable to parse script output")
@@ -247,6 +249,58 @@ class ScriptGenerator(Step):
         if match := re.search(r"(?:^|\r?\n)(segments:.*)", text, re.DOTALL):
             return match.group(1)
         return None
+
+    def _segments_from_yaml_like(self, text: str) -> List[Dict[str, str]] | None:
+        if "segments" not in text:
+            return None
+        lines = text.splitlines()
+        capture = False
+        current: Dict[str, str] | None = None
+        results: List[Dict[str, str]] = []
+        aliases = self._speaker_aliases()
+        for raw_line in lines:
+            line = raw_line.rstrip()
+            stripped = line.strip()
+            if not capture:
+                capture = stripped.startswith("segments:")
+                continue
+            if not stripped:
+                continue
+            if stripped.startswith("- "):
+                if current and "speaker" in current and "text" in current:
+                    results.append(current)
+                current = {}
+                remainder = stripped[1:].strip()
+                if remainder.startswith("speaker:"):
+                    speaker_value = remainder.split(":", 1)[1].strip()
+                    current["speaker"] = aliases.get(speaker_value.replace(" ", ""), speaker_value)
+                continue
+            if stripped.startswith("speaker:"):
+                value = stripped.split(":", 1)[1].strip()
+                current = current or {}
+                speaker = self._strip_yaml_quotes(value)
+                current["speaker"] = aliases.get(speaker.replace(" ", ""), speaker)
+                continue
+            if stripped.startswith("text:"):
+                value = stripped.split(":", 1)[1].strip()
+                current = current or {}
+                current["text"] = self._decode_yaml_text(value)
+                continue
+            if current and "text" in current:
+                current["text"] += "\n" + stripped
+        if current and "speaker" in current and "text" in current:
+            results.append(current)
+        return results or None
+
+    def _strip_yaml_quotes(self, value: str) -> str:
+        cleaned = value.strip()
+        if cleaned.startswith(("'", '"')) and cleaned.endswith(("'", '"')) and len(cleaned) >= 2:
+            cleaned = cleaned[1:-1]
+        return cleaned.replace('\\"', '"').replace("\\'", "'").strip()
+
+    def _decode_yaml_text(self, value: str) -> str:
+        stripped = self._strip_yaml_quotes(value)
+        return stripped.replace("\\n", "\n").replace('\\"', '"')
 
     def _dialog_segments_from_text(self, text: str) -> List[Dict[str, str]] | None:
         token = re.compile(r"^(?P<speaker>[^：:]+)[：:](?P<line>.+)$")

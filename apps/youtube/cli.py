@@ -112,12 +112,27 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             run_id=run_id,
             run_dir=run_dir,
         ),
+    ]
+
+    if metadata_cfg.get("enabled", False):
+        steps.append(MetadataAnalyzer(run_id=run_id, run_dir=run_dir, metadata_config=metadata_cfg))
+
+    if config.steps.thumbnail.enabled:
+        steps.append(
+            ThumbnailGenerator(
+                run_id=run_id,
+                run_dir=run_dir,
+                thumbnail_config=config.steps.thumbnail.model_dump(),
+            )
+        )
+
+    steps.append(
         VideoRenderer(
             run_id=run_id,
             run_dir=run_dir,
             video_config=video_config,
-        ),
-    ]
+        )
+    )
 
     intro_cfg = video_cfg.intro_outro
     if intro_cfg and intro_cfg.enabled:
@@ -130,18 +145,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 codec=video_cfg.codec,
                 preset=video_cfg.preset,
                 crf=video_cfg.crf,
-            )
-        )
-
-    if metadata_cfg.get("enabled", False):
-        steps.append(MetadataAnalyzer(run_id=run_id, run_dir=run_dir, metadata_config=metadata_cfg))
-
-    if config.steps.thumbnail.enabled:
-        steps.append(
-            ThumbnailGenerator(
-                run_id=run_id,
-                run_dir=run_dir,
-                thumbnail_config=config.steps.thumbnail.model_dump(),
+                thumbnail_overlay=video_config.get("thumbnail_overlay"),
             )
         )
 

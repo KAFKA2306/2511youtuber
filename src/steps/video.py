@@ -6,7 +6,7 @@ from typing import Dict
 import ffmpeg
 
 from src.core.io_utils import validate_input_files
-from src.core.media_utils import find_ffmpeg_binary, get_audio_duration, sanitize_path_for_ffmpeg
+from src.core.media_utils import apply_thumbnail_overlay, find_ffmpeg_binary, get_audio_duration, sanitize_path_for_ffmpeg
 from src.core.step import Step
 from src.providers.video_effects import VideoEffectContext, VideoEffectPipeline
 
@@ -27,6 +27,10 @@ class VideoRenderer(Step):
         subtitles_cfg = cfg.get("subtitles") or {}
         self.subtitle_force_style = self._build_subtitle_style(subtitles_cfg)
         self.subtitle_fonts_dir = self._resolve_fonts_dir(subtitles_cfg)
+        overlay_cfg = cfg.get("thumbnail_overlay") or {}
+        self.thumbnail_overlay_enabled = bool(overlay_cfg.get("enabled", False))
+        self.thumbnail_overlay_duration = float(overlay_cfg.get("duration_seconds", 0))
+        self.thumbnail_overlay_source = str(overlay_cfg.get("source_key", "generate_thumbnail"))
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         validate_input_files(inputs, "synthesize_audio", "prepare_subtitles")
@@ -50,6 +54,19 @@ class VideoRenderer(Step):
         if self.subtitle_fonts_dir:
             subtitle_kwargs["fontsdir"] = self.subtitle_fonts_dir
         video_stream = video_stream.filter("subtitles", sanitize_path_for_ffmpeg(subtitle_path), **subtitle_kwargs)
+
+        if self.thumbnail_overlay_enabled and self.thumbnail_overlay_duration > 0:
+            thumbnail_input = inputs.get(self.thumbnail_overlay_source)
+            if thumbnail_input:
+                thumbnail_path = Path(thumbnail_input)
+                video_stream = apply_thumbnail_overlay(
+                    video_stream,
+                    thumbnail_path,
+                    duration=self.thumbnail_overlay_duration,
+                    width=width,
+                    height=height,
+                    fps=self.fps,
+                )
 
         audio_stream = ffmpeg.input(str(audio_path))
         output = ffmpeg.output(

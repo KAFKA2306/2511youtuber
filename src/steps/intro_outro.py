@@ -7,7 +7,7 @@ from typing import Dict, Tuple
 import ffmpeg
 
 from src.core.io_utils import validate_input_files
-from src.core.media_utils import find_ffmpeg_binary
+from src.core.media_utils import apply_thumbnail_overlay, find_ffmpeg_binary
 from src.core.step import Step
 
 
@@ -25,6 +25,7 @@ class IntroOutroConcatenator(Step):
         codec: str,
         preset: str,
         crf: int,
+        thumbnail_overlay: Dict | None = None,
     ) -> None:
         super().__init__(run_id, run_dir)
         self.intro_path = Path(intro_path) if intro_path else None
@@ -32,6 +33,10 @@ class IntroOutroConcatenator(Step):
         self.codec = codec
         self.preset = preset
         self.crf = crf
+        overlay_cfg = thumbnail_overlay or {}
+        self.thumbnail_overlay_enabled = bool(overlay_cfg.get("enabled", False))
+        self.thumbnail_overlay_duration = float(overlay_cfg.get("duration_seconds", 0))
+        self.thumbnail_overlay_source = str(overlay_cfg.get("source_key", "generate_thumbnail"))
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         validate_input_files(inputs, "render_video")
@@ -48,8 +53,21 @@ class IntroOutroConcatenator(Step):
         video_streams, audio_streams = self._aligned_streams(segments, width, height, fps, sample_rate)
         video_concat = ffmpeg.concat(*video_streams, v=1, a=0).node
         audio_concat = ffmpeg.concat(*audio_streams, v=0, a=1).node
+        video_output = video_concat[0]
+        if self.thumbnail_overlay_enabled and self.thumbnail_overlay_duration > 0:
+            thumbnail_input = inputs.get(self.thumbnail_overlay_source)
+            if thumbnail_input:
+                thumbnail_path = Path(thumbnail_input)
+                video_output = apply_thumbnail_overlay(
+                    video_output,
+                    thumbnail_path,
+                    duration=self.thumbnail_overlay_duration,
+                    width=width,
+                    height=height,
+                    fps=fps,
+                )
         output = ffmpeg.output(
-            video_concat[0],
+            video_output,
             audio_concat[0],
             str(output_path),
             vcodec=self.codec,

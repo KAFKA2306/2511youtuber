@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR reuter OR finance OR https://kafkafinancialgroup.hatenablog.com/"
+    query: "bloomberg OR reuter OR finance OR OR earnings https://kafkafinancialgroup.hatenablog.com/"
 
   script:
     min_duration: 300
@@ -72,6 +72,10 @@ steps:
         offset:
           left: 20
           bottom: 0
+    thumbnail_overlay:
+      enabled: true
+      duration_seconds: 0.1
+      source_key: "generate_thumbnail"
     subtitles:
       font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
       font_name: "Zen Maru Gothic"
@@ -113,15 +117,15 @@ steps:
       - background_color: "#B71C1C"
         title_color: "#FFC107"
         outline_inner_color: "#0B0F19"
-        outline_inner_width: 30
+        outline_inner_width: 1
         outline_outer_color: "#000000"
-        outline_outer_width: 1
+        outline_outer_width: 0
       - background_color: "#0B0F19"
         title_color: "#E5FCF4"
         outline_inner_color: "#000000"
-        outline_inner_width: 2
+        outline_inner_width: 1
         outline_outer_color: "#000000"
-        outline_outer_width: 1
+        outline_outer_width: 0
       - background_color: "#0D1D40"
         title_color: "#FACC15"
         outline_inner_color: "#000000"
@@ -131,7 +135,7 @@ steps:
       - background_color: "#0A0F1F"
         title_color: "#E31C23"
         outline_inner_color: "#FFFFFF"
-        outline_inner_width: 30
+        outline_inner_width: 1
         outline_outer_color: "#000000"
         outline_outer_width: 0
     overlays:
@@ -205,7 +209,7 @@ providers:
     gemini:
       model: "gemini/gemini-2.5-pro"
       fallback_model: "gemini/gemini-2.5-flash-preview-09-2025"
-      temperature: 0.7
+      temperature: 0.35
       max_tokens: 4000
 
   tts:

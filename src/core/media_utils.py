@@ -1,7 +1,8 @@
 import shutil
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
+import ffmpeg
 from pydub import AudioSegment
 
 
@@ -31,3 +32,21 @@ def resolve_video_input(inputs: Dict[str, str | Path], *, required: bool = True)
     if required:
         raise FileNotFoundError("Video source not found")
     return None
+
+
+def apply_thumbnail_overlay(
+    stream: Any,
+    thumbnail_path: Path,
+    *,
+    duration: float,
+    width: int,
+    height: int,
+    fps: int | None,
+) -> Any:
+    if duration <= 0 or not thumbnail_path.exists():
+        return stream
+    framerate = fps or 25
+    overlay_stream = ffmpeg.input(str(thumbnail_path), loop=1, framerate=framerate)
+    overlay_stream = overlay_stream.filter("scale", width, height)
+    enable = f"lte(t,{duration})"
+    return stream.overlay(overlay_stream, x=0, y=0, enable=enable)
