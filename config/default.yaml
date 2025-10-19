@@ -10,7 +10,7 @@ steps:
   script:
     min_duration: 300
     max_duration: 600
-    target_wow_score: 6.0
+    target_wow_score: 5.0
     speakers:
       analyst:
         name: "春日部つむぎ"
@@ -48,6 +48,7 @@ steps:
       enabled: true
       intro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/おはようございます。今日も世界の動きを見てみましょう.mp4"
       outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/チャンネル登録と通知オンをお願いします.mp4"
+      twitter_outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/続きはYoutube.mp4"
     effects:
       - type: "ken_burns"
         enabled: true
@@ -112,7 +113,7 @@ steps:
       - background_color: "#B71C1C"
         title_color: "#FFC107"
         outline_inner_color: "#0B0F19"
-        outline_inner_width: 15
+        outline_inner_width: 30
         outline_outer_color: "#000000"
         outline_outer_width: 1
       - background_color: "#0B0F19"
@@ -130,7 +131,7 @@ steps:
       - background_color: "#0A0F1F"
         title_color: "#E31C23"
         outline_inner_color: "#FFFFFF"
-        outline_inner_width: 15
+        outline_inner_width: 30
         outline_outer_color: "#000000"
         outline_outer_width: 0
     overlays:

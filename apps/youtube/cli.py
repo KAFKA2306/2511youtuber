@@ -76,6 +76,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     voicevox_cfg = config.providers.tts.voicevox
     subtitle_cfg = config.steps.subtitle
     video_cfg = config.steps.video
+    audio_cfg = config.steps.audio
     metadata_cfg = config.steps.metadata.model_dump()
     voicevox_config = voicevox_cfg.model_dump()
     voicevox_config["speakers"] = dict(voicevox_config.get("speakers", {}))
@@ -158,6 +159,14 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                     run_dir=run_dir,
                     client=client,
                     clip_duration=twitter_cfg.clip_duration_seconds,
+                    outro_path=intro_cfg.twitter_outro_path if intro_cfg else None,
+                    codec=video_cfg.codec,
+                    preset=video_cfg.preset,
+                    crf=video_cfg.crf,
+                    width=int(video_cfg.resolution.split('x')[0]),
+                    height=int(video_cfg.resolution.split('x')[1]),
+                    fps=video_cfg.fps,
+                    sample_rate=audio_cfg.sample_rate,
                 )
             )
 

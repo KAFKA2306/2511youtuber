@@ -135,6 +135,7 @@ class VideoIntroOutroConfig(BaseModel):
     enabled: bool = False
     intro_path: str | None = None
     outro_path: str | None = None
+    twitter_outro_path: str | None = None
 
 
 class VideoStepConfig(BaseModel):
