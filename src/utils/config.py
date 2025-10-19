@@ -138,6 +138,12 @@ class VideoIntroOutroConfig(BaseModel):
     twitter_outro_path: str | None = None
 
 
+class VideoThumbnailFlashConfig(BaseModel):
+    enabled: bool = False
+    duration_seconds: float = 0.0
+    source_key: str = "generate_thumbnail"
+
+
 class VideoStepConfig(BaseModel):
     resolution: str
     fps: int
@@ -147,6 +153,7 @@ class VideoStepConfig(BaseModel):
     effects: list[VideoEffectConfig] = Field(default_factory=list)
     subtitles: VideoSubtitleStyleConfig | None = None
     intro_outro: VideoIntroOutroConfig | None = None
+    thumbnail_overlay: VideoThumbnailFlashConfig | None = None
 
 
 class SubtitleStepConfig(BaseModel):
