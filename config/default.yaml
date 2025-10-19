@@ -35,7 +35,7 @@ steps:
   subtitle:
     width_per_char_pixels: 70
     min_visual_width: 16
-    max_visual_width: 40
+    max_visual_width: 80
 
   video:
     resolution: "1920x1080"
@@ -133,7 +133,7 @@ steps:
 
   youtube:
     enabled: true
-    dry_run: false
+    dry_run: true
     default_visibility: "public"
     category_id: 25
     max_title_length: 100
