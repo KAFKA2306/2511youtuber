@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+from shutil import which
 from typing import Any
 
 import discord
@@ -19,6 +20,14 @@ def load_environment(path: Path) -> None:
 
 def workflow_command(settings: dict[str, Any], query: str) -> list[str]:
     command = list(settings["workflow_command"])
+    env_key = settings.get("workflow_command_env", "UV_BIN")
+    override = os.getenv(env_key)
+    if override:
+        command[0] = override
+    else:
+        resolved = which(command[0])
+        if resolved:
+            command[0] = resolved
     command.extend([settings["workflow_argument_flag"], query])
     return command
 
@@ -34,12 +43,13 @@ def register_news_command(tree: app_commands.CommandTree, settings: dict[str, An
 
     @tree.command(name=command, description=description)
     async def handle(interaction: discord.Interaction, query: str) -> None:
-        await interaction.response.send_message(response_template.format(query=query), ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         starter = await interaction.channel.send(starter_template.format(query=query))
-        thread_name = f"{thread_prefix}{query[:thread_name_limit]}"
+        thread_name = f"{thread_prefix}{query}"[:thread_name_limit]
         thread = await starter.create_thread(name=thread_name)
         await thread.send(thread_message)
         subprocess.Popen(workflow_command(settings, query), cwd=str(project_root))
+        await interaction.followup.send(response_template.format(query=query), ephemeral=True)
 
 
 def create_client(settings: dict[str, Any], project_root: Path) -> discord.Client:

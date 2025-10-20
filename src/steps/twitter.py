@@ -106,6 +106,8 @@ class TwitterPoster(Step):
         clip_cmd.append(str(clip_path))
         subprocess.run(clip_cmd, check=True)
         if self.outro_path:
+            if not self.outro_path.exists():
+                raise FileNotFoundError(str(self.outro_path))
             final_path = clip_path.with_name("twitter_clip_with_outro.mp4")
             filter_expr = (
                 f"[0:v]scale={self.width}:{self.height},setsar=1,fps={self.fps},setpts=PTS-STARTPTS[v0];"

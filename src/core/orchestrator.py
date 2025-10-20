@@ -26,6 +26,8 @@ class WorkflowOrchestrator:
             for step in self.steps:
                 current_step = step
                 if step.name in self.state.completed_steps:
+                    if step.name not in self.state.step_statuses:
+                        self.state.step_statuses[step.name] = "success"
                     continue
 
                 output_path = step.run(self.state.outputs)
@@ -56,7 +58,7 @@ class WorkflowOrchestrator:
         except Exception as exc:  # noqa: BLE001
             error_step = current_step.name if current_step else "unknown"
             error_message = f"{error_step}: {type(exc).__name__}: {exc}"
-            self.state.mark_failed(error_message)
+            self.state.mark_failed(error_step, error_message)
             self.state.save(self.run_dir)
             duration = (datetime.now() - start_time).total_seconds()
 

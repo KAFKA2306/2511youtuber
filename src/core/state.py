@@ -13,6 +13,7 @@ class WorkflowState(BaseModel):
     status: Literal["running", "completed", "failed", "partial"] = "running"
     completed_steps: List[str] = Field(default_factory=list)
     outputs: Dict[str, str] = Field(default_factory=dict)
+    step_statuses: Dict[str, Literal["pending", "success", "failed"]] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
     started_at: datetime = Field(default_factory=datetime.now)
     completed_at: datetime | None = None
@@ -35,9 +36,12 @@ class WorkflowState(BaseModel):
         if step_name not in self.completed_steps:
             self.completed_steps.append(step_name)
         self.outputs[step_name] = output_path
+        self.step_statuses[step_name] = "success"
 
-    def mark_failed(self, error: str):
+    def mark_failed(self, step_name: str, error: str):
         self.status = "failed"
+        if step_name:
+            self.step_statuses[step_name] = "failed"
         self.errors.append(error)
         self.completed_at = datetime.now()
 

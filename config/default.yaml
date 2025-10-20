@@ -193,7 +193,7 @@ steps:
     enabled: true
     dry_run: false
     clip_duration_seconds: 60
-    start_offset_seconds: 0.1
+    start_offset_seconds: 0
 
   podcast:
     enabled: false

@@ -15,6 +15,7 @@ news_bot:
     - -m
     - src.main
   workflow_argument_flag: --news-query
+  workflow_command_env: UV_BIN
 summary:
   environment_file: config/.env
   webhook_keys:
