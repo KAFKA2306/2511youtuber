@@ -94,6 +94,7 @@ def detect_terms(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
         "description_counter": description_counter,
         "title_examples": title_examples,
         "description_examples": description_examples,
+        "flagged_terms": flagged_terms,
     }
 
 
@@ -130,6 +131,82 @@ def summarize_aim(db_path: Path, limit: int) -> Dict[str, Any]:
         }
 
 
+def load_tone_config(config_path: Path) -> Dict[str, Any]:
+    if not config_path.exists():
+        return {}
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    metadata_cfg = config.get("steps", {}).get("metadata", {})
+    return metadata_cfg.get("tone", {}) if isinstance(metadata_cfg, dict) else {}
+
+
+def apply_tone(text: str, tone_cfg: Dict[str, Any], field: str) -> str:
+    replacements = tone_cfg.get("replacements", {})
+    disallowed = tone_cfg.get(f"{field}_disallowed_terms", [])
+    result = text
+    if isinstance(replacements, dict):
+        for source, target in replacements.items():
+            result = result.replace(str(source), str(target))
+    for term in disallowed:
+        term_str = str(term)
+        if term_str not in replacements:
+            result = result.replace(term_str, "")
+    return result.strip()
+
+
+def simulate_tone(entries: List[Dict[str, Any]], tone_cfg: Dict[str, Any], flagged_terms: List[str]) -> Dict[str, Any]:
+    if not tone_cfg:
+        return {}
+    before_title = sum(1 for entry in entries if any(term in entry["title"] for term in flagged_terms))
+    before_desc = sum(1 for entry in entries if any(term in entry["description"] for term in flagged_terms))
+
+    after_title_counter: Counter[str] = Counter()
+    after_desc_counter: Counter[str] = Counter()
+    after_title_samples: List[Dict[str, Any]] = []
+    after_desc_samples: List[Dict[str, Any]] = []
+
+    for entry in entries:
+        sanitized_title = apply_tone(entry["title"], tone_cfg, "title")
+        sanitized_desc = apply_tone(entry["description"], tone_cfg, "description")
+        title_hits = sorted({term for term in flagged_terms if term in sanitized_title})
+        desc_hits = sorted({term for term in flagged_terms if term in sanitized_desc})
+        for term in title_hits:
+            after_title_counter[term] += 1
+        for term in desc_hits:
+            after_desc_counter[term] += 1
+        if title_hits:
+            after_title_samples.append(
+                {
+                    "run_id": entry["run_id"],
+                    "title_before": entry["title"],
+                    "title_after": sanitized_title,
+                    "terms_before": [term for term in flagged_terms if term in entry["title"]],
+                    "terms_after": title_hits,
+                }
+            )
+        if desc_hits:
+            after_desc_samples.append(
+                {
+                    "run_id": entry["run_id"],
+                    "excerpt_before": entry["description"][:160],
+                    "excerpt_after": sanitized_desc[:160],
+                    "terms_before": [term for term in flagged_terms if term in entry["description"]],
+                    "terms_after": desc_hits,
+                }
+            )
+
+    total = len(entries) or 1
+    return {
+        "title_flagged_runs": len(after_title_samples),
+        "description_flagged_runs": len(after_desc_samples),
+        "flagged_title_ratio": round(len(after_title_samples) / total, 3),
+        "flagged_description_ratio": round(len(after_desc_samples) / total, 3),
+        "title_term_counts": dict(after_title_counter.most_common()),
+        "description_term_counts": dict(after_desc_counter.most_common()),
+        "title_samples": after_title_samples[:10],
+        "description_samples": after_desc_samples[:10],
+    }
+
+
 def build_report(args: argparse.Namespace) -> Dict[str, Any]:
     runs_dir = Path(args.runs_dir)
     aim_db = Path(args.aim_db)
@@ -150,12 +227,16 @@ def build_report(args: argparse.Namespace) -> Dict[str, Any]:
             "title_examples": findings["title_examples"][: args.limit],
             "description_examples": findings["description_examples"][: args.limit],
             "aim_tracker": summarize_aim(aim_db, args.limit),
+            "tone_config_path": "config/default.yaml",
         }
     }
     lengths = [entry["title_length"] for entry in entries]
     if lengths:
         report["tone_report"]["title_length_avg"] = round(sum(lengths) / len(lengths), 1)
         report["tone_report"]["title_length_max"] = max(lengths)
+    tone_cfg = load_tone_config(Path("config/default.yaml"))
+    if tone_cfg:
+        report["tone_report"]["simulated_tone"] = simulate_tone(entries, tone_cfg, findings["flagged_terms"])
     return report
 
 
