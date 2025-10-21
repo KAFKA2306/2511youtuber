@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR reuter OR finance OR OR earnings https://kafkafinancialgroup.hatenablog.com/"
+    query: "bloomberg OR factset OR earnings https://kafkafinancialgroup.hatenablog.com/"
 
   script:
     min_duration: 300
@@ -176,6 +176,46 @@ steps:
       - "金融"
       - "経済"
       - "投資"
+    tone:
+      guidelines:
+        - "タイトルと説明文は事実を端的に伝える落ち着いた専門家の語調に統一する"
+        - "誇張や陰謀論を想起させる語彙を避け、投資家が安心して共有できる表現にする"
+      title_disallowed_terms:
+        - "闇"
+        - "陰謀"
+        - "激震"
+        - "暴露"
+        - "暴走"
+        - "やばい"
+        - "ショック"
+        - "衝撃"
+        - "暴落"
+        - "警告"
+        - "危機"
+      description_disallowed_terms:
+        - "闇"
+        - "陰謀"
+        - "激震"
+        - "暴露"
+        - "暴走"
+        - "やばい"
+        - "ショック"
+        - "衝撃"
+        - "暴落"
+        - "警告"
+        - "危機"
+      replacements:
+        闇: "課題"
+        陰謀: "構造的課題"
+        激震: "急変"
+        衝撃: "注目"
+        ショック: "変化"
+        暴露: "解説"
+        暴走: "過熱"
+        やばい: "注意"
+        暴落: "下落"
+        警告: "注意喚起"
+        危機: "リスク"
 
   youtube:
     enabled: true

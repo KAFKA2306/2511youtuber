@@ -29,6 +29,19 @@ class MetadataAnalyzer(Step):
         self.max_description_length = int(cfg.get("max_description_length", 5000))
         self.default_tags = list(cfg.get("default_tags", []))
         self.use_llm = bool(cfg.get("use_llm", True))
+        tone_cfg = cfg.get("tone") or {}
+        self.tone_guidelines = [str(item).strip() for item in tone_cfg.get("guidelines", []) if str(item).strip()]
+        self.title_disallowed_terms = [
+            str(item).strip() for item in tone_cfg.get("title_disallowed_terms", []) if str(item).strip()
+        ]
+        self.description_disallowed_terms = [
+            str(item).strip() for item in tone_cfg.get("description_disallowed_terms", []) if str(item).strip()
+        ]
+        replacements_cfg = tone_cfg.get("replacements", {})
+        if isinstance(replacements_cfg, dict):
+            self.tone_replacements = {str(key): str(value) for key, value in replacements_cfg.items()}
+        else:
+            self.tone_replacements = {}
         self.llm_provider = (
             GeminiProvider(
                 model=cfg.get("llm_model"),
@@ -65,6 +78,8 @@ class MetadataAnalyzer(Step):
             category_id = int(llm_meta.get("category_id", category_id)) if llm_meta.get("category_id") else category_id
         else:
             title, description, tags = fallback_title, fallback_desc, fallback_tags
+        title = self._sanitize_title(title, fallback_title)
+        description = self._sanitize_description(description, fallback_desc)
 
         output = {
             "title": title[: self.max_title_length],
@@ -80,6 +95,8 @@ class MetadataAnalyzer(Step):
         news_summary = self._format_news(news_items)
         script_excerpt = "\n".join(f"{seg.speaker}: {seg.text}" for seg in script.segments[:5])
         prompt = template.format(news_items=news_summary, script_excerpt=script_excerpt)
+        if self.tone_guidelines:
+            prompt = f"{prompt}\n\nトーン調整指針:\n" + "\n".join(f"- {rule}" for rule in self.tone_guidelines)
 
         tracker = AimTracker.get_instance(self.run_id)
         start = time.time()
@@ -183,3 +200,31 @@ class MetadataAnalyzer(Step):
         if isinstance(tags, str) and tags.strip():
             return [part.strip() for part in tags.split(",") if part.strip()][:30]
         return []
+
+    def _sanitize_title(self, value: str, fallback: str) -> str:
+        sanitized = self._apply_replacements(value)
+        sanitized = self._remove_terms(sanitized, self.title_disallowed_terms)
+        sanitized = sanitized.strip()
+        if not sanitized:
+            sanitized = fallback
+        sanitized = self._apply_replacements(sanitized)
+        sanitized = self._remove_terms(sanitized, self.title_disallowed_terms)
+        return sanitized if sanitized else fallback
+
+    def _sanitize_description(self, value: str, fallback: str) -> str:
+        sanitized = self._apply_replacements(value)
+        sanitized = self._remove_terms(sanitized, self.description_disallowed_terms)
+        return sanitized if sanitized.strip() else fallback
+
+    def _apply_replacements(self, text: str) -> str:
+        result = text
+        for source, target in self.tone_replacements.items():
+            result = result.replace(source, target)
+        return result
+
+    def _remove_terms(self, text: str, terms: List[str]) -> str:
+        result = text
+        for term in terms:
+            if term in result and term not in self.tone_replacements:
+                result = result.replace(term, "")
+        return result
