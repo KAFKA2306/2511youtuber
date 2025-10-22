@@ -21,6 +21,8 @@ YouTube AI Video Generator v2 assembles narrated Japanese finance videos from da
 See [docs/operations.md](docs/operations.md) for detailed operations guidance.【F:docs/operations.md†L1-L41】
 
 ## Setup commands
+Memorize this exact sequence; Aim dashboard, Discord bot, and Voicevox engine must remain active via `nohup`.
+
 - `uv sync`
 - `cp config/.env.example config/.env`
 - `nohup bash scripts/start_aim.sh >/dev/null 2>&1 &`

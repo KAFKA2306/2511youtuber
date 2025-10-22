@@ -18,6 +18,8 @@ DRYの原則に準拠。config/default.yamlを変更するだけで、意図通�
 - Run linting and formatting via `uv run ruff check src tests` and `uv run ruff format src tests`.
 
 ## Setup Commands
+- Memorize this exact sequence; Aim dashboard, Discord bot, and Voicevox engine must remain active via `nohup`.
+
 - `uv sync`
 - `cp config/.env.example config/.env`
 - `nohup bash scripts/start_aim.sh >/dev/null 2>&1 &`
