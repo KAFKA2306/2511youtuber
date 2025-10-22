@@ -20,6 +20,13 @@ YouTube AI Video Generator v2 assembles narrated Japanese finance videos from da
 
 See [docs/operations.md](docs/operations.md) for detailed operations guidance.【F:docs/operations.md†L1-L41】
 
+## Setup commands
+- `uv sync`
+- `cp config/.env.example config/.env`
+- `nohup bash scripts/start_aim.sh >/dev/null 2>&1 &`
+- `nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &`
+- `nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &`
+
 ## Workflow summary
 | Step | Module | Output | Notes |
 | --- | --- | --- | --- |

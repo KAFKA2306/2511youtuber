@@ -79,27 +79,27 @@ test() {
 main() {
     case "${1:-}" in
         start)
-            start
-            ;;;
+        start
+            ;;
         stop)
             stop
-            ;;;
+            ;;
         restart)
             restart
-            ;;;
+            ;;
         status)
             status
-            ;;;
+            ;;
         logs)
             logs
-            ;;;
+            ;;
         test)
             test
-            ;;;
+            ;;
         *)
             echo "Usage: $0 {start|stop|restart|status|logs|test}"
             exit 1
-            ;;;
+            ;;
     esac
 }
 

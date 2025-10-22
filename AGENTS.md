@@ -17,6 +17,13 @@ DRYの原則に準拠。config/default.yamlを変更するだけで、意図通�
 - Aim UI: http://<server-ip>:43800
 - Run linting and formatting via `uv run ruff check src tests` and `uv run ruff format src tests`.
 
+## Setup Commands
+- `uv sync`
+- `cp config/.env.example config/.env`
+- `nohup bash scripts/start_aim.sh >/dev/null 2>&1 &`
+- `nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &`
+- `nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &`
+
 ## Coding Style & Naming Conventions
 - Target Python 3.11 with four-space indents, exhaustive type hints, and immutable defaults.
 - Favor small, composable functions, success-path logic only, and avoid comments, retries, timeouts, or defensive wrappers; push configuration into `config/` rather than hard-coding constants.
