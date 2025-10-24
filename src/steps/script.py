@@ -2,46 +2,18 @@ import json
 import re
 import time
 import unicodedata
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List
 
 import yaml
 
 from src.core.io_utils import load_json, write_text
 from src.core.step import Step
-from src.models import NewsItem, Script
+from src.models import NewsItem, Script, ScriptContextNotes
 from src.providers.llm import GeminiProvider, load_prompt_template
 from src.tracking import AimTracker
+from src.utils.history import load_previous_context
 from src.utils.text import extract_code_block
-
-
-@dataclass
-class ScriptContextNotes:
-    recent_topics_note: str = ""
-    next_theme_note: str = ""
-
-    def to_mapping(self) -> Dict[str, str]:
-        return {"recent_topics_note": self.recent_topics_note, "next_theme_note": self.next_theme_note}
-
-    def merge_missing(self, other: "ScriptContextNotes") -> "ScriptContextNotes":
-        if not other:
-            return self
-        return ScriptContextNotes(
-            recent_topics_note=self.recent_topics_note or other.recent_topics_note,
-            next_theme_note=self.next_theme_note or other.next_theme_note,
-        )
-
-    def is_empty(self) -> bool:
-        return not (self.recent_topics_note or self.next_theme_note)
-
-    @classmethod
-    def from_mapping(cls, data: Mapping[str, Any] | None) -> "ScriptContextNotes":
-        if not data:
-            return cls()
-        recent = str(data.get("recent_topics_note") or data.get("recent_topic_note") or "").strip()
-        next_note = str(data.get("next_theme_note") or "").strip()
-        return cls(recent_topics_note=recent, next_theme_note=next_note)
 
 
 class ScriptGenerator(Step):
@@ -106,25 +78,7 @@ class ScriptGenerator(Step):
         )
 
     def _load_previous_context(self, run_dir: Path) -> ScriptContextNotes:
-        base = Path(run_dir)
-        if not base.exists():
-            return ScriptContextNotes()
-        candidates = [p for p in sorted(base.iterdir(), reverse=True) if p.is_dir() and p.name != self.run_id]
-        for candidate in candidates:
-            notes = ScriptContextNotes()
-            if script_data := load_json(candidate / "script.json"):
-                notes = ScriptContextNotes.from_mapping(script_data)
-                if notes.is_empty() and (segments := script_data.get("segments")):
-                    notes = notes.merge_missing(self._context_from_segments(segments))
-            if not notes.recent_topics_note:
-                if metadata_title := self._extract_title(candidate / "metadata.json"):
-                    notes = notes.merge_missing(ScriptContextNotes(recent_topics_note=metadata_title))
-            if not notes.recent_topics_note:
-                if youtube_title := self._extract_title(candidate / "youtube.json"):
-                    notes = notes.merge_missing(ScriptContextNotes(recent_topics_note=youtube_title))
-            if not notes.is_empty():
-                return notes
-        return ScriptContextNotes()
+        return load_previous_context(run_dir, self.run_id)
 
     def _context_from_segments(self, segments: List[Any]) -> ScriptContextNotes:
         snippets = []
@@ -148,16 +102,6 @@ class ScriptGenerator(Step):
         if not text:
             return ""
         return text.split("。", 1)[0] + "。" if "。" in text else text
-
-    def _extract_title(self, path: Path) -> str:
-        if not (data := load_json(path)):
-            return ""
-        if title := str(data.get("title") or "").strip():
-            return title
-        if nested := data.get("metadata"):
-            if isinstance(nested, dict) and (nested_title := str(nested.get("title") or "").strip()):
-                return nested_title
-        return ""
 
     def _parse_and_validate(self, raw: str, depth: int = 6) -> Script:
         data = self._coerce_to_dict(raw.strip(), depth)

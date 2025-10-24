@@ -17,6 +17,10 @@ class WorkflowConfig(BaseModel):
 class NewsStepConfig(BaseModel):
     count: int
     query: str
+    recent_topics_runs: int = 0
+    recent_topics_max_chars: int = 0
+    recent_topics_min_token_length: int = 2
+    recent_topics_stopwords: list[str] = Field(default_factory=list)
 
 
 class SpeakerProfileConfig(BaseModel):

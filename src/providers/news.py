@@ -33,10 +33,11 @@ class PerplexityNewsProvider:
         self.prompts = load_prompts()["news_collection"]
     is_available = has_credentials
 
-    def execute(self, query: str = "", count: int = 3) -> List[NewsItem]:
+    def execute(self, query: str = "", count: int = 3, recent_topics_note: str = "") -> List[NewsItem]:
         topic = query or "最新の日本の金融・経済ニュース"
+        recent_note = recent_topics_note or "直近テーマ情報なし"
         prompt = self.prompts["user_template"].format(
-            topic=topic, count=count, recent_topics_note="過去7日間に取り上げたテーマ"
+            topic=topic, count=count, recent_topics_note=recent_note
         )
         api_key = self.api_keys[0]
 
@@ -99,13 +100,16 @@ class GeminiNewsProvider:
         self.prompts = load_prompts()["news_collection"]
     is_available = has_credentials
 
-    def execute(self, query: str = "", count: int = 3) -> List[NewsItem]:
+    def execute(self, query: str = "", count: int = 3, recent_topics_note: str = "") -> List[NewsItem]:
         from datetime import timedelta
 
         topic = query or "最新の日本の金融・経済ニュース"
         one_week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        recent_note = recent_topics_note or "直近テーマ情報なし"
         user_prompt = self.prompts["user_template"].format(
-            topic=topic, count=count, recent_topics_note="過去7日間に取り上げたテーマ"
+            topic=topic,
+            count=count,
+            recent_topics_note=recent_note,
         )
         prompt = f"{self.prompts['system']}\n\n{user_prompt} after:{one_week_ago}"
         response = litellm.completion(
