@@ -8,7 +8,7 @@ steps:
     query: "bloomberg OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     recent_topics_runs: 5
     recent_topics_max_chars: 220
-    recent_topics_min_token_length: 2
+    recent_topics_min_token_length: 3
 
   script:
     min_duration: 300

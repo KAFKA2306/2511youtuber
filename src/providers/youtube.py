@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import pickle
 from datetime import datetime
 from pathlib import Path
@@ -51,21 +50,26 @@ class YouTubeClient:
             logger.info("YouTube API service initialized")
 
     def _get_credentials(self) -> Credentials:
-        token_file = "token.pickle"
+        token_file = Path("token.pickle")
         creds = None
-        if os.path.exists(token_file):
-            with open(token_file, "rb") as token:
+        if token_file.exists():
+            with token_file.open("rb") as token:
                 creds = pickle.load(token)
+            if creds and not self._has_required_scopes(creds):
+                creds = None
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            logger.info("Refreshed YouTube credentials")
         if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                logger.info("Refreshed YouTube credentials")
-            else:
-                creds = self._run_oauth_flow()
-            if creds:
-                with open(token_file, "wb") as token:
-                    pickle.dump(creds, token)
+            creds = self._run_oauth_flow()
+        if creds:
+            with token_file.open("wb") as token:
+                pickle.dump(creds, token)
         return creds
+
+    def _has_required_scopes(self, creds: Credentials) -> bool:
+        scopes = set(creds.scopes or ())
+        return all(scope in scopes for scope in self.SCOPES)
 
     def _run_oauth_flow(self) -> Credentials:
         client_id = load_secret_values("YOUTUBE_CLIENT_ID")
