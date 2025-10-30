@@ -44,14 +44,23 @@ steps:
   video:
     resolution: "1920x1080"
     fps: 25
-    codec: "libx264"
-    preset: "medium"
-    crf: 23
+    codec: "h264_nvenc"
+    preset: "p5"
+    encoder_options:
+      pix_fmt: "yuv420p"
+      rc: "vbr"
+      cq: 19
+      acodec: "aac"
+    encoder_global_args:
+      - "-hwaccel"
+      - "cuda"
+      - "-hwaccel_output_format"
+      - "cuda"
     intro_outro:
       enabled: true
-      intro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/おはようございます。今日も世界の動きを見てみましょう.mp4"
-      outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/チャンネル登録と通知オンをお願いします.mp4"
-      twitter_outro_path: "/home/kafka/projects/2510youtuber/youtube-ai-v2/assets/video/続きはYoutube.mp4"
+      intro_path: "assets/video/おはようございます。今日も世界の動きを見てみましょう.mp4"
+      outro_path: "assets/video/チャンネル登録と通知オンをお願いします.mp4"
+      twitter_outro_path: "assets/video/続きはYoutube.mp4"
       thumbnail_clip:
         enabled: true
         duration_seconds: 0.1

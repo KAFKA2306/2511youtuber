@@ -158,9 +158,11 @@ class VideoThumbnailFlashConfig(BaseModel):
 class VideoStepConfig(BaseModel):
     resolution: str
     fps: int
-    codec: str
-    preset: str
-    crf: int
+    codec: str | None = None
+    preset: str | None = None
+    crf: int | None = None
+    encoder_options: Dict[str, str | int | float] = Field(default_factory=dict)
+    encoder_global_args: list[str] = Field(default_factory=list)
     effects: list[VideoEffectConfig] = Field(default_factory=list)
     subtitles: VideoSubtitleStyleConfig | None = None
     intro_outro: VideoIntroOutroConfig | None = None

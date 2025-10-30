@@ -8,6 +8,7 @@ DRYの原則に準拠。config/default.yamlを変更するだけで、意図通�
 - Source code for the v2 workflow lives in `src/`, with `main.py` as the CLI entrypoint, `workflow.py` orchestrating steps, and individual step/provider logic under `src/steps/` and `src/providers/`.
 - Shared contracts and data models are defined in `src/models.py`; utilities (configuration, logging, secrets) sit in `src/utils/`.
 - Runtime prompts and assets are stored in `config/`, while documentation belongs in `docs/`; tests mirror pipeline seams under `tests/unit/`, `tests/integration/`, `tests/e2e/`, and `tests/fixtures/` for reusable data.
+- Finance (`finance_news`) と Qualification (`takken`, `boki2`, `ap`) のディレクトリは `config/packs/finance/` と `config/packs/qualification/`、`assets/series/finance_news/` と `assets/series/qualification/<season>/`、`runs/finance_news/` と `runs/qualification/<season>/` のように完全分離し、詳細要件は `docs/markets/qualification.md` に従う。
 
 ## Build, Test, and Development Commands
 - `uv sync` installs runtime dependencies plus Ruff, pytest, and coverage tooling.

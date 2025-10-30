@@ -1,0 +1,4 @@
+- Ensure config/default.yaml drives all new behaviour; avoid hard-coded constants and keep code minimal.
+- Run lint/format (`uv run ruff check src tests`, `uv run ruff format src tests`) and the relevant pytest suites (unit/integration/e2e as applicable) with coverage meeting thresholds before shipping.
+- Verify background services stay alive (Aim dashboard, Voicevox manager, Discord bot via their nohup scripts) when changes affect them.
+- Document feature toggles or operational impacts in docs/ or config/ if needed and keep tests/fixtures updated for new prompts or schemas.

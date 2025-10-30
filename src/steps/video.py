@@ -15,14 +15,45 @@ class VideoRenderer(Step):
     name = "render_video"
     output_filename = "video.mp4"
 
-    def __init__(self, run_id: str, run_dir: Path, video_config: Dict | None = None):
+    def __init__(
+        self,
+        run_id: str,
+        run_dir: Path,
+        video_config: Dict | None = None,
+        encoder_options: Dict[str, str] | None = None,
+        encoder_global_args: list[str] | None = None,
+    ):
         super().__init__(run_id, run_dir)
         cfg = video_config or {}
         self.resolution = cfg.get("resolution", "1920x1080")
         self.fps = cfg.get("fps", 25)
-        self.codec = cfg.get("codec", "libx264")
-        self.preset = cfg.get("preset", "medium")
-        self.crf = cfg.get("crf", 23)
+        base_options = {
+            str(key): str(value)
+            for key, value in (cfg.get("encoder_options") or {}).items()
+            if value is not None
+        }
+        if encoder_options:
+            for key, value in encoder_options.items():
+                if value is None:
+                    continue
+                base_options[str(key)] = str(value)
+        codec = cfg.get("codec")
+        if codec and "vcodec" not in base_options:
+            base_options["vcodec"] = str(codec)
+        if not codec and "vcodec" not in base_options:
+            base_options["vcodec"] = "libx264"
+        preset = cfg.get("preset")
+        if preset and "preset" not in base_options:
+            base_options["preset"] = str(preset)
+        crf = cfg.get("crf")
+        if crf is not None and "crf" not in base_options:
+            base_options["crf"] = str(crf)
+        self.encoder_options = dict(base_options)
+        self.encoder_global_args = (
+            [str(arg) for arg in encoder_global_args]
+            if encoder_global_args is not None
+            else [str(arg) for arg in cfg.get("encoder_global_args") or []]
+        )
         self.effect_pipeline = VideoEffectPipeline.from_config(cfg.get("effects"))
         subtitles_cfg = cfg.get("subtitles") or {}
         self.subtitle_force_style = self._build_subtitle_style(subtitles_cfg)
@@ -69,9 +100,9 @@ class VideoRenderer(Step):
                 )
 
         audio_stream = ffmpeg.input(str(audio_path))
-        output = ffmpeg.output(
-            video_stream, audio_stream, str(output_path), vcodec=self.codec, preset=self.preset, crf=self.crf
-        ).overwrite_output()
+        output = ffmpeg.output(video_stream, audio_stream, str(output_path), **self.encoder_options).overwrite_output()
+        if self.encoder_global_args:
+            output = output.global_args(*self.encoder_global_args)
         ffmpeg.run(output, cmd=find_ffmpeg_binary(), capture_stdout=True, capture_stderr=True)
         return output_path
 

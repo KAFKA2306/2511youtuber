@@ -83,6 +83,18 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     voicevox_config.pop("enabled", None)
     video_config = video_cfg.model_dump()
     video_config["effects"] = [effect.model_dump() for effect in video_cfg.effects]
+    encoder_options = {
+        str(key): str(value)
+        for key, value in video_cfg.encoder_options.items()
+        if value is not None
+    }
+    if video_cfg.codec and "vcodec" not in encoder_options:
+        encoder_options["vcodec"] = str(video_cfg.codec)
+    if video_cfg.preset and "preset" not in encoder_options:
+        encoder_options["preset"] = str(video_cfg.preset)
+    if video_cfg.crf is not None and "crf" not in encoder_options:
+        encoder_options["crf"] = str(video_cfg.crf)
+    encoder_global_args = [str(arg) for arg in video_cfg.encoder_global_args]
     subtitle_style = video_cfg.subtitles
     margin_l = subtitle_style.margin_l if subtitle_style else 0
     margin_r = subtitle_style.margin_r if subtitle_style else 0
@@ -135,6 +147,8 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             run_id=run_id,
             run_dir=run_dir,
             video_config=video_config,
+            encoder_options=dict(encoder_options),
+            encoder_global_args=list(encoder_global_args),
         )
     )
 
@@ -146,6 +160,8 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 run_dir=run_dir,
                 intro_path=intro_cfg.intro_path,
                 outro_path=intro_cfg.outro_path,
+                encoder_options=encoder_options,
+                encoder_global_args=encoder_global_args,
                 codec=video_cfg.codec,
                 preset=video_cfg.preset,
                 crf=video_cfg.crf,
@@ -173,6 +189,8 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                     clip_duration=twitter_cfg.clip_duration_seconds,
                     start_offset_seconds=twitter_cfg.start_offset_seconds,
                     outro_path=intro_cfg.twitter_outro_path if intro_cfg else None,
+                    encoder_options=encoder_options,
+                    encoder_global_args=encoder_global_args,
                     codec=video_cfg.codec,
                     preset=video_cfg.preset,
                     crf=video_cfg.crf,

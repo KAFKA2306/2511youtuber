@@ -5,12 +5,12 @@ After=network.target
 [Service]
 Type=simple
 User=kafka
-WorkingDirectory=/home/kafka/projects/2510youtuber/youtube-ai-v2
+WorkingDirectory=/home/kafka/2511youtuber
 ExecStart=/home/kafka/.local/bin/uv run python scripts/discord_news_bot.py
 Restart=always
 RestartSec=10
-StandardOutput=append:/home/kafka/projects/2510youtuber/youtube-ai-v2/logs/discord_bot.log
-StandardError=append:/home/kafka/projects/2510youtuber/youtube-ai-v2/logs/discord_bot_error.log
+StandardOutput=append:/home/kafka/2511youtuber/logs/discord_bot.log
+StandardError=append:/home/kafka/2511youtuber/logs/discord_bot_error.log
 
 [Install]
 WantedBy=multi-user.target

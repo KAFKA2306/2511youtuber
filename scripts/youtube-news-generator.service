@@ -1,0 +1,11 @@
+[Unit]
+Description=YouTube News Generator for AI
+After=network.target
+
+[Service]
+Type=oneshot
+User=kafka
+WorkingDirectory=/home/kafka/2511youtuber
+ExecStart=/home/kafka/.local/bin/uv run python src/main.py --news-query "日本の経済ニュース"
+StandardOutput=append:/home/kafka/2511youtuber/logs/youtube_generator.log
+StandardError=append:/home/kafka/2511youtuber/logs/youtube_generator_error.log

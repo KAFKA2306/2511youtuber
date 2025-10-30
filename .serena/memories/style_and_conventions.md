@@ -1,0 +1,4 @@
+- Target Python 3.11 with four-space indents, exhaustive type hints, immutable defaults, DRY, minimal codebase and efficient directories.
+- Favor small composable functions focused on success-path logic only; error handling, retries, timeouts, defensive wrappers, comments, and hard-coded values are disallowed—everything configurable via config/default.yaml.
+- Naming: snake_case for modules/functions, PascalCase for classes, uppercase constants; keep runtime prompts/assets in config/, documentation in docs/.
+- Runtime behaviour must remain adjustable through config/default.yaml; add providers/steps only when routed through configuration toggles.

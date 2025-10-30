@@ -30,6 +30,16 @@ YouTube 自動生成ワークフローを用いて資格シリーズを運用す
 
 Season/Arc/Episode の切替、Step 有効化、Provider 選択は `config/default.yaml` の単一点で制御する。`src/` では設定値を読み取って実行するのみとし、定数・分岐・ディレクトリ構成を複製しないことで DRY と最小コードベースを維持する。
 
+### 1.5 マーケット別ディレクトリ分離
+| セグメント | Finance 系パス | Qualification 系パス | ルール |
+| --- | --- | --- | --- |
+| Season パック | `config/packs/finance/<season>.yaml` | `config/packs/qualification/<season>.yaml` | 互いの Season ID を同一フォルダへ配置しない。 |
+| 資産ファイル | `assets/series/finance_news/<arc>/` | `assets/series/qualification/<season>/<arc>/` | 素材は対象 Season 直下に置き、共有素材は `assets/common/` のみを介して参照する。 |
+| 運用記録 | `docs/releases/finance_news/` | `docs/releases/qualification/<season>/` | リリースノートやカレンダーを混在させない。 |
+| 実行成果物 | `runs/finance_news/<run_id>/` | `runs/qualification/<season>/<run_id>/` | QA 済み symlink も Season ごとに独立させる。 |
+
+Finance と Qualification のディレクトリは上位階層レベルから分離し、`config/default.yaml` に Season ごとのルートパスを明示して相互参照させない。同一路径を共有している場合は Season 定義を無効化しリリースを停止する。
+
 ## 2. システム概要
 ### 2.1 ワークフロー
 CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestrator` → 各 Step（`news` → `script` → `audio` → `subtitle` → `video` → `metadata`）。Season 設定に応じて各 Step の挙動が決まる。

@@ -32,6 +32,10 @@ def workflow_command(settings: dict[str, Any], query: str) -> list[str]:
     return command
 
 
+def render(template: str, query: str) -> str:
+    return template.replace("{query}", query)
+
+
 def register_news_command(tree: app_commands.CommandTree, settings: dict[str, Any], project_root: Path) -> None:
     response_template = settings["response_template"]
     starter_template = settings["starter_template"]
@@ -44,12 +48,12 @@ def register_news_command(tree: app_commands.CommandTree, settings: dict[str, An
     @tree.command(name=command, description=description)
     async def handle(interaction: discord.Interaction, query: str) -> None:
         await interaction.response.defer(ephemeral=True)
-        starter = await interaction.channel.send(starter_template.format(query=query))
+        starter = await interaction.channel.send(render(starter_template, query))
         thread_name = f"{thread_prefix}{query}"[:thread_name_limit]
         thread = await starter.create_thread(name=thread_name)
-        await thread.send(thread_message)
+        await thread.send(render(thread_message, query))
         subprocess.Popen(workflow_command(settings, query), cwd=str(project_root))
-        await interaction.followup.send(response_template.format(query=query), ephemeral=True)
+        await interaction.followup.send(render(response_template, query), ephemeral=True)
 
 
 def create_client(settings: dict[str, Any], project_root: Path) -> discord.Client:

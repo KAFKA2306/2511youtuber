@@ -52,3 +52,11 @@ nohup.out
 *sqlite
 aim/
 *sql*
+*copy*
+node_modules/
+codexia/
+assets/
+tests/
+pytest.ini
+package-lock.json
+package.json

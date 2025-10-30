@@ -1,0 +1,11 @@
+[Unit]
+Description=YouTube News Generator Timer
+Requires=youtube-news-generator.service
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target

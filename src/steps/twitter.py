@@ -24,6 +24,8 @@ class TwitterPoster(Step):
         clip_duration: int = 60,
         start_offset_seconds: float = 0.0,
         outro_path: str | None = None,
+        encoder_options: Dict[str, str] | None = None,
+        encoder_global_args: list[str] | None = None,
         codec: str | None = None,
         preset: str | None = None,
         crf: int | None = None,
@@ -47,9 +49,25 @@ class TwitterPoster(Step):
         else:
             raise ValueError("Either twitter_config or client must be provided")
         self.outro_path = Path(outro_path) if outro_path else None
-        self.codec = codec
-        self.preset = preset
-        self.crf = crf
+        options = {
+            str(key): str(value)
+            for key, value in (encoder_options or {}).items()
+            if value is not None
+        }
+        if codec and "vcodec" not in options:
+            options["vcodec"] = str(codec)
+        if preset and "preset" not in options:
+            options["preset"] = str(preset)
+        if crf is not None and "crf" not in options:
+            options["crf"] = str(crf)
+        if "vcodec" not in options:
+            options["vcodec"] = "libx264"
+        if "preset" not in options:
+            options["preset"] = "medium"
+        if "acodec" not in options:
+            options["acodec"] = "aac"
+        self.encoder_options = options
+        self.encoder_global_args = [str(arg) for arg in encoder_global_args or []]
         self.width = width
         self.height = height
         self.fps = fps
@@ -64,22 +82,15 @@ class TwitterPoster(Step):
         metadata_path = Path(inputs["analyze_metadata"])
         clip_path = self.run_dir / self.run_id / "twitter_clip.mp4"
         clip_path.parent.mkdir(parents=True, exist_ok=True)
-        clip_cmd = ["ffmpeg", "-y"]
+        global_args = self._ffmpeg_global_args()
+        clip_cmd = ["ffmpeg", "-y", *global_args]
         if self.start_offset > 0:
             clip_cmd.extend(["-ss", str(self.start_offset)])
         clip_cmd.extend(["-i", str(video_path), "-t", str(self.clip_duration)])
-        if self.start_offset > 0 and all(
-            value is not None
-            for value in (
-                self.codec,
-                self.preset,
-                self.crf,
-                self.width,
-                self.height,
-                self.fps,
-                self.sample_rate,
-            )
-        ):
+        needs_encode = self.start_offset > 0 and self.encoder_options and all(
+            value is not None for value in (self.width, self.height, self.fps, self.sample_rate)
+        )
+        if needs_encode:
             filters = [
                 f"scale={self.width}:{self.height}",
                 "setsar=1",
@@ -89,18 +100,10 @@ class TwitterPoster(Step):
                 [
                     "-vf",
                     ",".join(filters),
-                    "-c:v",
-                    self.codec,
-                    "-preset",
-                    self.preset,
-                    "-crf",
-                    str(self.crf),
-                    "-c:a",
-                    "aac",
-                    "-ar",
-                    str(self.sample_rate),
                 ]
             )
+            clip_cmd.extend(self._encoder_cli_args())
+            clip_cmd.extend(["-ar", str(self.sample_rate)])
         else:
             clip_cmd.extend(["-c", "copy"])
         clip_cmd.append(str(clip_path))
@@ -116,32 +119,26 @@ class TwitterPoster(Step):
                 f"[1:a]aresample={self.sample_rate},asetpts=PTS-STARTPTS[a1];"
                 "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]"
             )
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-i",
-                    str(clip_path),
-                    "-i",
-                    str(self.outro_path),
-                    "-filter_complex",
-                    filter_expr,
-                    "-map",
-                    "[v]",
-                    "-map",
-                    "[a]",
-                    "-c:v",
-                    self.codec,
-                    "-preset",
-                    self.preset,
-                    "-crf",
-                    str(self.crf),
-                    "-c:a",
-                    "aac",
-                    str(final_path),
-                ],
-                check=True,
-            )
+            concat_cmd = [
+                "ffmpeg",
+                "-y",
+                *global_args,
+                "-i",
+                str(clip_path),
+                "-i",
+                str(self.outro_path),
+                "-filter_complex",
+                filter_expr,
+                "-map",
+                "[v]",
+                "-map",
+                "[a]",
+            ]
+            concat_cmd.extend(self._encoder_cli_args())
+            if self.sample_rate is not None:
+                concat_cmd.extend(["-ar", str(self.sample_rate)])
+            concat_cmd.append(str(final_path))
+            subprocess.run(concat_cmd, check=True)
             clip_path.unlink()
             final_path.rename(clip_path)
         payload = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -155,6 +152,32 @@ class TwitterPoster(Step):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         return output_path
+
+    def _encoder_cli_args(self) -> list[str]:
+        args: list[str] = []
+        for key, value in self.encoder_options.items():
+            args.extend([self._encoder_flag(key), str(value)])
+        return args
+
+    def _encoder_flag(self, key: str) -> str:
+        if key == "vcodec":
+            return "-c:v"
+        if key == "acodec":
+            return "-c:a"
+        return f"-{key}"
+
+    def _ffmpeg_global_args(self) -> list[str]:
+        args: list[str] = []
+        skip = False
+        for arg in self.encoder_global_args:
+            if skip:
+                skip = False
+                continue
+            if arg in {"-hwaccel", "-hwaccel_output_format"}:
+                skip = True
+                continue
+            args.append(arg)
+        return args
 
 
 if __name__ == "__main__":

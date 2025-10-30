@@ -22,18 +22,36 @@ class IntroOutroConcatenator(Step):
         *,
         intro_path: str | None,
         outro_path: str | None,
-        codec: str,
-        preset: str,
-        crf: int,
+        encoder_options: Dict[str, str] | None = None,
+        encoder_global_args: list[str] | None = None,
+        codec: str | None = None,
+        preset: str | None = None,
+        crf: int | None = None,
         thumbnail_overlay: Dict | None = None,
         thumbnail_clip: Dict | None = None,
     ) -> None:
         super().__init__(run_id, run_dir)
         self.intro_path = Path(intro_path) if intro_path else None
         self.outro_path = Path(outro_path) if outro_path else None
-        self.codec = codec
-        self.preset = preset
-        self.crf = crf
+        options = {
+            str(key): str(value)
+            for key, value in (encoder_options or {}).items()
+            if value is not None
+        }
+        if codec and "vcodec" not in options:
+            options["vcodec"] = str(codec)
+        if preset and "preset" not in options:
+            options["preset"] = str(preset)
+        if crf is not None and "crf" not in options:
+            options["crf"] = str(crf)
+        if "vcodec" not in options:
+            options["vcodec"] = "libx264"
+        if "preset" not in options:
+            options["preset"] = "medium"
+        if "acodec" not in options:
+            options["acodec"] = "aac"
+        self.encoder_options = options
+        self.encoder_global_args = [str(arg) for arg in encoder_global_args or []]
         overlay_cfg = thumbnail_overlay or {}
         self.thumbnail_overlay_enabled = bool(overlay_cfg.get("enabled", False))
         self.thumbnail_overlay_duration = float(overlay_cfg.get("duration_seconds", 0))
@@ -72,15 +90,10 @@ class IntroOutroConcatenator(Step):
                     height=height,
                     fps=fps,
                 )
-        output = ffmpeg.output(
-            video_output,
-            audio_concat[0],
-            str(output_path),
-            vcodec=self.codec,
-            preset=self.preset,
-            crf=self.crf,
-            acodec="aac",
-        ).overwrite_output()
+        options = dict(self.encoder_options)
+        output = ffmpeg.output(video_output, audio_concat[0], str(output_path), **options).overwrite_output()
+        if self.encoder_global_args:
+            output = output.global_args(*self.encoder_global_args)
         ffmpeg.run(output, cmd=find_ffmpeg_binary(), capture_stdout=True, capture_stderr=True)
         return output_path
 
@@ -117,17 +130,10 @@ class IntroOutroConcatenator(Step):
             .filter("atrim", duration=self.thumbnail_clip_duration)
             .filter("asetpts", "PTS-STARTPTS")
         )
-        output = (
-            ffmpeg.output(
-                video,
-                audio,
-                str(clip_path),
-                vcodec=self.codec,
-                preset=self.preset,
-                crf=self.crf,
-                acodec="aac",
-            ).overwrite_output()
-        )
+        options = dict(self.encoder_options)
+        output = ffmpeg.output(video, audio, str(clip_path), **options).overwrite_output()
+        if self.encoder_global_args:
+            output = output.global_args(*self.encoder_global_args)
         ffmpeg.run(output, cmd=find_ffmpeg_binary(), capture_stdout=True, capture_stderr=True)
         return clip_path
 
