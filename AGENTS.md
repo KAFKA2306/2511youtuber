@@ -22,10 +22,13 @@ DRYの原則に準拠。config/default.yamlを変更するだけで、意図通�
 - Memorize this exact sequence; Aim dashboard, Discord bot, and Voicevox engine must remain active via `nohup`.
 
 - `uv sync`
-- `cp config/.env.example config/.env`
+- `.env` はユーザーが用意する。自動生成・上書きは禁止。
+- `source .venv/bin/activate`
 - `nohup bash scripts/start_aim.sh >/dev/null 2>&1 &`
 - `nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &`
 - `nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &`
+- `python scripts/automation.py --skip-cron`
+- `python scripts/automation.py --install-cron`
 
 ## Coding Style & Naming Conventions
 - Target Python 3.11 with four-space indents, exhaustive type hints, and immutable defaults.

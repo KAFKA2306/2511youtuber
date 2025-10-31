@@ -291,3 +291,37 @@ providers:
 logging:
   level: "INFO"
   format: "json"
+
+automation:
+  enabled: true
+  venv_activate: ".venv/bin/activate"
+  log_dir: "logs/automation"
+  services:
+    - name: "aim_ingest"
+      command:
+        - "python"
+        - "scripts/import_to_aim.py"
+      background: false
+    - name: "aim_dashboard"
+      command:
+        - "aim"
+        - "up"
+        - "--host"
+        - "127.0.0.1"
+        - "--port"
+        - "43800"
+    - name: "voicevox"
+      command:
+        - "bash"
+        - "scripts/voicevox_manager.sh"
+        - "start"
+    - name: "discord_news_bot"
+      command:
+        - "python"
+        - "scripts/discord_news_bot.py"
+  schedules:
+    - name: "workflow_minutely"
+      command:
+        - "bash"
+        - "scripts/run_workflow_cron.sh"
+      cron: "*/1 * * * *"

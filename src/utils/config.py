@@ -321,11 +321,40 @@ class LoggingConfig(BaseModel):
     format: str
 
 
+class AutomationServiceConfig(BaseModel):
+    name: str
+    enabled: bool = True
+    command: list[str]
+    cwd: str | None = None
+    env: Dict[str, str] = Field(default_factory=dict)
+    background: bool = True
+    log_file: str | None = None
+
+
+class AutomationScheduleConfig(BaseModel):
+    name: str
+    enabled: bool = True
+    command: list[str]
+    cwd: str | None = None
+    cron: str
+    env: Dict[str, str] = Field(default_factory=dict)
+    log_file: str | None = None
+
+
+class AutomationConfig(BaseModel):
+    enabled: bool = True
+    venv_activate: str | None = None
+    log_dir: str = "logs/automation"
+    services: list[AutomationServiceConfig] = Field(default_factory=list)
+    schedules: list[AutomationScheduleConfig] = Field(default_factory=list)
+
+
 class Config(BaseModel):
     workflow: WorkflowConfig
     steps: StepsConfig
     providers: ProvidersConfig
     logging: LoggingConfig
+    automation: AutomationConfig = Field(default_factory=AutomationConfig)
 
     @classmethod
     def load(cls, config_path: str | Path | None = None) -> "Config":
