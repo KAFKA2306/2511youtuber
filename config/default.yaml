@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
+    query: "bloomberg OR 最高値 OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     recent_topics_runs: 5
     recent_topics_max_chars: 220
     recent_topics_min_token_length: 3
@@ -192,6 +192,10 @@ steps:
       guidelines:
         - "タイトルと説明文は事実を端的に伝える落ち着いた専門家の語調に統一する"
         - "誇張や陰謀論を想起させる語彙を避け、投資家が安心して共有できる表現にする"
+        - "タイトルの冒頭で対象となる企業名や指数などの主語を明示する"
+        - "タイトルには終値や決算数値など確定した金額・指標を通貨や単位付きで記載する"
+        - "タイトルで変化幅だけに触れず、いつの時点でいくらになったのかを具体的に記述する"
+        - "タイトルは必要最小限の語で構成し、冗長な枕詞や情緒的な形容を避ける"
       title_disallowed_terms:
         - "闇"
         - "陰謀"
@@ -320,8 +324,8 @@ automation:
         - "python"
         - "scripts/discord_news_bot.py"
   schedules:
-    - name: "workflow_minutely"
+    - name: "workflow_4hourly"
       command:
         - "bash"
         - "scripts/run_workflow_cron.sh"
-      cron: "*/1 * * * *"
+      cron: "0 */4 * * *"

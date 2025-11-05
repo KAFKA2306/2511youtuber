@@ -65,7 +65,7 @@ python scripts/automation.py --skip-services
 python scripts/automation.py --install-cron
 
 # ログ確認例
-tail -f logs/automation/workflow_minutely.log
+tail -f logs/automation/workflow_4hourly.log
 
 # Cron スクリプト直接実行
 bash scripts/run_workflow_cron.sh
@@ -104,6 +104,7 @@ ls logs/automation
 ```
 
 ## 運用のポイント
+- デフォルトのスケジュールは 4 時間ごと（1 日 6 回）に `run_workflow_cron.sh` を起動する。必要に応じて `automation.schedules` の `cron` を変更し `--install-cron` を再適用する。
 - Discord Bot, Voicevox, Aim UI の起動は `automation.services` で制御する。サービス単位で `enabled: false` を設定すれば停止できる。
 - スケジュールの周期変更は `automation.schedules` の `cron` を編集し `--install-cron` を再実行する。
 - `logs/automation/` のサイズが増えたらローテーションまたは削除を実施する。
