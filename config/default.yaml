@@ -8,7 +8,7 @@ steps:
     query: "日本経済ニュース OR 世界金融市場"
     recent_topics_runs: 5
     recent_topics_max_chars: 500
-    recent_topics_min_token_length: 2
+    recent_topics_min_token_length: 3
     recent_topics_stopwords:
       - "が"
       - "の"

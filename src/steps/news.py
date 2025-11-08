@@ -2,6 +2,7 @@ import json
 import re
 import time
 import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
@@ -42,14 +43,26 @@ class NewsCollector(Step):
         self.recent_topics_stopwords = {self._normalize_word(word) for word in stopwords if word}
         self.providers_config = providers_config
 
-    def select_topic(self, recent_topics_note: str) -> str:
+    def select_topic(self, recent_topics_note: str) -> Dict:
+        selection_record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "recent_topics_note": recent_topics_note,
+            "default_query": self.query,
+            "fallback_used": False,
+            "llm_response": None,
+            "selected_query": self.query,
+        }
         prompts = load_prompts()
         topic_prompts = prompts.get("topic_selection")
         if not topic_prompts:
-            return self.query
+            selection_record["fallback_used"] = True
+            selection_record["fallback_reason"] = "topic_selection prompt not found"
+            return selection_record
         api_keys = load_secret_values("GEMINI_API_KEY")
         if not api_keys:
-            return self.query
+            selection_record["fallback_used"] = True
+            selection_record["fallback_reason"] = "GEMINI_API_KEY not found"
+            return selection_record
         user_prompt = topic_prompts["user_template"].format(recent_topics_note=recent_topics_note)
         response = litellm.completion(
             model="gemini/gemini-2.0-flash-exp",
@@ -64,7 +77,9 @@ class NewsCollector(Step):
         content = response.choices[0].message.content.strip()
         cleaned = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         result = json.loads(cleaned)
-        return result["query"]
+        selection_record["llm_response"] = result
+        selection_record["selected_query"] = result["query"]
+        return selection_record
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
@@ -72,7 +87,12 @@ class NewsCollector(Step):
         recent_tokens = self._tokenize(base_recent_text)
         tracker = AimTracker.get_instance(self.run_id)
         recent_note = self._build_recent_note(base_recent_text, recent_tokens)
-        selected_query = self.select_topic(recent_note)
+        selection_record = self.select_topic(recent_note)
+        topic_selection_path = self.run_dir / self.run_id / "topic_selection.json"
+        topic_selection_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(topic_selection_path, "w", encoding="utf-8") as f:
+            json.dump(selection_record, f, ensure_ascii=False, indent=2)
+        selected_query = selection_record["selected_query"]
         prompt_data = {"query": selected_query, "count": self.count, "recent_topics_note": recent_note}
         prompt = json.dumps(prompt_data, ensure_ascii=False)
         start = time.time()
