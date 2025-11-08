@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "日本経済ニュース OR 世界金融市場"
+    query: "bloomberg OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     recent_topics_runs: 5
     recent_topics_max_chars: 500
     recent_topics_min_token_length: 3
