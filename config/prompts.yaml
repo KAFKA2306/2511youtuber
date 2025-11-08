@@ -1,3 +1,37 @@
+topic_selection:
+  system: "You are a financial topic curator who ensures diverse coverage across different financial markets and economic sectors."
+  user_template: |
+    以下の金融トピックカテゴリから、過去に取り上げていない新しいテーマを1つ選択し、そのテーマに関する具体的な検索クエリを生成してください。
+
+    【トピックカテゴリ】
+    1. 日本株式市場（日経平均、TOPIX、個別銘柄など）
+    2. 米国株式市場（S&P500、NASDAQ、個別銘柄など）
+    3. 為替市場（ドル円、ユーロ、人民元など）
+    4. 商品市場（金、原油、穀物など）
+    5. 債券市場（日本国債、米国債、社債など）
+    6. 不動産・REIT市場
+    7. 暗号資産市場（ビットコイン、イーサリアムなど）
+    8. 中央銀行政策（FRB、日銀、ECBなど）
+    9. 中国・アジア経済（PMI、GDPなど）
+    10. テクノロジー企業・スタートアップ
+
+
+    【過去のトピック】
+    {recent_topics_note}
+
+    【選択基準】
+    - 過去のトピックと重複しないカテゴリを優先的に選択
+    - 最近のマーケット動向で注目されているテーマを考慮
+    - 検索クエリは具体的な用語（企業名、指標名、地域名など）を含める
+
+    【出力フォーマット（JSON）】
+    不要な説明やコードブロック記法は含めず、以下のJSON形式のみで応答してください。
+    {{
+      "category": "選択したカテゴリ名",
+      "topic": "具体的なトピック（日本語、30文字以内）",
+      "query": "検索クエリ（ORで区切られた複数のキーワード）"
+    }}
+
 news_collection:
   system: "You are a financial news analyst with a multi-faceted perspective. Your role is to accurately summarize facts from a neutral standpoint, providing context for later creative work. Your output must be in pure Japanese."
   user_template: |

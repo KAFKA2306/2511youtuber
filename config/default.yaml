@@ -5,10 +5,23 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR 最高値 OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
+    query: "日本経済ニュース OR 世界金融市場"
     recent_topics_runs: 5
-    recent_topics_max_chars: 220
-    recent_topics_min_token_length: 3
+    recent_topics_max_chars: 500
+    recent_topics_min_token_length: 2
+    recent_topics_stopwords:
+      - "が"
+      - "の"
+      - "を"
+      - "に"
+      - "は"
+      - "で"
+      - "と"
+      - "も"
+      - "から"
+      - "まで"
+      - "より"
+      - "など"
 
   script:
     min_duration: 300

@@ -5,12 +5,15 @@ import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
+import litellm
+
 from src.core.step import Step
 from src.providers.base import Provider, execute_with_fallback
 from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
 from src.tracking import AimTracker
-from src.utils.config import NewsProvidersConfig
+from src.utils.config import NewsProvidersConfig, load_prompts
 from src.utils.history import gather_recent_topics
+from src.utils.secrets import load_secret_values
 
 
 class NewsCollector(Step):
@@ -39,18 +42,43 @@ class NewsCollector(Step):
         self.recent_topics_stopwords = {self._normalize_word(word) for word in stopwords if word}
         self.providers_config = providers_config
 
+    def select_topic(self, recent_topics_note: str) -> str:
+        prompts = load_prompts()
+        topic_prompts = prompts.get("topic_selection")
+        if not topic_prompts:
+            return self.query
+        api_keys = load_secret_values("GEMINI_API_KEY")
+        if not api_keys:
+            return self.query
+        user_prompt = topic_prompts["user_template"].format(recent_topics_note=recent_topics_note)
+        response = litellm.completion(
+            model="gemini/gemini-2.0-flash-exp",
+            messages=[
+                {"role": "system", "content": topic_prompts["system"]},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.7,
+            max_tokens=512,
+            api_key=api_keys[0],
+        )
+        content = response.choices[0].message.content.strip()
+        cleaned = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        result = json.loads(cleaned)
+        return result["query"]
+
     def execute(self, inputs: Dict[str, Path]) -> Path:
         recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
         base_recent_text = " / ".join(recent_topics)
         recent_tokens = self._tokenize(base_recent_text)
         tracker = AimTracker.get_instance(self.run_id)
         recent_note = self._build_recent_note(base_recent_text, recent_tokens)
-        prompt_data = {"query": self.query, "count": self.count, "recent_topics_note": recent_note}
+        selected_query = self.select_topic(recent_note)
+        prompt_data = {"query": selected_query, "count": self.count, "recent_topics_note": recent_note}
         prompt = json.dumps(prompt_data, ensure_ascii=False)
         start = time.time()
         candidates = execute_with_fallback(
             self._build_providers(),
-            query=self.query,
+            query=selected_query,
             count=self.count,
             recent_topics_note=recent_note,
         )
@@ -94,13 +122,28 @@ class NewsCollector(Step):
         return note or "直近テーマ情報なし"
 
     def _normalize_word(self, value: str) -> str:
-        return unicodedata.normalize("NFKC", str(value)).lower().strip()
+        normalized = unicodedata.normalize("NFKC", str(value)).lower().strip()
+        replacements = {
+            "日経平均株価": "日経",
+            "日経平均": "日経",
+            "日経225": "日経",
+            "s&p500": "sp500",
+            "s&p": "sp500",
+            "ドル/円": "ドル円",
+            "米ドル": "ドル",
+            "ビットコイン": "btc",
+            "イーサリアム": "eth",
+        }
+        for old, new in replacements.items():
+            normalized = normalized.replace(old, new)
+        return normalized
 
     def _tokenize(self, value: str) -> set[str]:
         if not value:
             return set()
         normalized = self._normalize_word(value)
-        tokens = re.split(r"[^0-9a-zA-Z一-龠ぁ-ゔァ-ヴー]+", normalized)
+        particle_pattern = r"(が|の|を|に|は|で|と|も|から|まで|より|など|へ|や)"
+        tokens = re.split(r"[^0-9a-zA-Z一-龠ぁ-ゔァ-ヴー]+|" + particle_pattern, normalized)
         result = {token for token in tokens if token and len(token) >= self.recent_topics_min_token_length}
         return {token for token in result if token not in self.recent_topics_stopwords}
 

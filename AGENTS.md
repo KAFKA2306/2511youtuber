@@ -48,3 +48,8 @@ DRYの原則に準拠。config/default.yamlを変更するだけで、意図通�
 ## Security & Configuration Tips
 - Keep secrets in `.env` and never commit API keys; rotate Gemini credentials if distribution changes.
 - Review `config/default.yaml` before demos to ensure only stable providers are enabled and experimental toggles remain disabled.
+
+## Value Request Workflow
+- Populate `config/.env` with at least one valid `PERPLEXITY_API_KEY_*` or `GEMINI_API_KEY_*` so news providers can execute custom factual queries.
+- Run `.venv/bin/python -m src.main --news-query "<verbatim request>"` to force the workflow to investigate the exact claim.
+- Collect evidence from `runs/<run_id>/collect_news/news.json` plus downstream outputs before drafting the response; if the run fails, fix credentials and rerun instead of speculating.
