@@ -83,7 +83,6 @@ class GeminiProvider:
             Response content if successful, None if all keys failed with 503 errors
         """
         max_retries = len(self.api_keys)
-        last_error = None
 
         for attempt in range(max_retries):
             api_key = self._keys[0]
@@ -102,7 +101,6 @@ class GeminiProvider:
                 return response.choices[0].message.content
 
             except litellm.exceptions.InternalServerError as e:
-                last_error = e
                 error_str = str(e)
 
                 # Handle 503 Service Unavailable (overloaded)

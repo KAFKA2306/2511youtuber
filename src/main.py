@@ -1,5 +1,8 @@
 import argparse
 import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from apps.youtube import run as run_youtube
 
@@ -11,10 +14,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    from pathlib import Path
-    from dotenv import load_dotenv
-
-    # Load environment variables from .env file
     env_path = Path(__file__).resolve().parent.parent / "config" / ".env"
     if env_path.exists():
         load_dotenv(dotenv_path=env_path)
