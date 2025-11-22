@@ -1,0 +1,102 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Run the main workflow
+    cmds:
+      - uv run python -m src.main
+
+  run:
+    desc: Run workflow with optional news query
+    cmds:
+      - uv run python -m src.main {{.CLI_ARGS}}
+
+  setup:
+    desc: Install dependencies and sync environment
+    cmds:
+      - uv sync
+
+  lint:
+    desc: Run linting checks
+    cmds:
+      - uv run ruff check src tests
+
+  format:
+    desc: Format code with ruff
+    cmds:
+      - uv run ruff format src tests
+
+  lint-fix:
+    desc: Fix linting issues automatically
+    cmds:
+      - uv run ruff check --fix src tests
+
+  test:
+    desc: Run all tests
+    cmds:
+      - uv run pytest tests/ -v
+
+  test-unit:
+    desc: Run unit tests with coverage
+    cmds:
+      - uv run pytest tests/unit -m unit -v --cov=src --cov-report=term-missing
+
+  test-integration:
+    desc: Run integration tests
+    cmds:
+      - uv run pytest tests/integration -v
+
+  test-e2e:
+    desc: Run end-to-end tests
+    cmds:
+      - uv run pytest -v -m e2e
+
+  aim-import:
+    desc: Import data to Aim
+    cmds:
+      - uv run python scripts/import_to_aim.py
+
+  aim-up:
+    desc: Start Aim dashboard
+    cmds:
+      - aim up --host 0.0.0.0 --port 43800
+
+  voicevox-start:
+    desc: Start Voicevox TTS engine
+    cmds:
+      - bash scripts/voicevox_manager.sh start
+
+  voicevox-stop:
+    desc: Stop Voicevox TTS engine
+    cmds:
+      - bash scripts/voicevox_manager.sh stop
+
+  automation-start:
+    desc: Start automation services (skip cron)
+    cmds:
+      - python scripts/automation.py --skip-cron
+
+  automation-cron:
+    desc: Install cron jobs for automation
+    cmds:
+      - python scripts/automation.py --install-cron
+
+  discord-bot:
+    desc: Start Discord news bot
+    cmds:
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+
+  clean:
+    desc: Clean temporary files and caches
+    cmds:
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+      - find . -type f -name "*.pyc" -delete
+
+  services-start:
+    desc: Start all background services
+    cmds:
+      - nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
+      - nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+      - echo "Services started in background"

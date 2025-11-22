@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "日本経済ニュース OR 世界金融市場"
+    query: "bloomberg OR 最高値 OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     recent_topics_runs: 5
     recent_topics_max_chars: 500
     recent_topics_min_token_length: 2
@@ -24,9 +24,16 @@ steps:
       - "など"
 
   script:
-    min_duration: 300
-    max_duration: 600
+    min_duration: 300  # 5分
+    max_duration: 600  # 10分
     target_wow_score: 5.0
+    retention_optimization:
+      enabled: true
+      opening_duration_seconds: 30
+      bridge_interval_seconds: 90
+      engagement_prompt_interval_seconds: 120
+      cta_timing: "after_climax"
+      max_topic_duration_seconds: 90
     speakers:
       analyst:
         name: "春日部つむぎ"
@@ -281,10 +288,10 @@ steps:
 providers:
   llm:
     gemini:
-      model: "gemini/gemini-2.5-pro"
-      fallback_model: "gemini/gemini-2.5-flash-preview-09-2025"
+      model: "gemini/gemini-2.5-flash"
+      fallback_model: "gemini/gemini-2.5-flash"
       temperature: 0.35
-      max_tokens: 4000
+      max_tokens: 32768
 
   tts:
     voicevox:
@@ -296,6 +303,28 @@ providers:
         春日部つむぎ: 8
         ずんだもん: 1
         玄野武宏: 11
+      voice_parameters:
+        default:
+          speedScale: 1.0
+          intonationScale: 1.0
+          pitchScale: 0.0
+          volumeScale: 1.0
+        by_character:
+          春日部つむぎ:
+            speedScale: 1.0
+            intonationScale: 1.2
+          ずんだもん:
+            speedScale: 1.0
+            intonationScale: 1.0
+        by_type:
+          opening:
+            speedScale: 1.1
+            intonationScale: 1.2
+          explanation:
+            speedScale: 1.0
+          emphasis:
+            speedScale: 1.0
+            intonationScale: 1.3
 
   news:
     perplexity:

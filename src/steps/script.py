@@ -109,7 +109,7 @@ class ScriptGenerator(Step):
             raise ValueError("Script output must be a mapping")
         script = Script(**data)
         for seg in script.segments:
-            seg.text = re.sub(r'。(?![\r\n]|$)', '。\n', seg.text)
+            seg.text = re.sub(r"。(?![\r\n]|$)", "。\n", seg.text)
         return script
 
     def _coerce_to_dict(self, raw: str, depth: int) -> Any:
@@ -157,7 +157,7 @@ class ScriptGenerator(Step):
 
     def _candidate_variants(self, text: str) -> List[str]:
         variants = [text]
-        if len(text) >= 2 and text[0] == text[-1] and text[0] in ("\"", "'"):
+        if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
             variants.append(text[1:-1])
         normalized = unicodedata.normalize("NFKC", text).replace("　", " ")
         if normalized != text:
@@ -180,11 +180,11 @@ class ScriptGenerator(Step):
                 continue
             prefix, value = match.groups()
             stripped = value.strip()
-            if not stripped or stripped[0] in {'"', "'", '|', '>'}:
+            if not stripped or stripped[0] in {'"', "'", "|", ">"}:
                 lines.append(line)
                 continue
             escaped = stripped.replace('"', '\\"')
-            lines.append(f"{prefix}\"{escaped}\"")
+            lines.append(f'{prefix}"{escaped}"')
         return "\n".join(lines)
 
     def _extract_segments_block(self, text: str) -> str | None:

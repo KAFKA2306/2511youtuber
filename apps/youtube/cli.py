@@ -83,11 +83,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     voicevox_config.pop("enabled", None)
     video_config = video_cfg.model_dump()
     video_config["effects"] = [effect.model_dump() for effect in video_cfg.effects]
-    encoder_options = {
-        str(key): str(value)
-        for key, value in video_cfg.encoder_options.items()
-        if value is not None
-    }
+    encoder_options = {str(key): str(value) for key, value in video_cfg.encoder_options.items() if value is not None}
     if video_cfg.codec and "vcodec" not in encoder_options:
         encoder_options["vcodec"] = str(video_cfg.codec)
     if video_cfg.preset and "preset" not in encoder_options:
@@ -101,7 +97,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     wrap_width_pixels = SubtitleFormatter.safe_pixel_width(video_cfg.resolution, margin_l, margin_r)
     font_path = subtitle_style.font_path if subtitle_style else None
     font_size = subtitle_style.font_size if subtitle_style else None
-    resolution_values = video_cfg.resolution.lower().split('x')
+    resolution_values = video_cfg.resolution.lower().split("x")
     video_width = int(resolution_values[0])
     video_height = int(resolution_values[1])
 
@@ -116,6 +112,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             recent_topics_min_token_length=news_cfg.recent_topics_min_token_length,
             recent_topics_stopwords=news_cfg.recent_topics_stopwords,
             providers_config=config.providers.news,
+            gemini_model=config.providers.llm.gemini.model,
         ),
         ScriptGenerator(run_id=run_id, run_dir=run_dir, speakers_config=script_cfg.speakers),
         AudioSynthesizer(
@@ -123,6 +120,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             run_dir=run_dir,
             voicevox_config=voicevox_config,
             speaker_aliases=_speaker_aliases(script_cfg.speakers),
+            voice_parameters=voicevox_config.get("voice_parameters", {}),
         ),
         SubtitleFormatter(
             run_id=run_id,

@@ -43,9 +43,7 @@ class WorkflowOrchestrator:
                 tracker.track_diff(prev_outputs, self.state.outputs)
 
             tracker.track_status("success")
-            tracker.track_metrics(
-                {"workflow_duration": duration, "steps_completed": len(self.state.completed_steps)}
-            )
+            tracker.track_metrics({"workflow_duration": duration, "steps_completed": len(self.state.completed_steps)})
             tracker.finalize()
 
             return WorkflowResult(
@@ -63,9 +61,7 @@ class WorkflowOrchestrator:
             duration = (datetime.now() - start_time).total_seconds()
 
             tracker.track_status("failed", failed_step=error_step, error=error_message)
-            tracker.track_metrics(
-                {"workflow_duration": duration, "steps_completed": len(self.state.completed_steps)}
-            )
+            tracker.track_metrics({"workflow_duration": duration, "steps_completed": len(self.state.completed_steps)})
             tracker.finalize()
 
             return WorkflowResult(
@@ -79,9 +75,7 @@ class WorkflowOrchestrator:
     def _load_previous_outputs(self) -> Dict[str, Path]:
         if not self.run_dir.exists():
             return {}
-        candidates = sorted(
-            [p for p in self.run_dir.iterdir() if p.is_dir() and p.name != self.run_id], reverse=True
-        )
+        candidates = sorted([p for p in self.run_dir.iterdir() if p.is_dir() and p.name != self.run_id], reverse=True)
         for candidate in candidates:
             state_path = candidate / "state.json"
             if not state_path.exists():

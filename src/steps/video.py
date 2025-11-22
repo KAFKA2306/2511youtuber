@@ -6,7 +6,12 @@ from typing import Dict
 import ffmpeg
 
 from src.core.io_utils import validate_input_files
-from src.core.media_utils import apply_thumbnail_overlay, find_ffmpeg_binary, get_audio_duration, sanitize_path_for_ffmpeg
+from src.core.media_utils import (
+    apply_thumbnail_overlay,
+    find_ffmpeg_binary,
+    get_audio_duration,
+    sanitize_path_for_ffmpeg,
+)
 from src.core.step import Step
 from src.providers.video_effects import VideoEffectContext, VideoEffectPipeline
 
@@ -28,9 +33,7 @@ class VideoRenderer(Step):
         self.resolution = cfg.get("resolution", "1920x1080")
         self.fps = cfg.get("fps", 25)
         base_options = {
-            str(key): str(value)
-            for key, value in (cfg.get("encoder_options") or {}).items()
-            if value is not None
+            str(key): str(value) for key, value in (cfg.get("encoder_options") or {}).items() if value is not None
         }
         if encoder_options:
             for key, value in encoder_options.items():

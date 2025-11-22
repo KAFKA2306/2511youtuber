@@ -33,11 +33,7 @@ class IntroOutroConcatenator(Step):
         super().__init__(run_id, run_dir)
         self.intro_path = Path(intro_path) if intro_path else None
         self.outro_path = Path(outro_path) if outro_path else None
-        options = {
-            str(key): str(value)
-            for key, value in (encoder_options or {}).items()
-            if value is not None
-        }
+        options = {str(key): str(value) for key, value in (encoder_options or {}).items() if value is not None}
         if codec and "vcodec" not in options:
             options["vcodec"] = str(codec)
         if preset and "preset" not in options:
@@ -161,7 +157,9 @@ class IntroOutroConcatenator(Step):
         rate_value = video_stream.get("avg_frame_rate") or video_stream.get("r_frame_rate") or ""
         fps = self._frame_rate(rate_value)
         audio_stream = next((stream for stream in data.get("streams", []) if stream.get("codec_type") == "audio"), None)
-        sample_rate = int(audio_stream.get("sample_rate")) if audio_stream and audio_stream.get("sample_rate") else 48000
+        sample_rate = (
+            int(audio_stream.get("sample_rate")) if audio_stream and audio_stream.get("sample_rate") else 48000
+        )
         return width, height, fps, sample_rate
 
     def _aligned_streams(

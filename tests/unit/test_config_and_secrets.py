@@ -151,9 +151,7 @@ def test_config_load_round_trip(tmp_path: Path) -> None:
     assert config.steps.thumbnail.overlays[0].width_ratio == 0.25
 
 
-def test_load_secret_values_merges_env_and_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_load_secret_values_merges_env_and_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "env-value")
     monkeypatch.setenv("GEMINI_API_KEY_2", "env-second")
 
