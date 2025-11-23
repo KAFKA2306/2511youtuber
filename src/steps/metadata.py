@@ -140,13 +140,22 @@ class MetadataAnalyzer(Step):
 
     def _candidates(self, raw: str) -> List[str]:
         text = raw.strip().lstrip("\ufeff")
-        candidates = [text]
+
+        candidates = []
         if code := extract_code_block(text):
             candidates.append(code)
         if triple := self._extract_triple_quote(text):
             candidates.append(triple)
         if yaml_body := self._extract_yaml_body(text):
             candidates.append(yaml_body)
+
+        cleaned = re.sub(r"^```[\w]*\s*\n?", "", text)
+        cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+        if cleaned != text:
+            candidates.append(cleaned.strip())
+
+        candidates.append(text)
+
         for c in list(candidates):
             if len(c) >= 2 and c[0] == c[-1] and c[0] in {'"', "'"}:
                 candidates.append(c[1:-1])

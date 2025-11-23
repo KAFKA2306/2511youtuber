@@ -135,11 +135,20 @@ class ScriptGenerator(Step):
 
     def _candidates(self, raw: str) -> List[str]:
         text = raw.strip().lstrip("\ufeff")
-        candidates = [text]
+
+        candidates = []
         if code := extract_code_block(text):
             candidates.append(code)
         if segments := self._extract_segments_block(text):
             candidates.append(segments)
+
+        cleaned = re.sub(r"^```[\w]*\s*\n?", "", text)
+        cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+        if cleaned != text:
+            candidates.append(cleaned.strip())
+
+        candidates.append(text)
+
         enriched: List[str] = []
         for c in candidates:
             enriched.extend(self._candidate_variants(c))

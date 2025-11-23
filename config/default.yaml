@@ -193,7 +193,7 @@ steps:
           bottom: 40
 
   thumbnail_ai:
-    enabled: false
+    enabled: true
     width: 1920
     height: 1080
     num_steps: 6

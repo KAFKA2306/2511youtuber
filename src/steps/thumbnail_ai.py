@@ -30,8 +30,6 @@ class AIThumbnailGenerator(Step):
         self.width = int(cfg.get("width", 1920))
         self.height = int(cfg.get("height", 1080))
         self.num_steps = int(cfg.get("num_steps", 6))
-        self.mood_tag = str(cfg.get("mood_tag", ""))
-        self.main_keyword = str(cfg.get("main_keyword", ""))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_path = self.get_output_path()
@@ -46,8 +44,9 @@ class AIThumbnailGenerator(Step):
 
         video_id = self.run_id
         title = self._resolve_title(metadata, script)
-        short_topic = self._resolve_short_topic(metadata, script)
-        prompt = self._build_prompt(video_id, title, short_topic)
+        description = str(metadata.get("description", "")).strip() if metadata else ""
+        tags = ", ".join(metadata.get("tags", [])) if metadata else ""
+        prompt = self._build_prompt(title, description, tags)
         seed = self._generate_seed(video_id)
 
         from src.utils.config import load_prompts
@@ -81,16 +80,7 @@ class AIThumbnailGenerator(Step):
             return str(metadata["title"]).strip()
         return script.segments[0].text.strip() if script.segments else "最新ニュース"
 
-    def _resolve_short_topic(self, metadata: Dict | None, script) -> str:
-        if metadata:
-            desc = str(metadata.get("description", "")).strip()
-            if desc:
-                return desc.split("\n", 1)[0][:80] or "金融ニュース解説"
-        if len(script.segments) > 1:
-            return script.segments[1].text.strip()[:80] or "金融ニュース解説"
-        return "金融ニュース解説"
-
-    def _build_prompt(self, video_id: str, title: str, short_topic: str) -> str:
+    def _build_prompt(self, title: str, description: str, tags: str) -> str:
         from src.utils.config import load_prompts
 
         prompts = load_prompts()
@@ -100,9 +90,9 @@ class AIThumbnailGenerator(Step):
 
         return template.format(
             fixed_core=fixed_core,
-            topic=short_topic,
-            keyword=self.main_keyword,
-            mood=self.mood_tag,
+            title=title,
+            description=description,
+            tags=tags,
         )
 
     def _generate_seed(self, video_id: str) -> int:
