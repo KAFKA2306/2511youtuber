@@ -49,19 +49,21 @@ class GeminiProvider:
 
     is_available = has_credentials
 
-    def execute(self, prompt: str, **kwargs) -> str:
+    def execute(self, prompt: str, system_prompt: str | None = None, **kwargs) -> str:
         if not self._keys:
             raise RuntimeError("No Gemini API keys configured")
 
         # Try primary model first
-        result = self._try_execute_with_model(self.model, prompt)
+        result = self._try_execute_with_model(self.model, prompt, system_prompt=system_prompt)
         if result is not None:
             return result
 
         # If primary model failed with 503 and fallback is configured, try fallback
         if self.fallback_model:
             print(f"🔄 Switching to fallback model: {self.fallback_model}")
-            result = self._try_execute_with_model(self.fallback_model, prompt, is_fallback=True)
+            result = self._try_execute_with_model(
+                self.fallback_model, prompt, is_fallback=True, system_prompt=system_prompt
+            )
             if result is not None:
                 return result
 
@@ -72,13 +74,20 @@ class GeminiProvider:
             "The service is heavily overloaded. Please try again later."
         )
 
-    def _try_execute_with_model(self, model: str, prompt: str, is_fallback: bool = False) -> str | None:
+    def _try_execute_with_model(
+        self, model: str, prompt: str, is_fallback: bool = False, system_prompt: str | None = None
+    ) -> str | None:
         """Try to execute with a specific model using all available API keys.
 
         Returns:
             Response content if successful, None if all keys failed with 503 errors
         """
         max_retries = len(self.api_keys)
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
 
         for attempt in range(max_retries):
             api_key = self._keys[0]
@@ -87,7 +96,7 @@ class GeminiProvider:
             try:
                 response = litellm.completion(
                     model=model,
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=messages,
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                     api_key=api_key,

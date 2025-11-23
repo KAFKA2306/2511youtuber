@@ -1,20 +1,31 @@
 thumbnail_ai:
-  negative_prompt: "disfigured, deformed, extra limbs, extra fingers, mutated hands, text artifacts, distorted faces, low resolution, blurry, watermark, logo, NSFW, gore"
+  negative_prompt: "disfigured, deformed, extra limbs, extra fingers, mutated hands, text artifacts, distorted faces, low resolution, blurry, watermark, logo, gore, single character, single girl, portrait-only, selfie, cropped face, plain background, text, caption"
   fixed_core: |
-    春日部つむぎ と ずんだもん のツーショット構図。アニメイラスト風、16:9横長のYouTubeサムネ用構図。
-    春日部つむぎ: 明るいベージュ〜金髪のロングヘア、前髪はセンターで軽く割れ、自然なクセ感の毛束。
-    瞳は透き通る水色、まつ毛は控えめ、健康的な肌。
-    黒いシャツに黄色のネクタイ、マスタード色の大きめジャケット、ジャケットに小さなワッペン。
-    片頬に控えめな絆創膏。落ち着いたチェック柄スカート。
-    ずんだもん: ずんだもん。
-    2人の視線は画面のこちら側（視聴者）に向ける。
-  template: |
-    {fixed_core}
-    動画タイトル: {title}
-    動画の内容: {description}
-    関連キーワード: {tags}
-    画面左か右に大きくテキストを乗せる余白を残し、顔や重要な要素がテキストと被りにくい構図にする。
-    YouTube thumbnail, 16:9, high resolution, 1920x1080, cinematic lighting, vivid colors, sharp focus
+    Anime-style 16:9 YouTube thumbnail, waist-up duo facing the viewer.
+    Kasukabe Tsumugi: long light beige/golden hair with soft center part; pale blue eyes; natural lashes; healthy skin; black shirt; yellow tie; oversized mustard jacket with small patch; cheek bandage; calm check skirt.
+    Zundamon character beside Tsumugi.
+    Expressions adapt to the scene mood.
+  composition_guidelines: |
+    Keep a clean text area on one side; do not overlap faces or focal elements.
+    Use waist-up or bust-up framing with clearly readable expressions.
+  quality_modifiers: |
+    YouTube thumbnail, 16:9, high resolution, 1920x1080, cinematic lighting, vivid colors, sharp focus, anime style masterpiece
+
+thumbnail_translation:
+  system: |
+    You are an elite anime thumbnail art director for SDXL. Generate one concise English prompt that visually tells the story of the Title/Description/Tags.
+    - Translate abstract themes into concrete anime visual metaphors (e.g., risk -> cracking ground, glitching bubbles; growth -> rising arrows, blooming tech motifs).
+    - Derive dominant mood and color palette from the topic; adjust lighting to match (e.g., crisis -> high contrast with red/blue accents).
+    - Include both characters and 3-5 integrated background objects that interact with the scene; avoid portrait-only or single-character compositions.
+    - Keep space on one side clean for later text overlay; do not place text or watermarks in the image.
+    Output only the final prompt, single line, no markdown, under 250 tokens.
+  user_template: |
+    Characters: {fixed_core}
+    Context: {title}; {description}; {tags}
+    Plan: identify the top 2-3 themes, set mood and color palette, choose 3-5 background objects tied to the context, and align both characters’ expressions to the mood while keeping one side cleaner for text overlay (do not draw text).
+    Quality: {quality_modifiers}
+    Composition: {composition_guidelines}
+    Return the final SDXL prompt in one line.
 
 topic_selection:
   system: "You are a financial topic curator who ensures diverse coverage across different financial markets and economic sectors."
@@ -146,11 +157,11 @@ metadata_generation:
     {news_items}
 
     【出力契約（厳守）】
-    - 応答は厳格なYAMLドキュメントのみ。コメント、コードフェンス、余談は不要。
-    - titleやtagsなどのスカラー値はダブルクォートで囲む。コロンや絵文字を含む場合も同様。descriptionは折り畳みスカラ（`>-`）形式で記載する。
-    - description内部の各行は半角スペース2個で字下げし、行頭に`#`を置かない。
-    - tagsの各要素はプレーンワードで先頭に`#`を含めない。空配列を返す場合は`tags: []`とする。
-    - 出典は参照URLの配列で表現し、情報がなければ`出典: []`を返す。
+    - 応答は厳格なJSON形式のみ。コメント、コードフェンス、余談は不要。
+    - title, description, tags, category_id, 出典 のキーを必ず含むこと。
+    - description内の改行は `\n` を使用すること。
+    - tagsは文字列の配列とする。
+    - 出典は文字列の配列とし、情報がなければ空配列 `[]` とする。
 
     スクリプト抜粋:
     {script_excerpt}
@@ -177,25 +188,22 @@ metadata_generation:
     4.  カテゴリ
         - デフォルト: News & Politics（カテゴリID: 25）
 
-    【出力フォーマット（YAML）】
-    '''
-    title: "注目すべき数値や事実を含むキャッチーなタイトルを約28文字で記載"
-    description: >-
-      この記事の核心価値を2行で提示し、視聴者の興味を引き付ける要約を示す。
-      重要なデータや数値を箇条書きで整理し、視聴者が理解しやすいように補足を添える。
-      視聴後に視聴者が取るべき具体的なアクションを提示し、説明する。
-      関連キーワードを含むハッシュタグ候補を半角スペース区切りで列挙する。
-    出典: []
-    tags:
-      - "マクロ経済"
-      - "金利動向"
-      - "株式市場"
-      - "インフレ率"
-      - "中央銀行"
-      - "雇用統計"
-      - "地政学リスク"
-      - "テクノロジー株"
-      - "金融政策"
-      - "投資戦略"
-    category_id: 25
-    '''
+    【出力フォーマット（JSON）】
+    {{
+      "title": "注目すべき数値や事実を含むキャッチーなタイトルを約28文字で記載",
+      "description": "この記事の核心価値を2行で提示し、視聴者の興味を引き付ける要約を示す。\n\n重要なデータや数値を箇条書きで整理し、視聴者が理解しやすいように補足を添える。\n\n視聴後に視聴者が取るべき具体的なアクションを提示し、説明する。\n\n関連キーワードを含むハッシュタグ候補を半角スペース区切りで列挙する。\n\n声：春日部つむぎ、玄野武宏、ずんだもん(Created by VOICEVOX)",
+      "出典": [],
+      "tags": [
+        "マクロ経済",
+        "金利動向",
+        "株式市場",
+        "インフレ率",
+        "中央銀行",
+        "雇用統計",
+        "地政学リスク",
+        "テクノロジー株",
+        "金融政策",
+        "投資戦略"
+      ],
+      "category_id": 25
+    }}

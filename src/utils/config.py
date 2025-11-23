@@ -216,8 +216,6 @@ class AIThumbnailStepConfig(BaseModel):
     width: int = 1920
     height: int = 1080
     num_steps: int = 6
-    mood_tag: str = ""
-    main_keyword: str = ""
 
 
 class MetadataStepConfig(BaseModel):

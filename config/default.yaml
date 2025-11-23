@@ -197,8 +197,6 @@ steps:
     width: 1920
     height: 1080
     num_steps: 6
-    mood_tag: ""
-    main_keyword: ""
 
   metadata:
     enabled: true

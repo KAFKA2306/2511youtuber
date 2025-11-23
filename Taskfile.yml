@@ -36,13 +36,13 @@ tasks:
         from pathlib import Path
         from src.steps.thumbnail_ai import AIThumbnailGenerator
         run_id = '$RUN_ID'
-        run_dir = Path('runs') / run_id
-        if not run_dir.exists():
-            print(f'❌ Run directory not found: {run_dir}')
+        run_dir = Path('runs')
+        if not (run_dir / run_id).exists():
+            print(f'❌ Run directory not found: {run_dir / run_id}')
             exit(1)
         config = {'enabled': True, 'width': 1920, 'height': 1080, 'num_steps': 6}
         gen = AIThumbnailGenerator(run_id, run_dir, config)
-        inputs = {'generate_script': str(run_dir / 'script.json'), 'analyze_metadata': str(run_dir / 'metadata.json')}
+        inputs = {'generate_script': str(run_dir / run_id / 'script.json'), 'analyze_metadata': str(run_dir / run_id / 'metadata.json')}
         output = gen.execute(inputs)
         print(f'✅ Generated: {output}')
         "
