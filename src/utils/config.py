@@ -211,6 +211,15 @@ class ThumbnailStepConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class AIThumbnailStepConfig(BaseModel):
+    enabled: bool = False
+    width: int = 1920
+    height: int = 1080
+    num_steps: int = 6
+    mood_tag: str = ""
+    main_keyword: str = ""
+
+
 class MetadataStepConfig(BaseModel):
     enabled: bool = False
     use_llm: bool = True
@@ -268,6 +277,7 @@ class StepsConfig(BaseModel):
     subtitle: SubtitleStepConfig
     video: VideoStepConfig
     thumbnail: ThumbnailStepConfig
+    thumbnail_ai: AIThumbnailStepConfig = Field(default_factory=AIThumbnailStepConfig)
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
     twitter: TwitterStepConfig
@@ -310,10 +320,16 @@ class NewsProvidersConfig(BaseModel):
     perplexity: PerplexityNewsProviderConfig | None = None
 
 
+class CloudflareAIConfig(BaseModel):
+    account_id: str = "dc1aa018702e10045b00865b63f144d0"
+    model: str = "@cf/bytedance/stable-diffusion-xl-lightning"
+
+
 class ProvidersConfig(BaseModel):
     llm: LLMProvidersConfig
     tts: TTSProvidersConfig
     news: NewsProvidersConfig
+    cloudflare_ai: CloudflareAIConfig = Field(default_factory=CloudflareAIConfig)
 
 
 class LoggingConfig(BaseModel):

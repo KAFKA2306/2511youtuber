@@ -2,9 +2,20 @@ version: '3'
 
 tasks:
   default:
-    desc: Run the main workflow
+    desc: Show available tasks
     cmds:
-      - uv run python -m src.main
+      - task --list
+
+  # Development
+  youtube:run:
+    desc: Run YouTube video generation
+    cmds:
+      - uv run python -m apps.youtube.cli run
+
+  youtube:run-dev:
+    desc: Run with verbose logging  
+    cmds:
+      - uv run python -m apps.youtube.cli run --log-level DEBUG
 
   run:
     desc: Run workflow with optional news query
@@ -16,25 +27,38 @@ tasks:
     cmds:
       - uv sync
 
+  # Code Quality
   lint:
-    desc: Run linting checks
+    desc: Run ruff check
     cmds:
-      - uv run ruff check src tests
+      - uv run ruff check src tests apps
 
   format:
-    desc: Format code with ruff
+    desc: Format code
     cmds:
-      - uv run ruff format src tests
+      - uv run ruff format src tests apps
 
-  lint-fix:
+  lint-fix: # This task is replaced by lint:fix in the provided snippet, but the snippet is incomplete. Keeping original for now.
     desc: Fix linting issues automatically
     cmds:
       - uv run ruff check --fix src tests
 
-  test:
-    desc: Run all tests
+  lint:fix:
+    desc: Run ruff check with auto-fix
     cmds:
-      - uv run pytest tests/ -v
+      - uv run ruff check --fix src tests apps
+      - uv run ruff format src tests apps
+
+  # Testing
+  test:
+    desc: Run tests
+    cmds:
+      - uv run pytest tests -v
+
+  test:cov:
+    desc: Run tests with coverage
+    cmds:
+      - uv run pytest tests --cov=src --cov-report=term-missing
 
   test-unit:
     desc: Run unit tests with coverage
@@ -50,6 +74,34 @@ tasks:
     desc: Run end-to-end tests
     cmds:
       - uv run pytest -v -m e2e
+
+  # Git Workflows
+  git:sync:
+    desc: Add, commit, and push changes
+    cmds:
+      - git add .
+      - git commit -m "{{.CLI_ARGS | default "Update"}}"
+      - git push
+
+  git:add:
+    desc: Stage all changes
+    cmds:
+      - git add .
+
+  git:commit:
+    desc: Commit with message
+    cmds:
+      - git commit -m "{{.CLI_ARGS | default "Update"}}"
+
+  git:push:
+    desc: Push to remote
+    cmds:
+      - git push
+
+  git:status:
+    desc: Show git status
+    cmds:
+      - git status
 
   aim-import:
     desc: Import data to Aim

@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import List
 
 from src.core.orchestrator import WorkflowOrchestrator
+from src.providers.twitter import TwitterClient
 from src.steps.audio import AudioSynthesizer
 from src.steps.buzzsprout import BuzzsproutUploader
+from src.steps.intro_outro import IntroOutroConcatenator
 from src.steps.metadata import MetadataAnalyzer
 from src.steps.news import NewsCollector
 from src.steps.podcast import PodcastExporter
@@ -16,8 +18,6 @@ from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.twitter import TwitterPoster
 from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
-from src.steps.intro_outro import IntroOutroConcatenator
-from src.providers.twitter import TwitterClient
 from src.utils.config import Config
 from src.utils.discord import post_run_summary
 from src.utils.logger import get_logger
@@ -137,6 +137,17 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 run_id=run_id,
                 run_dir=run_dir,
                 thumbnail_config=config.steps.thumbnail.model_dump(),
+            )
+        )
+
+    if config.steps.thumbnail_ai.enabled:
+        from src.steps.thumbnail_ai import AIThumbnailGenerator
+
+        steps.append(
+            AIThumbnailGenerator(
+                run_id=run_id,
+                run_dir=run_dir,
+                ai_thumbnail_config=config.steps.thumbnail_ai.model_dump(),
             )
         )
 

@@ -18,14 +18,10 @@ class GeminiProvider:
         temperature: float | None = None,
         max_tokens: int | None = None,
     ):
-        defaults = None
         if model is None or temperature is None or max_tokens is None:
-            try:
-                from src.utils.config import Config
+            from src.utils.config import Config
 
-                defaults = Config.load().providers.llm.gemini
-            except Exception:
-                defaults = None
+            defaults = Config.load().providers.llm.gemini
 
         if model is None:
             if defaults is None or defaults.model is None:

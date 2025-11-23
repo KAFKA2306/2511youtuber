@@ -192,6 +192,14 @@ steps:
           right: 40
           bottom: 40
 
+  thumbnail_ai:
+    enabled: false
+    width: 1920
+    height: 1080
+    num_steps: 6
+    mood_tag: ""
+    main_keyword: ""
+
   metadata:
     enabled: true
     use_llm: true
@@ -333,6 +341,11 @@ providers:
       temperature: 0.2
       max_tokens: 2048
       search_recency_filter: "week"
+
+  cloudflare_ai:
+    account_id: "dc1aa018702e10045b00865b63f144d0"
+    model: "@cf/bytedance/stable-diffusion-xl-lightning"
+
 
 logging:
   level: "INFO"

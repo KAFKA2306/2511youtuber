@@ -117,16 +117,13 @@ class ScriptGenerator(Step):
             raise ValueError("Maximum recursion depth exceeded during parsing")
         for candidate in self._candidates(raw):
             for loader in (yaml.safe_load, json.loads):
-                try:
-                    parsed = loader(candidate)
-                    if isinstance(parsed, str):
-                        return self._coerce_to_dict(parsed, depth - 1)
-                    if isinstance(parsed, dict) and "segments" not in parsed:
-                        if mapped := self._dialog_segments_from_mapping(parsed):
-                            return {"segments": mapped}
-                    return parsed
-                except Exception:
-                    continue
+                parsed = loader(candidate)
+                if isinstance(parsed, str):
+                    return self._coerce_to_dict(parsed, depth - 1)
+                if isinstance(parsed, dict) and "segments" not in parsed:
+                    if mapped := self._dialog_segments_from_mapping(parsed):
+                        return {"segments": mapped}
+                return parsed
         stripped = raw.strip()
         if stripped.startswith('"') and stripped.endswith('"'):
             return self._coerce_to_dict(stripped[1:-1], depth - 1)

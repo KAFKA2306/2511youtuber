@@ -1,3 +1,22 @@
+thumbnail_ai:
+  negative_prompt: "disfigured, deformed, extra limbs, extra fingers, mutated hands, text artifacts, distorted faces, low resolution, blurry, watermark, logo, NSFW, gore"
+  fixed_core: |
+    春日部つむぎ と ずんだもん のツーショット構図。アニメイラスト風、16:9横長のYouTubeサムネ用構図。
+    春日部つむぎ: 明るいベージュ〜金髪のロングヘア、前髪はセンターで軽く割れ、自然なクセ感の毛束。
+    瞳は透き通る水色、まつ毛は控えめ、健康的な肌。
+    黒いシャツに黄色のネクタイ、マスタード色の大きめジャケット、ジャケットに小さなワッペン。
+    片頬に控えめな絆創膏。落ち着いたチェック柄スカート（下半身は画面下で見切れてもよい）。
+    ずんだもん: マスコットキャラクターとしての ずんだもん を、公式イメージに近い雰囲気で、春日部つむぎの隣に配置。
+    2人は仲が良さそうな距離感で、視線は画面のこちら側（視聴者）に向ける。
+  template: |
+    {fixed_core}
+    テーマ: {topic}。
+    この動画は {keyword} をわかりやすく解説するYouTube動画のサムネイル。
+    サムネ全体の雰囲気は「{mood}」。
+    背景には {keyword} を象徴する小道具や背景要素を、情報過多にならない範囲で配置。
+    画面左か右に大きくテキストを乗せる余白を残し、顔や重要な要素がテキストと被りにくい構図にする。
+    YouTube thumbnail, 16:9, high resolution, 1920x1080, cinematic lighting, vivid colors, sharp focus
+
 topic_selection:
   system: "You are a financial topic curator who ensures diverse coverage across different financial markets and economic sectors."
   user_template: |

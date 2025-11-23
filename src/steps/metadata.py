@@ -66,10 +66,7 @@ class MetadataAnalyzer(Step):
 
         llm_meta = None
         if self.use_llm and self.llm_provider and self.llm_provider.is_available():
-            try:
-                llm_meta = self._generate_metadata_with_llm(news_items, script)
-            except Exception as exc:
-                self.logger.warning("LLM metadata generation failed for run %s: %s", self.run_id, exc)
+            llm_meta = self._generate_metadata_with_llm(news_items, script)
 
         if llm_meta:
             title = str(llm_meta.get("title", fallback_title))
@@ -134,11 +131,8 @@ class MetadataAnalyzer(Step):
             raise ValueError("Maximum recursion depth exceeded during metadata parsing")
         for candidate in self._candidates(raw):
             for loader in (yaml.safe_load, json.loads):
-                try:
-                    parsed = loader(candidate)
-                    return self._coerce_to_dict(parsed, depth - 1) if isinstance(parsed, str) else parsed
-                except Exception:
-                    continue
+                parsed = loader(candidate)
+                return self._coerce_to_dict(parsed, depth - 1) if isinstance(parsed, str) else parsed
         stripped = raw.strip()
         if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {'"', "'"}:
             return self._coerce_to_dict(stripped[1:-1], depth - 1)
