@@ -320,7 +320,7 @@ class NewsProvidersConfig(BaseModel):
 
 class CloudflareAIConfig(BaseModel):
     account_id: str = "dc1aa018702e10045b00865b63f144d0"
-    model: str = "@cf/bytedance/stable-diffusion-xl-lightning"
+    model: str = "@cf/black-forest-labs/flux-1-schnell"
 
 
 class ProvidersConfig(BaseModel):

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import base64
+import json
 
 import requests
 
@@ -14,7 +16,7 @@ class CloudflareAIClient:
         self,
         account_id: str | None = None,
         api_token: str | None = None,
-        model: str = "@cf/bytedance/stable-diffusion-xl-lightning",
+        model: str = "@cf/black-forest-labs/flux-1-schnell",
     ) -> None:
         self.account_id = account_id or os.getenv("CLOUDFLARE_ACCOUNT_ID", "dc1aa018702e10045b00865b63f144d0")
         self.api_token = api_token or os.getenv("CLOUDFLARE_API_TOKEN", "")
@@ -52,4 +54,12 @@ class CloudflareAIClient:
         )
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
-        return response.content
+        content_type = response.headers.get("content-type", "")
+        if "application/json" in content_type:
+            data = response.json()
+            return base64.b64decode(data["result"]["image"])
+        try:
+            data = json.loads(response.text)
+            return base64.b64decode(data["result"]["image"])
+        except Exception:
+            return response.content

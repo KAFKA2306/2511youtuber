@@ -32,6 +32,7 @@ tasks:
           echo "Example: task thumbnail-test -- 20251122_184042"
           exit 1
         fi
+        source ~/.bashrc
         uv run python -c "
         from pathlib import Path
         from src.steps.thumbnail_ai import AIThumbnailGenerator

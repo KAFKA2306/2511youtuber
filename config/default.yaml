@@ -342,7 +342,7 @@ providers:
 
   cloudflare_ai:
     account_id: "dc1aa018702e10045b00865b63f144d0"
-    model: "@cf/bytedance/stable-diffusion-xl-lightning"
+    model: "@cf/black-forest-labs/flux-1-schnell"
 
 
 logging:
