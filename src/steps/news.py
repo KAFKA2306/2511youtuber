@@ -7,7 +7,7 @@ from src.core.step import Step
 from src.providers.base import Provider, execute_with_fallback
 from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
 from src.tracking import AimTracker
-from src.utils.config import NewsProvidersConfig
+from src.utils.config import Config, NewsProvidersConfig
 from src.utils.history import gather_recent_topics
 
 
@@ -26,9 +26,11 @@ class NewsCollector(Step):
         recent_topics_min_token_length: int = 2,
         recent_topics_stopwords: List[str] | None = None,
         providers_config: NewsProvidersConfig | None = None,
-        gemini_model: str = "gemini/gemini-1.5-flash-latest",
+        gemini_model: str | None = None,
     ):
         super().__init__(run_id, run_dir)
+        if gemini_model is None:
+            gemini_model = Config.get_default_gemini_model()
         self.query = query
         self.count = count
         self.recent_topics_runs = recent_topics_runs

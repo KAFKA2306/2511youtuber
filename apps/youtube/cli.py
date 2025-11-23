@@ -112,7 +112,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             recent_topics_min_token_length=news_cfg.recent_topics_min_token_length,
             recent_topics_stopwords=news_cfg.recent_topics_stopwords,
             providers_config=config.providers.news,
-            gemini_model=config.providers.llm.gemini.model,
+            gemini_model=Config.get_default_gemini_model(),
         ),
         ScriptGenerator(run_id=run_id, run_dir=run_dir, speakers_config=script_cfg.speakers),
         AudioSynthesizer(

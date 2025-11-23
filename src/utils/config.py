@@ -387,6 +387,11 @@ class Config(BaseModel):
     def get_gemini_api_keys(self) -> list[str]:
         return load_secret_values("GEMINI_API_KEY")
 
+    @classmethod
+    def get_default_gemini_model(cls) -> str:
+        config = cls.load()
+        return config.providers.llm.gemini.model
+
 
 def load_prompts(prompts_path: str | Path | None = None) -> Dict:
     if prompts_path is None:
