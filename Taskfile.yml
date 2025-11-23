@@ -22,6 +22,32 @@ tasks:
     cmds:
       - uv run python -m src.main {{.CLI_ARGS}}
 
+  thumbnail-test:
+    desc: Test AI thumbnail generation with existing run
+    cmds:
+      - |
+        RUN_ID={{.CLI_ARGS}}
+        if [ -z "$RUN_ID" ]; then
+          echo "Usage: task thumbnail-test -- <run_id>"
+          echo "Example: task thumbnail-test -- 20251122_184042"
+          exit 1
+        fi
+        uv run python -c "
+        from pathlib import Path
+        from src.steps.thumbnail_ai import AIThumbnailGenerator
+        run_id = '$RUN_ID'
+        run_dir = Path('runs') / run_id
+        if not run_dir.exists():
+            print(f'❌ Run directory not found: {run_dir}')
+            exit(1)
+        config = {'enabled': True, 'width': 1920, 'height': 1080, 'num_steps': 6}
+        gen = AIThumbnailGenerator(run_id, run_dir, config)
+        inputs = {'generate_script': str(run_dir / 'script.json'), 'analyze_metadata': str(run_dir / 'metadata.json')}
+        output = gen.execute(inputs)
+        print(f'✅ Generated: {output}')
+        "
+
+
   setup:
     desc: Install dependencies and sync environment
     cmds:
