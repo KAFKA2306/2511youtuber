@@ -18,16 +18,39 @@ ROOTにファイルを生成しない。適切なディレクトリに追加し�
 
 ## Build, Test, and Development Commands
 
+### Using Task Runner (Recommended)
+- `task bootstrap` — complete first-time setup: dependencies + services + automation + cron
+- `task run` — run main workflow; pass args with `task run -- --news-query "your query"`
+- `task test:unit` — run unit tests with coverage
+- `task test:integration` — validate orchestration
+- `task test:e2e` — drive Gemini-backed flows (requires `.env` keys)
+- `task lint` and `task lint:fix` — check and auto-fix code quality
+- `task services:status` — check all service statuses
+- `task services:start` — start all background services
+- `task aim:import` and `task aim:dashboard` — refresh and view Aim dashboards at http://<server-ip>:43800
+
+### Manual Commands (Alternative)
 - `uv sync` installs runtime dependencies plus Ruff, pytest, and coverage tooling.
 - `uv run python -m src.main` launches the CLI; use `uv run python src/main.py` for a lightweight iteration loop.
 - `uv run pytest tests/unit -m unit -v --cov=src --cov-report=term-missing` provides fast feedback with coverage; `uv run pytest tests/integration -v` validates orchestration, and `uv run pytest -v -m e2e` drives Gemini-backed flows once `.env` keys are set.
 - `uv run python scripts/import_to_aim.py && aim up --host 0.0.0.0 --port 43800` refreshes Aim dashboards and exposes them to anyone with the URL.
-- Aim UI: http://<server-ip>:43800
 - Run linting and formatting via `uv run ruff check src tests` and `uv run ruff format src tests`.
 
 ## Setup Commands
 
-- Memorize this exact sequence; Aim dashboard, Discord bot, and Voicevox engine must remain active via `nohup`.
+### First-Time Setup (Task Runner)
+```bash
+# Install Task runner
+snap install task --classic
+
+# Complete bootstrap
+task bootstrap
+```
+
+This executes dependencies installation, starts all background services (Aim, Voicevox, Discord bot), and installs cron automation.
+
+### Manual Setup (Alternative)
+Memorize this exact sequence; Aim dashboard, Discord bot, and Voicevox engine must remain active via `nohup`.
 
 - `uv sync`
 - `.env` はユーザーが用意する。自動生成・上書きは禁止。

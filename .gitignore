@@ -60,3 +60,8 @@ tests/
 pytest.ini
 package-lock.json
 package.json
+
+# IDE
+.vscode/
+.idea/
+

@@ -6,24 +6,56 @@ tasks:
     cmds:
       - task --list
 
-  # Development
-  youtube:run:
-    desc: Run YouTube video generation
-    cmds:
-      - uv run python -m apps.youtube.cli run
+  # ============================================================
+  # 🚀 FIRST-TIME SETUP
+  # ============================================================
 
-  youtube:run-dev:
-    desc: Run with verbose logging  
+  bootstrap:
+    desc: "🎯 Complete first-time setup: dependencies + services + automation"
     cmds:
-      - uv run python -m apps.youtube.cli run --log-level DEBUG
+      - echo "📦 Installing dependencies..."
+      - uv sync
+      - echo ""
+      - echo "🔧 Starting background services..."
+      - nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
+      - nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+      - sleep 3
+      - echo ""
+      - echo "⚙️  Configuring automation..."
+      - python scripts/automation.py --skip-cron
+      - python scripts/automation.py --install-cron
+      - echo ""
+      - echo "✅ Bootstrap complete! Services running, cron installed."
+      - echo ""
+      - task services-status
+
+  setup:
+    desc: Install dependencies only
+    cmds:
+      - uv sync
+
+  # ============================================================
+  # 🎬 WORKFLOW & EXECUTION
+  # ============================================================
 
   run:
-    desc: Run workflow with optional news query
+    desc: Run main workflow (use -- to pass args)
     cmds:
       - uv run python -m src.main {{.CLI_ARGS}}
 
+  youtube:run:
+    desc: Run YouTube video generation workflow
+    cmds:
+      - uv run python -m apps.youtube.cli run
+
+  youtube:dev:
+    desc: Run YouTube workflow with debug logging
+    cmds:
+      - uv run python -m apps.youtube.cli run --log-level DEBUG
+
   thumbnail-test:
-    desc: Test AI thumbnail generation with existing run
+    desc: Test AI thumbnail generation with existing run ID
     cmds:
       - |
         RUN_ID={{.CLI_ARGS}}
@@ -48,67 +80,150 @@ tasks:
         print(f'✅ Generated: {output}')
         "
 
+  # ============================================================
+  # 🤖 AUTOMATION & SERVICES
+  # ============================================================
 
-  setup:
-    desc: Install dependencies and sync environment
+  services:start:
+    desc: Start all background services (Aim, Voicevox, Discord)
     cmds:
-      - uv sync
+      - nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
+      - nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+      - sleep 2
+      - echo "✅ Services started in background"
 
-  # Code Quality
+  services:status:
+    desc: Check status of all automation services
+    cmds:
+      - echo "=== 🔄 Running Processes ==="
+      - ps aux | grep -E "(aim|voicevox|discord_news_bot)" | grep -v grep || echo "No services running"
+      - echo ""
+      - echo "=== 🐳 Docker Containers ==="
+      - docker ps | grep voicevox || echo "Voicevox container not running"
+      - echo ""
+      - echo "=== ⏰ Cron Jobs ==="
+      - crontab -l || echo "No cron jobs installed"
+
+  automation:setup:
+    desc: Setup automation with git pull, services, and cron installation
+    cmds:
+      - echo "📥 Pulling latest changes..."
+      - git pull --no-rebase || echo "⚠️  Manual merge may be required"
+      - echo ""
+      - echo "🔧 Starting services..."
+      - nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
+      - nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+      - sleep 3
+      - echo ""
+      - echo "⚙️  Configuring automation..."
+      - python scripts/automation.py --skip-cron
+      - python scripts/automation.py --install-cron
+      - echo ""
+      - echo "✅ Automation setup complete!"
+      - crontab -l
+
+  automation:init:
+    desc: Initialize automation services (without cron)
+    cmds:
+      - python scripts/automation.py --skip-cron
+
+  automation:cron:
+    desc: Install cron schedule for automated workflows
+    cmds:
+      - python scripts/automation.py --install-cron
+      - echo "✅ Cron installed. Schedule:"
+      - crontab -l
+
+  discord:start:
+    desc: Start Discord news bot
+    cmds:
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+      - echo "✅ Discord bot started"
+
+  voicevox:start:
+    desc: Start Voicevox TTS engine
+    cmds:
+      - bash scripts/voicevox_manager.sh start
+
+  voicevox:stop:
+    desc: Stop Voicevox TTS engine
+    cmds:
+      - bash scripts/voicevox_manager.sh stop
+
+  voicevox:status:
+    desc: Check Voicevox status
+    cmds:
+      - bash scripts/voicevox_manager.sh status
+
+  aim:import:
+    desc: Import run data to Aim tracking
+    cmds:
+      - uv run python scripts/import_to_aim.py
+
+  aim:dashboard:
+    desc: Start Aim dashboard UI (blocking)
+    cmds:
+      - aim up --host 0.0.0.0 --port 43800
+
+  # ============================================================
+  # ✅ CODE QUALITY
+  # ============================================================
+
   lint:
-    desc: Run ruff check
+    desc: Run linting checks
     cmds:
       - uv run ruff check src tests apps
 
-  format:
-    desc: Format code
-    cmds:
-      - uv run ruff format src tests apps
-
-  lint-fix: # This task is replaced by lint:fix in the provided snippet, but the snippet is incomplete. Keeping original for now.
-    desc: Fix linting issues automatically
-    cmds:
-      - uv run ruff check --fix src tests
-
   lint:fix:
-    desc: Run ruff check with auto-fix
+    desc: Auto-fix linting issues and format code
     cmds:
       - uv run ruff check --fix src tests apps
       - uv run ruff format src tests apps
 
-  # Testing
+  format:
+    desc: Format code with ruff
+    cmds:
+      - uv run ruff format src tests apps
+
+  # ============================================================
+  # 🧪 TESTING
+  # ============================================================
+
   test:
-    desc: Run tests
+    desc: Run all tests
     cmds:
       - uv run pytest tests -v
 
-  test:cov:
-    desc: Run tests with coverage
-    cmds:
-      - uv run pytest tests --cov=src --cov-report=term-missing
-
-  test-unit:
+  test:unit:
     desc: Run unit tests with coverage
     cmds:
       - uv run pytest tests/unit -m unit -v --cov=src --cov-report=term-missing
 
-  test-integration:
+  test:integration:
     desc: Run integration tests
     cmds:
       - uv run pytest tests/integration -v
 
-  test-e2e:
+  test:e2e:
     desc: Run end-to-end tests
     cmds:
       - uv run pytest -v -m e2e
 
-  # Git Workflows
-  git:sync:
-    desc: Add, commit, and push changes
+  test:cov:
+    desc: Run tests with coverage report
     cmds:
-      - git add .
-      - git commit -m "{{.CLI_ARGS | default "Update"}}"
-      - git push
+      - uv run pytest tests --cov=src --cov-report=term-missing
+
+  # ============================================================
+  # 📝 GIT WORKFLOWS
+  # ============================================================
+
+  git:status:
+    desc: Show git status
+    cmds:
+      - git status
 
   git:add:
     desc: Stage all changes
@@ -116,7 +231,7 @@ tasks:
       - git add .
 
   git:commit:
-    desc: Commit with message
+    desc: Commit with message (use -- "message")
     cmds:
       - git commit -m "{{.CLI_ARGS | default "Update"}}"
 
@@ -125,45 +240,16 @@ tasks:
     cmds:
       - git push
 
-  git:status:
-    desc: Show git status
+  git:sync:
+    desc: Add, commit, and push in one command
     cmds:
-      - git status
+      - git add .
+      - git commit -m "{{.CLI_ARGS | default "Update"}}"
+      - git push
 
-  aim-import:
-    desc: Import data to Aim
-    cmds:
-      - uv run python scripts/import_to_aim.py
-
-  aim-up:
-    desc: Start Aim dashboard
-    cmds:
-      - aim up --host 0.0.0.0 --port 43800
-
-  voicevox-start:
-    desc: Start Voicevox TTS engine
-    cmds:
-      - bash scripts/voicevox_manager.sh start
-
-  voicevox-stop:
-    desc: Stop Voicevox TTS engine
-    cmds:
-      - bash scripts/voicevox_manager.sh stop
-
-  automation-start:
-    desc: Start automation services (skip cron)
-    cmds:
-      - python scripts/automation.py --skip-cron
-
-  automation-cron:
-    desc: Install cron jobs for automation
-    cmds:
-      - python scripts/automation.py --install-cron
-
-  discord-bot:
-    desc: Start Discord news bot
-    cmds:
-      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+  # ============================================================
+  # 🧹 MAINTENANCE
+  # ============================================================
 
   clean:
     desc: Clean temporary files and caches
@@ -171,11 +257,5 @@ tasks:
       - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
       - find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
       - find . -type f -name "*.pyc" -delete
+      - echo "✅ Cleaned cache files"
 
-  services-start:
-    desc: Start all background services
-    cmds:
-      - nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
-      - nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
-      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
-      - echo "Services started in background"
