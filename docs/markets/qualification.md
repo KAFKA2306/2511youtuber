@@ -1,14 +1,18 @@
 # 資格シリーズ運用要求仕様書
 
 ## 1. 文書情報
+
 ### 1.1 目的
+
 YouTube 自動生成ワークフローを用いて資格シリーズを運用するための手順と要件を体系的に示す。読者はこの文書のみで宅建・日商簿記2級・応用情報技術者試験向けコンテンツを再現できる。
 
 ### 1.2 適用範囲
+
 - Season `finance_news` と Season `qualification_prep`（内訳: `takken`, `boki2`, `ap`）に適用する。
 - 設定ファイル、運用手順、品質管理を対象とする。
 
 ### 1.3 関連ファイル
+
 | 種別 | パス | 用途 |
 | --- | --- | --- |
 | シリーズ設定 | `config/default.yaml` | Season 共通設定および Season 切替の中枢 |
@@ -18,6 +22,7 @@ YouTube 自動生成ワークフローを用いて資格シリーズを運用す
 | 生成成果物 | `runs/<run_id>/season=<season>/arc=<arc>/episode=<episode>/` | スクリプト・音声・字幕・動画・メタデータ |
 
 ### 1.4 ディレクトリ構成
+
 | パス | 役割 | 変更ルール |
 | --- | --- | --- |
 | `config/` | 設定・テンプレ資産の唯一の書き換えポイント。`config/default.yaml` を更新するだけで挙動を切り替え、他ディレクトリに設定を重複させない。 | Season/Arc/Episode の有効・無効、LLM/音声/字幕/映像テンプレ選択は全て本ディレクトリで完結させる。 |
@@ -31,6 +36,7 @@ YouTube 自動生成ワークフローを用いて資格シリーズを運用す
 Season/Arc/Episode の切替、Step 有効化、Provider 選択は `config/default.yaml` の単一点で制御する。`src/` では設定値を読み取って実行するのみとし、定数・分岐・ディレクトリ構成を複製しないことで DRY と最小コードベースを維持する。
 
 ### 1.5 マーケット別ディレクトリ分離
+
 | セグメント | Finance 系パス | Qualification 系パス | ルール |
 | --- | --- | --- | --- |
 | Season パック | `config/packs/finance/<season>.yaml` | `config/packs/qualification/<season>.yaml` | 互いの Season ID を同一フォルダへ配置しない。 |
@@ -41,10 +47,13 @@ Season/Arc/Episode の切替、Step 有効化、Provider 選択は `config/defau
 Finance と Qualification のディレクトリは上位階層レベルから分離し、`config/default.yaml` に Season ごとのルートパスを明示して相互参照させない。同一路径を共有している場合は Season 定義を無効化しリリースを停止する。
 
 ## 2. システム概要
+
 ### 2.1 ワークフロー
+
 CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestrator` → 各 Step（`news` → `script` → `audio` → `subtitle` → `video` → `metadata`）。Season 設定に応じて各 Step の挙動が決まる。
 
 ### 2.2 Season 階層
+
 | 階層 | 説明 | 例 |
 | --- | --- | --- |
 | Season | シリーズ全体の単位 | `finance_news`, `takken`, `boki2`, `ap` |
@@ -52,6 +61,7 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | Episode | Arc 内の個別コンテンツ。1 本 60〜120 秒 | `takken-gyomu-01` |
 
 ### 2.3 役割分担
+
 | 役割 | 主担当 | 主な責務 |
 | --- | --- | --- |
 | Season Manager | 各 Season の責任者 | Season 設定更新、Pull Request 管理、法改正の反映 |
@@ -59,6 +69,7 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | QA Reviewer | 品質保証担当 | 生成物の事後検証、公開承認、LMS 連携確認 |
 
 ## 3. 用語定義
+
 | 用語 | 定義 |
 | --- | --- |
 | Season | 動画シリーズ全体。金融シリーズや資格シリーズを識別する。 |
@@ -68,7 +79,9 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | メタデータテンプレート | タイトル・説明・タグ・免責文を生成するフォーマット。Season 別に保持する。 |
 
 ## 4. Season 設定要件
+
 ### 4.1 `config/default.yaml`
+
 `series` ノードに Season ごとの必須項目を定義する。
 
 | キー | 必須 | 説明 | 例 |
@@ -80,10 +93,11 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | `speaker_profiles` | ○ | 話者の名前・TTS 設定 | `lecturer`, `candidate`, `mentor` |
 | `metadata_template` | ○ | 出力タイトル・説明・タグ | `takken_default` |
 | `forbidden_terms` | ○ | Season 固有の禁止語リスト | `["闇","暴落"]` |
-| `subtitle_mode` | ○ | 字幕モード | `jp_dual` |
-| `fallback_llm_model` | ○ | 障害時に利用するモデル ID | `gemini/gemini-2.5-flash-preview-09-2025` |
+| `llm_model` | ○ | 利用する LLM の種別 | `providers.llm.gemini.model` を参照 |
+| `fallback_llm_model` | ○ | 障害時に利用するモデル種別 | 必要に応じて別プロバイダを指定 |
 
 ### 4.2 Season パック (`config/packs/<season>.yaml`)
+
 | 項目 | 階層 | 必須 | 内容 |
 | --- | --- | --- | --- |
 | `season.id` | Season | ○ | Season 識別子 |
@@ -101,12 +115,15 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | `episodes[].cta_text` | Episode | ○ | 次の行動喚起文 |
 
 ### 4.3 プロンプトテンプレート (`config/prompts.yaml`)
+
 - シーン順序を `intro`, `scenario`, `question`, `solution`, `teaser` として明記する。
 - Season ごとに語調、参照データ挿入位置、学習者の想定レベルを記述する。
 - 計算手順や条文を引用する場合は `{{ reference.<key> }}` 形式で埋め込み先を指定する。
 
 ## 5. 生成プロセス
+
 ### 5.1 実行ステップ
+
 1. CLI 起動: `uv run python -m src.main --series <season> [--arc <arc>]`
 2. 設定ロード: Season 設定とパックファイルを読み込み、Arc と Episode を決定。
 3. Step 実行:  
@@ -118,6 +135,7 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 4. 成果物保存: `runs/<run_id>/season=<season>/arc=<arc>/episode=<episode>/` に保存。
 
 ### 5.2 生成物仕様
+
 | ファイル | 形式 | 主な内容 |
 | --- | --- | --- |
 | `script.json` | JSON | シーン区分、台本本文、正答、参照 ID |
@@ -128,32 +146,39 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | `sync_report.json` | JSON | シーンごとの音声・映像・字幕タイムスタンプ差分（100 ミリ秒単位で記録） |
 
 ## 6. Season 別詳細仕様
+
 ### 6.2 `takken`
+
 - Arc: `gyomu`, `hourei`, `rights`, `tax`, `flash_update`。
 - Episode パターン: 条文引用→典型質問→ひっかけ事例→正解理由→次回予告。
 - 映像: 1080×1920、宅地建物取引業者のオフィス背景、重要事項説明書をオーバーレイ。
 - メタデータ: タイトルに「宅建 2025」「問番号」などを含め、免責文で判例の更新可能性を明記。
 
 ### 6.3 `boki2`
+
 - Arc: `commercial`, `industrial`, `comprehensive`, `exam_flash`。
 - Episode パターン: 仕訳提示→考え方→計算手順→答え→復習課題。
 - 映像: 1080×1920、ホワイトボード風背景に仕訳テロップを重ねる。
 - メタデータ: CBS 試験日（6 月・11 月）とネット試験常設を区別し、免責文で公式テキスト参照先を示す。
 
 ### 6.4 `ap`
+
 - Arc: 午前 (`am_tech`, `am_management`, `am_strategy`)、午後 (`pm_security`, `pm_network`, `pm_database` など)、`flash_update`。
 - Episode パターン: 簡易設問→思考ステップ→キーワード→答案骨子→次の演習案。
 - 映像: 1080×1920、システム構成図やネットワークトポロジのオーバーレイ。
 - メタデータ: シラバスバージョン（例: Ver.5.4）と設問カテゴリを明記。
 
 ## 7. 運用プロセス
+
 ### 7.1 フロー
+
 1. **設定更新**: Season Manager がパックファイルと `series` 設定を編集し、Pull Request を提出。
 2. **事前検証**: `scripts/validate_series.py` を実行し、スキーマ、アセット、試験日、トークン数に加えて `source_refs` の参照解決や `default_arc_order` に未定義 Arc がないかを確認。
 3. **生成実行**: スケジューラまたは手動で CLI を起動し、Arc 単位に生成。
 6. **記録**: `docs/releases/<season>/<YYYYMMDD>.md` に進捗と承認状況を記録。
 
 ### 7.2 スケジュール例
+
 | Season | 実行タイミング | CLI 例 |
 | --- | --- | --- |
 | `takken` | 月 08:00 | `uv run python -m src.main --series takken --arc gyomu` など |
@@ -161,22 +186,27 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | `ap` | 土 10:00 | `uv run python -m src.main --series ap --arc am_tech` |
 
 ### 7.3 レビュー基準
+
 - `script.json` の参照値と出力が一致している。
 
 ## 8. 品質管理
+
 - 自動検証の結果は `runs/<run_id>/validation.json` に保存し、レビュー履歴と紐付ける。
 - 免責文、法令改定、公式の改訂点は `docs/releases/<season>/ops.md` に随時追記する。
 
 ## 9. 自動化要件
+
 - シラバス監視（設計想定）: `scripts/syllabus_watcher.py` が日次で公式 PDF・RSS を確認し、差分検知時に Issue を自動作成。
 - Arc 配信カレンダー: `docs/releases/<season>/calendar.md` を生成し、試験日から逆算した配信タイミングを可視化。
 
 ## 11. LLM固有リスク
+
 | リスク | 影響 | 対策 |
 | --- | --- | --- |
 | 時系列混在（改訂前後データの混同） | 古い情報の再公開 | パックファイルに改訂年月日を保持し、プロンプトで最新バージョンのみ許可。検証で改訂タグを照合。 |
 
 ## 12. 音声（TTS）・話者分離
+
 | 項目 | 要件 |
 | --- | --- |
 | 話者ロール | Season 設定の `speaker_profiles` に講師・受験生・メンターを定義し、Episode ごとに役割を固定する。 |
@@ -186,6 +216,7 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | アクセント辞書 | 法律・会計・IT の固有名詞（例: 担保権、圧縮記帳、RAID）を Season 別辞書に登録し、TTS 生成前に読みを統一する。 |
 
 ## 13. 字幕・二重字幕・組版
+
 | 項目 | 要件 |
 | --- | --- |
 | 行幅制御 | `steps.subtitle.width_per_char_pixels` と `line_break_rules` を Season 設定に保持。漢字＋ラテン文字混在時でも 1 行 16〜40 文字相当で収まり、禁則処理（句読点行頭禁止、ローマ字途中改行禁止）を適用する。 |
@@ -195,12 +226,14 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | 数式・仕訳組版 | `boki2` Season では等幅フォントと桁揃えを使い、仕訳や表形式は字幕ではなく `video` Step のオーバーレイレイヤーに配置する。字幕側には要約のみ記載。 |
 
 ## 14. 映像合成・テンプレ
+
 | 項目 | 要件 |
 | --- | --- |
 | 背景素材 | `assets/series/<season>/<arc>/background.png` を利用し、資格ごとにカラーコードとロゴを統一する。 |
 | テンプレ管理 | テンプレ更新時は Season Manager がライセンスと変更点を `docs/releases/<season>/ops.md` に記録する。 |
 
 ## 15. メタデータ／YouTube運用
+
 | 項目 | 要件 |
 | --- | --- |
 | タイトル | Season ごとの `metadata_template` を使用し、100 文字以内。`#Shorts` はアルゴリズム変動を踏まえてオン／オフ切替可能とし、付与時も資格名・Arc 名・試験日コードが冒頭に来るよう設計する。 |
@@ -212,6 +245,7 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | 投稿スケジュール | 試験カレンダーに従い、YouTube Studio API を用いて予約投稿。 |
 
 ## 16. スケジューリング／オーケストレーション
+
 | 項目 | 要件 |
 | --- | --- |
 | 失敗時対応 | Step 失敗で停止した場合は `runs/<run_id>/state.json` を参照し、`uv run python -m src.main --resume <run_id>` で再開する。再生成時は `runs/latest_stable/<season>/<arc>.json` に最新安定版のポインタを更新し、旧 Run はアーカイブ扱いにする。 |
@@ -220,12 +254,14 @@ CLI `uv run python -m src.main` → `apps/youtube/cli.py` → `WorkflowOrchestra
 | 監査ログ | ジョブ実行履歴を `docs/releases/<season>/scheduler_log.md` に週次で追記し、SLA 達成率を記録。 |
 
 ## 23. アクセシビリティ
+
 | 項目 | 要件 |
 | --- | --- |
 | 色設計 | サムネ・テロップはコントラスト比 4.5:1 以上を `scripts/validate_series.py` でチェックし、簿記の赤字・黒字など色依存情報はアイコンやハッチングで補足。 |
 | 文字サイズ | 字幕フォントサイズは Season ごとの最低値（例: 72pt）を維持し、縦型でも可読性を確保。 |
 
 ## 28. 成果物一覧
+
 | 成果物 | 目的 |
 | --- | --- |
 | Season 分離済み `config/default.yaml` | Season 切替と共通設定の管理 |

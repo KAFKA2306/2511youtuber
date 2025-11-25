@@ -1,20 +1,14 @@
 import json
-import re
 import time
-import unicodedata
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
-
-import litellm
 
 from src.core.step import Step
 from src.providers.base import Provider, execute_with_fallback
 from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
 from src.tracking import AimTracker
-from src.utils.config import NewsProvidersConfig, load_prompts
+from src.utils.config import Config, NewsProvidersConfig
 from src.utils.history import gather_recent_topics
-from src.utils.secrets import load_secret_values
 
 
 class NewsCollector(Step):
@@ -32,91 +26,40 @@ class NewsCollector(Step):
         recent_topics_min_token_length: int = 2,
         recent_topics_stopwords: List[str] | None = None,
         providers_config: NewsProvidersConfig | None = None,
+        gemini_model: str | None = None,
     ):
         super().__init__(run_id, run_dir)
+        if gemini_model is None:
+            gemini_model = Config.get_default_gemini_model()
         self.query = query
         self.count = count
         self.recent_topics_runs = recent_topics_runs
         self.recent_topics_max_chars = recent_topics_max_chars
-        self.recent_topics_min_token_length = max(1, recent_topics_min_token_length)
-        stopwords = recent_topics_stopwords or []
-        self.recent_topics_stopwords = {self._normalize_word(word) for word in stopwords if word}
         self.providers_config = providers_config
-
-    def select_news(self, candidates: List, recent_topics_note: str, count: int) -> Dict:
-        from src.models import NewsItem
-
-        selection_record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "recent_topics_note": recent_topics_note,
-            "candidate_count": len(candidates),
-            "requested_count": count,
-            "fallback_used": False,
-            "llm_response": None,
-            "selected_indices": [],
-        }
-        prompts = load_prompts()
-        news_prompts = prompts.get("news_selection")
-        if not news_prompts:
-            selection_record["fallback_used"] = True
-            selection_record["fallback_reason"] = "news_selection prompt not found"
-            selection_record["selected_indices"] = list(range(count))
-            return selection_record
-        api_keys = load_secret_values("GEMINI_API_KEY")
-        if not api_keys:
-            selection_record["fallback_used"] = True
-            selection_record["fallback_reason"] = "GEMINI_API_KEY not found"
-            selection_record["selected_indices"] = list(range(count))
-            return selection_record
-        candidates_text = "\n".join(
-            [f"{i}. {item.title}\n   {item.summary}" for i, item in enumerate(candidates)]
-        )
-        user_prompt = news_prompts["user_template"].format(
-            count=count, total=len(candidates), candidates=candidates_text, recent_topics_note=recent_topics_note
-        )
-        response = litellm.completion(
-            model="gemini/gemini-2.0-flash-exp",
-            messages=[
-                {"role": "system", "content": news_prompts["system"]},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.7,
-            max_tokens=1024,
-            api_key=api_keys[0],
-        )
-        content = response.choices[0].message.content.strip()
-        cleaned = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        result = json.loads(cleaned)
-        selection_record["llm_response"] = result
-        selection_record["selected_indices"] = result.get("selected_indices", list(range(count)))
-        return selection_record
+        self.gemini_model = gemini_model
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
-        base_recent_text = " / ".join(recent_topics)
-        recent_tokens = self._tokenize(base_recent_text)
+        recent_note = " / ".join(recent_topics) if recent_topics else "直近テーマ情報なし"
+        if self.recent_topics_max_chars > 0:
+            recent_note = recent_note[: self.recent_topics_max_chars]
+
         tracker = AimTracker.get_instance(self.run_id)
-        recent_note = self._build_recent_note(base_recent_text, recent_tokens)
-        fetch_count = self.count * 3
-        prompt_data = {"query": self.query, "count": fetch_count, "recent_topics_note": recent_note}
+        prompt_data = {"query": self.query, "count": self.count, "recent_topics_note": recent_note}
         prompt = json.dumps(prompt_data, ensure_ascii=False)
+
         start = time.time()
-        candidates = execute_with_fallback(
+        news_items = execute_with_fallback(
             self._build_providers(),
             query=self.query,
-            count=fetch_count,
+            count=self.count,
             recent_topics_note=recent_note,
         )
         duration = time.time() - start
-        selection_record = self.select_news(candidates, recent_note, self.count)
-        news_selection_path = self.run_dir / self.run_id / "news_selection.json"
-        news_selection_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(news_selection_path, "w", encoding="utf-8") as f:
-            json.dump(selection_record, f, ensure_ascii=False, indent=2)
-        selected_indices = selection_record["selected_indices"]
-        news_items = [candidates[i] for i in selected_indices if i < len(candidates)]
+
         if not news_items:
-            raise ValueError("新規テーマが見つかりませんでした")
+            raise ValueError("ニュースが見つかりませんでした")
+
         tracker.track_prompt(
             step_name="collect_news",
             template_name="news_collection",
@@ -137,41 +80,6 @@ class NewsCollector(Step):
             json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
         return output_path
 
-    def _build_recent_note(self, base_text: str, tokens: set[str]) -> str:
-        note = base_text.strip()
-        if tokens:
-            banned = ", ".join(sorted(tokens))
-            note = f"{note} / 禁止キーワード: {banned}" if note else f"禁止キーワード: {banned}"
-        if self.recent_topics_max_chars > 0:
-            note = note[: self.recent_topics_max_chars]
-        return note or "直近テーマ情報なし"
-
-    def _normalize_word(self, value: str) -> str:
-        normalized = unicodedata.normalize("NFKC", str(value)).lower().strip()
-        replacements = {
-            "日経平均株価": "日経",
-            "日経平均": "日経",
-            "日経225": "日経",
-            "s&p500": "sp500",
-            "s&p": "sp500",
-            "ドル/円": "ドル円",
-            "米ドル": "ドル",
-            "ビットコイン": "btc",
-            "イーサリアム": "eth",
-        }
-        for old, new in replacements.items():
-            normalized = normalized.replace(old, new)
-        return normalized
-
-    def _tokenize(self, value: str) -> set[str]:
-        if not value:
-            return set()
-        normalized = self._normalize_word(value)
-        particle_pattern = r"(が|の|を|に|は|で|と|も|から|まで|より|など|へ|や)"
-        tokens = re.split(r"[^0-9a-zA-Z一-龠ぁ-ゔァ-ヴー]+|" + particle_pattern, normalized)
-        result = {token for token in tokens if token and len(token) >= self.recent_topics_min_token_length}
-        return {token for token in result if token not in self.recent_topics_stopwords}
-
     def _build_providers(self) -> List[Provider]:
         providers: List[Provider] = []
         config = self.providers_config
@@ -186,5 +94,5 @@ class NewsCollector(Step):
             )
         else:
             providers.append(PerplexityNewsProvider())
-        providers.append(GeminiNewsProvider())
+        providers.append(GeminiNewsProvider(model=self.gemini_model))
         return providers

@@ -1,0 +1,181 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # Development
+  youtube:run:
+    desc: Run YouTube video generation
+    cmds:
+      - uv run python -m apps.youtube.cli run
+
+  youtube:run-dev:
+    desc: Run with verbose logging  
+    cmds:
+      - uv run python -m apps.youtube.cli run --log-level DEBUG
+
+  run:
+    desc: Run workflow with optional news query
+    cmds:
+      - uv run python -m src.main {{.CLI_ARGS}}
+
+  thumbnail-test:
+    desc: Test AI thumbnail generation with existing run
+    cmds:
+      - |
+        RUN_ID={{.CLI_ARGS}}
+        if [ -z "$RUN_ID" ]; then
+          echo "Usage: task thumbnail-test -- <run_id>"
+          echo "Example: task thumbnail-test -- 20251122_184042"
+          exit 1
+        fi
+        source ~/.bashrc
+        uv run python -c "
+        from pathlib import Path
+        from src.steps.thumbnail_ai import AIThumbnailGenerator
+        run_id = '$RUN_ID'
+        run_dir = Path('runs')
+        if not (run_dir / run_id).exists():
+            print(f'❌ Run directory not found: {run_dir / run_id}')
+            exit(1)
+        config = {'enabled': True, 'width': 1920, 'height': 1080, 'num_steps': 6}
+        gen = AIThumbnailGenerator(run_id, run_dir, config)
+        inputs = {'generate_script': str(run_dir / run_id / 'script.json'), 'analyze_metadata': str(run_dir / run_id / 'metadata.json')}
+        output = gen.execute(inputs)
+        print(f'✅ Generated: {output}')
+        "
+
+
+  setup:
+    desc: Install dependencies and sync environment
+    cmds:
+      - uv sync
+
+  # Code Quality
+  lint:
+    desc: Run ruff check
+    cmds:
+      - uv run ruff check src tests apps
+
+  format:
+    desc: Format code
+    cmds:
+      - uv run ruff format src tests apps
+
+  lint-fix: # This task is replaced by lint:fix in the provided snippet, but the snippet is incomplete. Keeping original for now.
+    desc: Fix linting issues automatically
+    cmds:
+      - uv run ruff check --fix src tests
+
+  lint:fix:
+    desc: Run ruff check with auto-fix
+    cmds:
+      - uv run ruff check --fix src tests apps
+      - uv run ruff format src tests apps
+
+  # Testing
+  test:
+    desc: Run tests
+    cmds:
+      - uv run pytest tests -v
+
+  test:cov:
+    desc: Run tests with coverage
+    cmds:
+      - uv run pytest tests --cov=src --cov-report=term-missing
+
+  test-unit:
+    desc: Run unit tests with coverage
+    cmds:
+      - uv run pytest tests/unit -m unit -v --cov=src --cov-report=term-missing
+
+  test-integration:
+    desc: Run integration tests
+    cmds:
+      - uv run pytest tests/integration -v
+
+  test-e2e:
+    desc: Run end-to-end tests
+    cmds:
+      - uv run pytest -v -m e2e
+
+  # Git Workflows
+  git:sync:
+    desc: Add, commit, and push changes
+    cmds:
+      - git add .
+      - git commit -m "{{.CLI_ARGS | default "Update"}}"
+      - git push
+
+  git:add:
+    desc: Stage all changes
+    cmds:
+      - git add .
+
+  git:commit:
+    desc: Commit with message
+    cmds:
+      - git commit -m "{{.CLI_ARGS | default "Update"}}"
+
+  git:push:
+    desc: Push to remote
+    cmds:
+      - git push
+
+  git:status:
+    desc: Show git status
+    cmds:
+      - git status
+
+  aim-import:
+    desc: Import data to Aim
+    cmds:
+      - uv run python scripts/import_to_aim.py
+
+  aim-up:
+    desc: Start Aim dashboard
+    cmds:
+      - aim up --host 0.0.0.0 --port 43800
+
+  voicevox-start:
+    desc: Start Voicevox TTS engine
+    cmds:
+      - bash scripts/voicevox_manager.sh start
+
+  voicevox-stop:
+    desc: Stop Voicevox TTS engine
+    cmds:
+      - bash scripts/voicevox_manager.sh stop
+
+  automation-start:
+    desc: Start automation services (skip cron)
+    cmds:
+      - python scripts/automation.py --skip-cron
+
+  automation-cron:
+    desc: Install cron jobs for automation
+    cmds:
+      - python scripts/automation.py --install-cron
+
+  discord-bot:
+    desc: Start Discord news bot
+    cmds:
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+
+  clean:
+    desc: Clean temporary files and caches
+    cmds:
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+      - find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+      - find . -type f -name "*.pyc" -delete
+
+  services-start:
+    desc: Start all background services
+    cmds:
+      - nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
+      - nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
+      - nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
+      - echo "Services started in background"

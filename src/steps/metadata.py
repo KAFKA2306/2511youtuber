@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-import yaml
 
 from src.core.io_utils import load_json, load_script, write_text
 from src.core.step import Step
@@ -66,10 +65,7 @@ class MetadataAnalyzer(Step):
 
         llm_meta = None
         if self.use_llm and self.llm_provider and self.llm_provider.is_available():
-            try:
-                llm_meta = self._generate_metadata_with_llm(news_items, script)
-            except Exception as exc:
-                self.logger.warning("LLM metadata generation failed for run %s: %s", self.run_id, exc)
+            llm_meta = self._generate_metadata_with_llm(news_items, script)
 
         if llm_meta:
             title = str(llm_meta.get("title", fallback_title))
@@ -124,49 +120,27 @@ class MetadataAnalyzer(Step):
         return "\n\n".join(lines)
 
     def _parse_response(self, response: str) -> Dict:
-        data = self._coerce_to_dict(response)
-        if not isinstance(data, dict):
-            raise ValueError("Metadata YAML must be a mapping")
-        return data
+        json_text = self._extract_json(response)
+        return json.loads(json_text)
 
-    def _coerce_to_dict(self, raw: str, depth: int = 6) -> Any:
-        if depth < 0:
-            raise ValueError("Maximum recursion depth exceeded during metadata parsing")
-        for candidate in self._candidates(raw):
-            for loader in (yaml.safe_load, json.loads):
-                try:
-                    parsed = loader(candidate)
-                    return self._coerce_to_dict(parsed, depth - 1) if isinstance(parsed, str) else parsed
-                except Exception:
-                    continue
-        stripped = raw.strip()
-        if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {'"', "'"}:
-            return self._coerce_to_dict(stripped[1:-1], depth - 1)
-        raise ValueError("Unable to parse metadata output")
+    def _extract_json(self, text: str) -> str:
+        text = text.strip().lstrip("\ufeff")
 
-    def _candidates(self, raw: str) -> List[str]:
-        text = raw.strip().lstrip("\ufeff")
-        candidates = [text]
+        # 1. Try to find markdown code block
         if code := extract_code_block(text):
-            candidates.append(code)
-        if triple := self._extract_triple_quote(text):
-            candidates.append(triple)
-        if yaml_body := self._extract_yaml_body(text):
-            candidates.append(yaml_body)
-        for c in list(candidates):
-            if len(c) >= 2 and c[0] == c[-1] and c[0] in {'"', "'"}:
-                candidates.append(c[1:-1])
-        return list(dict.fromkeys(c.strip() for c in candidates if c.strip()))
+            return code
+
+        # 2. Try to find JSON block explicitly (start with { and end with })
+        if match := re.search(r"\{.*\}", text, re.DOTALL):
+            return match.group(0)
+
+        # 3. Assume raw text is JSON
+        return text
 
     def _extract_triple_quote(self, text: str) -> str | None:
         if match := re.search(r"'''\s*\n?(.*?)\n?'''", text, re.DOTALL):
             return match.group(1)
         if match := re.search(r'"""\s*\n?(.*?)\n?"""', text, re.DOTALL):
-            return match.group(1)
-        return None
-
-    def _extract_yaml_body(self, text: str) -> str | None:
-        if match := re.search(r"(?:^|\r?\n)(title:\s.*)", text, re.DOTALL):
             return match.group(1)
         return None
 

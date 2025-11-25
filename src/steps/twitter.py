@@ -5,6 +5,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict
 
+from dotenv import load_dotenv
+
 from src.core.media_utils import resolve_video_input
 from src.core.step import Step
 from src.providers.twitter import TwitterClient
@@ -49,11 +51,7 @@ class TwitterPoster(Step):
         else:
             raise ValueError("Either twitter_config or client must be provided")
         self.outro_path = Path(outro_path) if outro_path else None
-        options = {
-            str(key): str(value)
-            for key, value in (encoder_options or {}).items()
-            if value is not None
-        }
+        options = {str(key): str(value) for key, value in (encoder_options or {}).items() if value is not None}
         if codec and "vcodec" not in options:
             options["vcodec"] = str(codec)
         if preset and "preset" not in options:
@@ -87,8 +85,10 @@ class TwitterPoster(Step):
         if self.start_offset > 0:
             clip_cmd.extend(["-ss", str(self.start_offset)])
         clip_cmd.extend(["-i", str(video_path), "-t", str(self.clip_duration)])
-        needs_encode = self.start_offset > 0 and self.encoder_options and all(
-            value is not None for value in (self.width, self.height, self.fps, self.sample_rate)
+        needs_encode = (
+            self.start_offset > 0
+            and self.encoder_options
+            and all(value is not None for value in (self.width, self.height, self.fps, self.sample_rate))
         )
         if needs_encode:
             filters = [
@@ -181,20 +181,14 @@ class TwitterPoster(Step):
 
 
 if __name__ == "__main__":
-    from pathlib import Path
-    from dotenv import load_dotenv
-    from src.providers.twitter import TwitterClient
-
-    # Load environment variables from .env file
     env_path = Path(__file__).resolve().parents[2] / "config" / ".env"
     load_dotenv(dotenv_path=env_path)
 
     RUN_ID = "20251015_193631"
     RUN_DIR = Path("runs")
     CLIP_DURATION = 60
-    DRY_RUN = False  # Set to True to prevent actual posting
+    DRY_RUN = False
 
-    # Initialize the client directly from environment variables
     client = TwitterClient.from_env(dry_run=DRY_RUN)
 
     poster = TwitterPoster(

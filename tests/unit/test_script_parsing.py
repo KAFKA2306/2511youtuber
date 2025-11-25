@@ -1,6 +1,12 @@
 import sys
 import types
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+if TYPE_CHECKING:
+    from src.steps.script import ScriptGenerator
 
 aim_module = types.ModuleType("aim")
 
@@ -13,12 +19,10 @@ class _Run:
 aim_module.Run = _Run
 sys.modules.setdefault("aim", aim_module)
 
-sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from src.steps.script import ScriptGenerator
+def _parser() -> "ScriptGenerator":
+    from src.steps.script import ScriptGenerator
 
-
-def _parser() -> ScriptGenerator:
     parser = ScriptGenerator.__new__(ScriptGenerator)
     parser.speakers = {
         "analyst": "春日部つむぎ",

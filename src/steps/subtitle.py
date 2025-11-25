@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -25,6 +26,7 @@ class SubtitleFormatter(Step):
     ):
         super().__init__(run_id, run_dir)
         from src.utils.config import Config
+
         config = Config.load()
         video_cfg = config.steps.video
         subtitle_cfg = config.steps.subtitle
@@ -68,15 +70,15 @@ class SubtitleFormatter(Step):
         return write_text(self.get_output_path(), srt_content)
 
     def _calculate_timestamps(self, script, audio_duration: float) -> list[Dict]:
-        total_chars = sum(len(seg.text) for seg in script.segments)
+        cleaned_segments = [(seg, self._clean_text(seg.text)) for seg in script.segments]
+        total_chars = sum(len(clean_text) for _, clean_text in cleaned_segments)
         if total_chars == 0:
             return []
 
-        segments = script.segments
         gap = 0.0
-        if len(segments) > 1:
+        if len(cleaned_segments) > 1:
             gap = min(0.2, audio_duration * 0.02)
-            available = audio_duration - gap * (len(segments) - 1)
+            available = audio_duration - gap * (len(cleaned_segments) - 1)
             if available <= 0:
                 gap = 0.0
                 available = audio_duration
@@ -85,14 +87,14 @@ class SubtitleFormatter(Step):
 
         timestamps = []
         current_time = 0.0
-        for i, seg in enumerate(segments):
-            char_ratio = len(seg.text) / total_chars
+        for i, (seg, clean_text) in enumerate(cleaned_segments):
+            char_ratio = len(clean_text) / total_chars if total_chars > 0 else 0.0
             duration = available * char_ratio if available > 0 else 0.0
             end_time = current_time + duration
-            if i == len(segments) - 1:
+            if i == len(cleaned_segments) - 1:
                 end_time = audio_duration
-            timestamps.append({"start": current_time, "end": end_time, "text": seg.text})
-            current_time = end_time + (gap if i < len(segments) - 1 else 0)
+            timestamps.append({"start": current_time, "end": end_time, "text": clean_text})
+            current_time = end_time + (gap if i < len(cleaned_segments) - 1 else 0)
         return timestamps
 
     def _generate_srt(self, timestamps: list[Dict]) -> str:
@@ -125,6 +127,10 @@ class SubtitleFormatter(Step):
                 wrapped.append(line[start : start + limit])
                 start += limit
         return wrapped or [""]
+
+    def _clean_text(self, text: str) -> str:
+        cleaned = re.sub(r"\s*\(間\)\s*", " ", text)
+        return cleaned.strip()
 
     def _text_width(self, text: str) -> int:
         return len(text) * self.width_per_char_pixels

@@ -109,7 +109,7 @@ class ScriptGenerator(Step):
             raise ValueError("Script output must be a mapping")
         script = Script(**data)
         for seg in script.segments:
-            seg.text = re.sub(r'。(?![\r\n]|$)', '。\n', seg.text)
+            seg.text = re.sub(r"。(?![\r\n]|$)", "。\n", seg.text)
         return script
 
     def _coerce_to_dict(self, raw: str, depth: int) -> Any:
@@ -117,16 +117,13 @@ class ScriptGenerator(Step):
             raise ValueError("Maximum recursion depth exceeded during parsing")
         for candidate in self._candidates(raw):
             for loader in (yaml.safe_load, json.loads):
-                try:
-                    parsed = loader(candidate)
-                    if isinstance(parsed, str):
-                        return self._coerce_to_dict(parsed, depth - 1)
-                    if isinstance(parsed, dict) and "segments" not in parsed:
-                        if mapped := self._dialog_segments_from_mapping(parsed):
-                            return {"segments": mapped}
-                    return parsed
-                except Exception:
-                    continue
+                parsed = loader(candidate)
+                if isinstance(parsed, str):
+                    return self._coerce_to_dict(parsed, depth - 1)
+                if isinstance(parsed, dict) and "segments" not in parsed:
+                    if mapped := self._dialog_segments_from_mapping(parsed):
+                        return {"segments": mapped}
+                return parsed
         stripped = raw.strip()
         if stripped.startswith('"') and stripped.endswith('"'):
             return self._coerce_to_dict(stripped[1:-1], depth - 1)
@@ -138,11 +135,20 @@ class ScriptGenerator(Step):
 
     def _candidates(self, raw: str) -> List[str]:
         text = raw.strip().lstrip("\ufeff")
-        candidates = [text]
+
+        candidates = []
         if code := extract_code_block(text):
             candidates.append(code)
         if segments := self._extract_segments_block(text):
             candidates.append(segments)
+
+        cleaned = re.sub(r"^```[\w]*\s*\n?", "", text)
+        cleaned = re.sub(r"\n?```\s*$", "", cleaned)
+        if cleaned != text:
+            candidates.append(cleaned.strip())
+
+        candidates.append(text)
+
         enriched: List[str] = []
         for c in candidates:
             enriched.extend(self._candidate_variants(c))
@@ -157,7 +163,7 @@ class ScriptGenerator(Step):
 
     def _candidate_variants(self, text: str) -> List[str]:
         variants = [text]
-        if len(text) >= 2 and text[0] == text[-1] and text[0] in ("\"", "'"):
+        if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
             variants.append(text[1:-1])
         normalized = unicodedata.normalize("NFKC", text).replace("　", " ")
         if normalized != text:
@@ -180,11 +186,11 @@ class ScriptGenerator(Step):
                 continue
             prefix, value = match.groups()
             stripped = value.strip()
-            if not stripped or stripped[0] in {'"', "'", '|', '>'}:
+            if not stripped or stripped[0] in {'"', "'", "|", ">"}:
                 lines.append(line)
                 continue
             escaped = stripped.replace('"', '\\"')
-            lines.append(f"{prefix}\"{escaped}\"")
+            lines.append(f'{prefix}"{escaped}"')
         return "\n".join(lines)
 
     def _extract_segments_block(self, text: str) -> str | None:

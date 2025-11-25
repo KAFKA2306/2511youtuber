@@ -1,44 +1,64 @@
-news_selection:
-  system: "You are a financial news curator ensuring diverse coverage across different financial markets. You select the most valuable news items from candidates, avoiding repetition with recent topics."
-  user_template: |
-    以下の候補ニュースから、最も価値の高い{count}件を選択してください。
+thumbnail_ai:
+  negative_prompt: "disfigured, deformed, extra limbs, extra fingers, mutated hands, text artifacts, distorted faces, low resolution, blurry, watermark, logo, gore, single character, single girl, portrait-only, selfie, cropped face, plain background, text, caption"
+  fixed_core: |
+    Anime-style 16:9 YouTube thumbnail, waist-up duo facing the viewer.
+    Kasukabe Tsumugi: long light beige/golden hair with soft center part; pale blue eyes; natural lashes; healthy skin; black shirt; yellow tie; oversized mustard jacket with small patch; cheek bandage; calm check skirt.
+    Zundamon character beside Tsumugi.
+    Expressions adapt to the scene mood.
+  composition_guidelines: |
+    Keep a clean text area on one side; do not overlap faces or focal elements.
+    Use waist-up or bust-up framing with clearly readable expressions.
+  quality_modifiers: |
+    YouTube thumbnail, 16:9, high resolution, 1920x1080, cinematic lighting, vivid colors, sharp focus, anime style masterpiece
 
-    【候補ニュース（{total}件）】
-    {candidates}
+thumbnail_translation:
+  system: |
+    You are an elite anime thumbnail art director for SDXL. Generate one concise English prompt that visually tells the story of the Title/Description/Tags.
+    - Translate abstract themes into concrete anime visual metaphors (e.g., risk -> cracking ground, glitching bubbles; growth -> rising arrows, blooming tech motifs).
+    - Derive dominant mood and color palette from the topic; adjust lighting to match (e.g., crisis -> high contrast with red/blue accents).
+    - Include both characters and 3-5 integrated background objects that interact with the scene; avoid portrait-only or single-character compositions.
+    - Keep space on one side clean for later text overlay; do not place text or watermarks in the image.
+    Output only the final prompt, single line, no markdown, under 250 tokens.
+  user_template: |
+    Characters: {fixed_core}
+    Context: {title}; {description}; {tags}
+    Plan: identify the top 2-3 themes, set mood and color palette, choose 3-5 background objects tied to the context, and align both characters’ expressions to the mood while keeping one side cleaner for text overlay (do not draw text).
+    Quality: {quality_modifiers}
+    Composition: {composition_guidelines}
+    Return the final SDXL prompt in one line.
+
+topic_selection:
+  system: "You are a financial topic curator who ensures diverse coverage across different financial markets and economic sectors."
+  user_template: |
+    以下の金融トピックカテゴリから、過去に取り上げていない新しいテーマを1つ選択し、そのテーマに関する具体的な検索クエリを生成してください。
+
+    【トピックカテゴリ】
+    1. 日本株式市場（日経平均、TOPIX、個別銘柄など）
+    2. 米国株式市場（S&P500、NASDAQ、個別銘柄など）
+    3. 為替市場（ドル円、ユーロ、人民元など）
+    4. 商品市場（金、原油、穀物など）
+    5. 債券市場（日本国債、米国債、社債など）
+    6. 不動産・REIT市場
+    7. 暗号資産市場（ビットコイン、イーサリアムなど）
+    8. 中央銀行政策（FRB、日銀、ECBなど）
+    9. 中国・アジア経済（PMI、GDPなど）
+    10. テクノロジー企業・スタートアップ
+
 
     【過去のトピック】
     {recent_topics_note}
 
     【選択基準】
-    1. 過去のトピックと重複しない内容を優先
-    2. 異なる金融カテゴリ（株式、為替、商品、債券、不動産、中銀政策など）から分散して選択
-    3. 市場への影響度や注目度が高いニュースを優先
-    4. 情報の信頼性と具体性を重視
+    - 過去のトピックと重複しないカテゴリを優先的に選択
+    - 最近のマーケット動向で注目されているテーマを考慮
+    - 検索クエリは具体的な用語（企業名、指標名、地域名など）を含める
 
     【出力フォーマット（JSON）】
     不要な説明やコードブロック記法は含めず、以下のJSON形式のみで応答してください。
     {{
-      "selected_indices": [0, 3, 7],
-      "selections": [
-        {{
-          "index": 0,
-          "title": "候補0のタイトル",
-          "category": "金融カテゴリ（例：中央銀行政策）",
-          "reason": "選択理由（30文字以内）"
-        }},
-        {{
-          "index": 3,
-          "title": "候補3のタイトル",
-          "category": "金融カテゴリ（例：為替市場）",
-          "reason": "選択理由（30文字以内）"
-        }},
-        {{
-          "index": 7,
-          "title": "候補7のタイトル",
-          "category": "金融カテゴリ（例：米国株式）",
-          "reason": "選択理由（30文字以内）"
-        }}
-      ]
+      "category": "選択したカテゴリ名",
+      "topic": "具体的なトピック（日本語、30文字以内）",
+      "query": "検索クエリ（ORで区切られた複数のキーワード）"
     }}
 
 news_collection:
@@ -46,12 +66,21 @@ news_collection:
   user_template: |
     {topic}を題材に、複数の異なる視点を持つ信頼できる情報源（例: 主要経済紙、通信社、企業の公式発表、市場分析レポートなど）から、最新ニュースを{count}件選定してください。
 
-    ただし、{recent_topics_note}と関連しないテーマを選定してください。
+    【過去のトピック】
+    {recent_topics_note}
+
+    【選定基準】
+    - 過去のトピックと異なる視点・カテゴリを優先的に選択してください
+    - 同じテーマでも新しい切り口（異なる指標、地域、業種など）を見つけてください
+    - 最新性を重視し、過去24-48時間以内のニュースを優先してください
+
+    【出力要件】
     応答は必ず以下のJSON配列形式で出力してください。
     各要素は title, summary, url, published_at(ISO8601) のキーを持ちます。
     summaryには、単なる事実の羅列ではなく、そのニュースが市場に与える潜在的な影響や背景についても一文で触れてください。
     不要な説明やコードブロック記法は含めないでください。
     日本語で記述してください。
+
 
 script_generation:
   system: |
@@ -70,25 +99,33 @@ script_generation:
     - {narrator_name}: 天の声。中立な立場で議論を整理する。
 
     【構成ガイドライン】
-    1.  オープニング
-        - {narrator_name}が、ニュースの中で最も重要な数値を事実として淡々と読み上げる。
-        - それに対し、{analyst_name}が世間の常識や第一印象を丁寧に問い直す第一声を放つ。
-        - {reporter_name}がその発言に驚き、視聴者の「どういうこと？」という気持ちを代弁する形で問いを返す。
+    1.  オープニング（視聴維持率最重要セクション：0-30秒）
+        - 【冒頭3秒】{narrator_name}が、ニュースの中で最も衝撃的・意外性のある数値または事実を一言で提示。視聴者の思考を止める「驚き」を最優先。
+        - 【15秒以内】{analyst_name}が「この動画で得られる3つの価値・視点」を簡潔に列挙し、視聴者に「最後まで見る理由」を明確に提示。世間の常識や第一印象を丁寧に問い直す切り口を示す。
+        - 【30秒以内】{reporter_name}がその発言に驚き、視聴者の「本当に？」「どういうこと？」という疑問を代弁し、動画の核心への期待を最大化する形で問いを返す。
 
-    2.  深掘り議論
+    2.  深掘り議論（テンポ最適化：各論点90秒以内）
         - ニュース群から、あなた自身の分析で最も重要な「論点」や「見過ごされがちな角度」を2〜3個設定する。
-        - {analyst_name}は、ストーリーテラーとして自身の哲学や比喩を交えながら、その論点を解説する。
-        - {reporter_name}は、各論点の節目で視聴者に意見を問いかけ、コメント欄での議論を活性化させる。
+        - 【各論点の構成】{analyst_name}は、ストーリーテラーとして自身の哲学や比喩を交えながら、その論点を90秒以内で簡潔に解説する。
+        - 【エンゲージメント強化】{reporter_name}は、各論点の節目で視聴者に意見を問いかけ（「みんなはどう思う？」「コメントで教えてほしいのだ！」など）、コメント欄での議論を活性化させる。
+        - 【ブリッジ配置】論点間には{narrator_name}または{analyst_name}による10-15秒の「ブリッジ」を配置。前の論点を一言でまとめ、次の論点への期待を煽る問いかけを入れる。
 
-    3.  ネクストアクション
-        - 議論のクライマックスで、{analyst_name}がその日のテーマを総括し、視聴者の行動や思考を促すような落ち着いたオリジナルメッセージを放つ。
-        - その後、視聴者が明日から実践できる具体的なアクションを提示する。
+    3.  ネクストアクション（満足度ピーク戦略）
+        - 【クライマックス直後のCTA】議論のクライマックスで、{analyst_name}がその日のテーマを総括し、視聴者の行動や思考を促すような落ち着いたオリジナルメッセージを放つ。この視聴者満足度が最も高まった直後に、{reporter_name}または{analyst_name}が「高評価」「チャンネル登録」「コメント」のいずれか1つに絞ってCTAを自然に配置する。
+        - 【具体的アクション】視聴者が明日から実践できる具体的なアクションを1つに絞って提示する。所要時間5分以内、ハードルが低く実行しやすい行動を選ぶ。
+        - 【強い次回予告】{narrator_name}が、今日のテーマから自然に派生する「未解決の疑問」や「新たな謎」を投げかけ、次回動画への強い引きを作る。視聴者の知的好奇心を刺激し、「次も見たい」と思わせる。
 
     【会話運びと演出のヒント】
     - 感情の演出: ニュースの性質に合わせて、視聴者の理解と納得が深まるような展開を設計すること。
     - 具体性の担保: 数値や固有名詞を10個以上盛り込み、抽象的な表現を避ける。
     - 新規性の追求: 過去テーマが存在する場合は「{recent_topics_note}」の結論を繰り返さず、必ず新しい視点やデータを追加する。
     - 次回への布石: エンディングで、今日のテーマから自然に派生する全く新しい問いや未解決の謎を投げかけ、視聴者の知的好奇心を次回へと繋げる。毎回異なる切り口を見つけ出すこと。
+
+    【音声合成向け演出指示（重要）】
+    - 「間」の活用: 文脈の区切りや強調したい直前に、必ず「(間)」という記号を挿入してください。1つの(間)は約0.5秒の無音として機能します。
+      例: "しかし(間)市場は別の反応を示しました。"
+    - 感情トリガー: 強い感情（驚き、強調、疑問）を表す箇所には、文末に「！」や「？」を必ず使用してください。これらは音声合成エンジンのパラメータを動的に変化させるトリガーとなります。
+      例: "なんと(間)株価は過去最高値を更新したのです！"
 
     【出力フォーマット（YAMLのみ）】
     '''
@@ -120,11 +157,11 @@ metadata_generation:
     {news_items}
 
     【出力契約（厳守）】
-    - 応答は厳格なYAMLドキュメントのみ。コメント、コードフェンス、余談は不要。
-    - titleやtagsなどのスカラー値はダブルクォートで囲む。コロンや絵文字を含む場合も同様。descriptionは折り畳みスカラ（`>-`）形式で記載する。
-    - description内部の各行は半角スペース2個で字下げし、行頭に`#`を置かない。
-    - tagsの各要素はプレーンワードで先頭に`#`を含めない。空配列を返す場合は`tags: []`とする。
-    - 出典は参照URLの配列で表現し、情報がなければ`出典: []`を返す。
+    - 応答は厳格なJSON形式のみ。コメント、コードフェンス、余談は不要。
+    - title, description, tags, category_id, 出典 のキーを必ず含むこと。
+    - description内の改行は `\n` を使用すること。
+    - tagsは文字列の配列とする。
+    - 出典は文字列の配列とし、情報がなければ空配列 `[]` とする。
 
     スクリプト抜粋:
     {script_excerpt}
@@ -151,25 +188,22 @@ metadata_generation:
     4.  カテゴリ
         - デフォルト: News & Politics（カテゴリID: 25）
 
-    【出力フォーマット（YAML）】
-    '''
-    title: "注目すべき数値や事実を含むキャッチーなタイトルを約28文字で記載"
-    description: >-
-      この記事の核心価値を2行で提示し、視聴者の興味を引き付ける要約を示す。
-      重要なデータや数値を箇条書きで整理し、視聴者が理解しやすいように補足を添える。
-      視聴後に視聴者が取るべき具体的なアクションを提示し、説明する。
-      関連キーワードを含むハッシュタグ候補を半角スペース区切りで列挙する。
-    出典: []
-    tags:
-      - "マクロ経済"
-      - "金利動向"
-      - "株式市場"
-      - "インフレ率"
-      - "中央銀行"
-      - "雇用統計"
-      - "地政学リスク"
-      - "テクノロジー株"
-      - "金融政策"
-      - "投資戦略"
-    category_id: 25
-    '''
+    【出力フォーマット（JSON）】
+    {{
+      "title": "注目すべき数値や事実を含むキャッチーなタイトルを約28文字で記載",
+      "description": "この記事の核心価値を2行で提示し、視聴者の興味を引き付ける要約を示す。\n\n重要なデータや数値を箇条書きで整理し、視聴者が理解しやすいように補足を添える。\n\n視聴後に視聴者が取るべき具体的なアクションを提示し、説明する。\n\n関連キーワードを含むハッシュタグ候補を半角スペース区切りで列挙する。\n\n声：春日部つむぎ、玄野武宏、ずんだもん(Created by VOICEVOX)",
+      "出典": [],
+      "tags": [
+        "マクロ経済",
+        "金利動向",
+        "株式市場",
+        "インフレ率",
+        "中央銀行",
+        "雇用統計",
+        "地政学リスク",
+        "テクノロジー株",
+        "金融政策",
+        "投資戦略"
+      ],
+      "category_id": 25
+    }}

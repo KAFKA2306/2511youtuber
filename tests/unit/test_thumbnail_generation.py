@@ -12,7 +12,9 @@ def test_generate_thumbnails_for_presets(tmp_path):
     inputs_dir.mkdir()
     script_path = inputs_dir / "script.json"
     metadata_path = inputs_dir / "metadata.json"
-    script_path.write_text(json.dumps({"segments": [{"speaker": "A", "text": "速報タイトル"}, {"speaker": "B", "text": "サブタイトル"}]}))
+    script_path.write_text(
+        json.dumps({"segments": [{"speaker": "A", "text": "速報タイトル"}, {"speaker": "B", "text": "サブタイトル"}]})
+    )
     metadata_path.write_text(json.dumps({"title": "金融速報", "description": "解説\n詳細"}))
     run_dir = Path("runs/thumbnail_test")
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -35,10 +37,12 @@ def test_generate_thumbnails_for_presets(tmp_path):
         }
         config.update(preset)
         generator = ThumbnailGenerator(run_id=run_id, run_dir=run_dir, thumbnail_config=config)
-        output = generator.execute({
-            "generate_script": str(script_path),
-            "analyze_metadata": str(metadata_path),
-        })
+        output = generator.execute(
+            {
+                "generate_script": str(script_path),
+                "analyze_metadata": str(metadata_path),
+            }
+        )
         outputs.append({"index": index, "path": str(output), "palette": preset})
     log_path = run_dir / "results.json"
     log_path.write_text(json.dumps(outputs, ensure_ascii=False, indent=2))

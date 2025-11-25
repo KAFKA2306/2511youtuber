@@ -31,14 +31,13 @@ class PerplexityNewsProvider:
         self.search_recency_filter = search_recency_filter
         self.api_keys = load_secret_values("PERPLEXITY_API_KEY")
         self.prompts = load_prompts()["news_collection"]
+
     is_available = has_credentials
 
     def execute(self, query: str = "", count: int = 3, recent_topics_note: str = "") -> List[NewsItem]:
         topic = query or "最新の日本の金融・経済ニュース"
         recent_note = recent_topics_note or "直近テーマ情報なし"
-        prompt = self.prompts["user_template"].format(
-            topic=topic, count=count, recent_topics_note=recent_note
-        )
+        prompt = self.prompts["user_template"].format(topic=topic, count=count, recent_topics_note=recent_note)
         api_key = self.api_keys[0]
 
         payload = {
@@ -92,12 +91,13 @@ class GeminiNewsProvider:
     name = "gemini"
     priority = 5
 
-    def __init__(self, model: str = "gemini/gemini-2.0-flash-exp", temperature: float = 0.2, max_tokens: int = 2048):
+    def __init__(self, model: str, temperature: float = 0.2, max_tokens: int = 2048):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.api_keys = load_secret_values("GEMINI_API_KEY")
         self.prompts = load_prompts()["news_collection"]
+
     is_available = has_credentials
 
     def execute(self, query: str = "", count: int = 3, recent_topics_note: str = "") -> List[NewsItem]:
