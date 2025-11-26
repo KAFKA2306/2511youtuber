@@ -89,8 +89,9 @@ task services:status
 | `task lint` | Run linting checks |
 | `task lint:fix` | Auto-fix linting and format |
 | `task format` | Format code |
-| `task test` | Run all tests |
-| `task test:unit` | Run unit tests with coverage |
+| `task test` | Run fast tests (alias for test:fast) |
+| `task test:fast` | Run fast tests (skips video rendering) |
+| `task test:all` | Run ALL tests (complete validation) |
 | `task clean` | Clean cache files |
 
 ### Git
@@ -131,6 +132,35 @@ Optional steps add metadata analysis, thumbnail generation, platform uploads, an
 ```
 
 Workflow classes live under `src/core/`, typed configuration models in `src/utils/config.py`, and step implementations in `src/steps/`.
+
+## Testing Strategy
+
+This project uses **real E2E tests** with actual APIs and system components—no mocks, no stubs:
+
+**Test Categories:**
+- **Fast Tests** (default): News → Script → Audio → Subtitle pipeline using real Gemini API and Voicevox. Skips video rendering for speed (~2-5 min).
+- **Slow Tests**: Complete workflow including FFmpeg video rendering and intro/outro concatenation (~10-20 min).
+
+**What Gets Tested:**
+- ✓ Real Gemini API calls for news collection and script generation
+- ✓ Real Voicevox TTS audio synthesis
+- ✓ Real FFmpeg video rendering (slow tests only)
+- ✓ Checkpoint/resume functionality
+- ✓ Custom query variations
+- ✓ Duration constraints
+- ✓ Metadata and thumbnail generation
+- ✗ YouTube uploads (excluded due to rate limits)
+
+**Running Tests:**
+```bash
+# Fast tests (default) - validates core pipeline
+task test:fast
+
+# Complete validation (includes video rendering)
+task test:all
+```
+
+Tests use real data and validate actual functionality—if tests pass, the system works in production.
 
 ## Automation
 

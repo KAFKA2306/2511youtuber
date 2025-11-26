@@ -25,6 +25,8 @@ class ScriptGenerator(Step):
         if not speakers_config:
             raise ValueError("Speaker configuration is required")
         data = speakers_config.model_dump() if hasattr(speakers_config, "model_dump") else dict(speakers_config)
+        if "speakers" in data:
+            data = data["speakers"]
         self.speakers = self._extract_speakers(data)
         self.carryover_notes = self._load_previous_context(run_dir)
         self.provider = GeminiProvider()

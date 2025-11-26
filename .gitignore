@@ -56,8 +56,14 @@ aim/
 node_modules/
 codexia/
 assets/
-tests/
-pytest.ini
+
+# Test artifacts (large files only - keep test code!)
+tests/fixtures/*.mp4
+tests/fixtures/*.wav
+tests/fixtures/*.png
+tests/fixtures/*.jpg
+tests/outputs/
+tests/**/__pycache__/
 package-lock.json
 package.json
 
