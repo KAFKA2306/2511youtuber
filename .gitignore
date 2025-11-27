@@ -64,8 +64,12 @@ tests/fixtures/*.png
 tests/fixtures/*.jpg
 tests/outputs/
 tests/**/__pycache__/
-package-lock.json
-package.json
+/package-lock.json
+/package.json
+
+# Allow Remotion project
+!remotion/
+!remotion/**
 
 # IDE
 .vscode/

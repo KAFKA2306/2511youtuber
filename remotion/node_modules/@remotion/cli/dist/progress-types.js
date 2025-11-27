@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.initialAggregateRenderProgress = void 0;
+const initialAggregateRenderProgress = () => ({
+    rendering: null,
+    downloads: [],
+    stitching: null,
+    bundling: {
+        progress: 0,
+        doneIn: null,
+    },
+    copyingState: {
+        bytes: 0,
+        doneIn: null,
+    },
+    artifactState: {
+        received: [],
+    },
+    logs: [],
+});
+exports.initialAggregateRenderProgress = initialAggregateRenderProgress;

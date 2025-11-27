@@ -1,0 +1,11 @@
+import type { LogLevel } from '../log-level';
+import type { CancelSignal } from '../make-cancel-signal';
+export declare const applyToneFrequencyUsingFfmpeg: ({ input, output, toneFrequency, indent, logLevel, binariesDirectory, cancelSignal, }: {
+    input: string;
+    output: string;
+    toneFrequency: number;
+    indent: boolean;
+    logLevel: LogLevel;
+    binariesDirectory: string | null;
+    cancelSignal: CancelSignal | undefined;
+}) => Promise<void>;
