@@ -6,10 +6,19 @@ All tests use real APIs, real data, real system components.
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 from typing import Iterator
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def slow_down_tests():
+    """Add a delay between tests to avoid API rate limits."""
+    yield
+    print("\nSleeping 10s for API rate limits...")
+    time.sleep(10)
 
 
 @pytest.fixture

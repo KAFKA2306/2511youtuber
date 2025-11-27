@@ -25,6 +25,9 @@ class ScriptGenerator(Step):
         if not speakers_config:
             raise ValueError("Speaker configuration is required")
         data = speakers_config.model_dump() if hasattr(speakers_config, "model_dump") else dict(speakers_config)
+        # Extract duration constraints if present
+        self.min_duration = data.get("min_duration", 300)  # Default 5 minutes
+        self.max_duration = data.get("max_duration", 600)  # Default 10 minutes
         if "speakers" in data:
             data = data["speakers"]
         self.speakers = self._extract_speakers(data)
@@ -68,6 +71,10 @@ class ScriptGenerator(Step):
         template = load_prompt_template("script_generation")
         news_text = "\n\n".join(f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items)
         side_theme = self._pick_side_theme(news_items)
+        # Calculate duration range in minutes
+        min_minutes = self.min_duration // 60
+        max_minutes = self.max_duration // 60
+        duration_instruction = f"{min_minutes}〜{max_minutes}分" if min_minutes != max_minutes else f"約{min_minutes}分"
         return template.format(
             news_items=news_text,
             analyst_name=self.speakers["analyst"],
@@ -77,6 +84,7 @@ class ScriptGenerator(Step):
             side_theme_summary=side_theme[1],
             recent_topics_note=self.carryover_notes.recent_topics_note or "直近テーマ情報なし",
             next_theme_note="今日のテーマから派生する新しい視点や発見の余地",
+            duration=duration_instruction,
         )
 
     def _load_previous_context(self, run_dir: Path) -> ScriptContextNotes:

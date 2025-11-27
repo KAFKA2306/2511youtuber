@@ -89,43 +89,44 @@ class GeminiProvider:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        for attempt in range(max_retries):
+        for key_idx in range(max_retries):
             api_key = self._keys[0]
             self._keys.rotate(-1)
 
-            try:
-                response = litellm.completion(
-                    model=model,
-                    messages=messages,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    api_key=api_key,
-                )
-                if not is_fallback and attempt > 0:
-                    print(f"✅ Success with API key {attempt + 1}/{max_retries}")
-                return response.choices[0].message.content
+            # Retry up to 3 times per key with exponential backoff
+            backoff_retries = 3
+            for retry in range(backoff_retries):
+                try:
+                    response = litellm.completion(
+                        model=model,
+                        messages=messages,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens,
+                        api_key=api_key,
+                    )
+                    if not is_fallback and (key_idx > 0 or retry > 0):
+                        print(f"✅ Success with API key {key_idx + 1}/{max_retries} (retry {retry + 1})")
+                    return response.choices[0].message.content
 
-            except litellm.exceptions.InternalServerError as e:
-                error_str = str(e)
+                except litellm.exceptions.InternalServerError as e:
+                    error_str = str(e)
 
-                # Handle 503 Service Unavailable (overloaded)
-                if "503" in error_str or "overloaded" in error_str.lower():
-                    model_label = "fallback" if is_fallback else "primary"
-                    print(f"⚠️  {model_label} model API key {attempt + 1}/{max_retries} overloaded, trying next key...")
-                    if attempt < max_retries - 1:
-                        time.sleep(2)  # Brief delay before next key
+                    # Handle 503 Service Unavailable (overloaded)
+                    if "503" in error_str or "overloaded" in error_str.lower():
+                        wait_time = 2 * (2 ** retry)  # 2s, 4s, 8s
+                        print(f"⚠️  {model} overloaded (key {key_idx + 1}/{max_retries}, retry {retry + 1}/{backoff_retries}), sleeping {wait_time}s...")
+                        time.sleep(wait_time)
                         continue
-                    else:
-                        # All keys exhausted for this model, return None to try fallback
-                        print(f"❌ All API keys exhausted for {model_label} model: {model}")
-                        return None
+                    
+                    # For other errors, raise immediately
+                    raise
 
-                # For other errors, raise immediately
-                raise
-
-            except Exception:
-                # For non-503 errors, raise immediately
-                raise
+                except Exception:
+                    # For non-503 errors, raise immediately
+                    raise
+            
+            # If we exhausted retries for this key, move to next key
+            print(f"⚠️  Exhausted retries for key {key_idx + 1}/{max_retries}, trying next key...")
 
         # If we get here, all keys failed with 503
         return None
