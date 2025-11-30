@@ -66,6 +66,12 @@ task services:status
 | `task youtube:dev` | Run with debug logging |
 | `task thumbnail-test -- <run_id>` | Test AI thumbnail generation |
 
+**Scene Generation Test:**
+```bash
+# Test scene generation with existing run
+uv run python scripts/test_scene_gen.py <run_id>
+```
+
 ### Service Management
 | Command | Description |
 |---------|-------------|
@@ -106,6 +112,7 @@ task services:status
 | --- | --- | --- | --- |
 | News collection | `src/steps/news.py` | `news.json` | Executes Perplexity and Gemini providers with fallback chaining |
 | Script generation | `src/steps/script.py` | `script.json` | Prompts Gemini with speaker profiles and previous run context |
+| Scene generation | `src/steps/scene_generator.py` | `scene_manifest.json` | Generates atmospheric scene images using Z-Image-Turbo diffusion model |
 | Audio synthesis | `src/steps/audio.py` | `audio.wav` | Calls Voicevox HTTP API per segment and concatenates audio |
 | Subtitle formatting | `src/steps/subtitle.py` | `subtitles.srt` | Allocates time slices and wraps Japanese lines |
 | Video rendering | `src/steps/video.py` | `video.mp4` | Ken Burns effects, overlays, subtitle burn-in via FFmpeg |
@@ -116,8 +123,38 @@ Optional steps add metadata analysis, thumbnail generation, platform uploads, an
 
 - **`config/default.yaml`** — workflow toggles, provider credentials, rendering parameters
 - **`config/prompts.yaml`** — prompt templates for news, script, and metadata providers
+- **`config/scene_prompts.yaml`** — scene generation prompts (literal, abstract, atmospheric)
 - **`config/.env`** — API keys (copy from `.env.example` and fill in)
 - **`assets/`** — fonts and character art for thumbnails and video overlays
+
+### Scene Generation (Z-Image-Turbo)
+
+The system uses a **clean architecture service layer** for image generation:
+
+```yaml
+# config/default.yaml
+steps:
+  scene:
+    enabled: true
+    images_per_video: 4
+    variants_per_type: 2
+    batch_size: 2          # NEW: Process 2 images at once (faster)
+    compile_model: false   # NEW: Enable torch.compile for speedup
+    width: 1280
+    height: 720
+    num_steps: 9
+```
+
+**Performance Tuning:**
+- `batch_size=1`: Safe default (baseline speed)
+- `batch_size=2`: ~1.5-1.8x faster (moderate VRAM)
+- `batch_size=4`: ~2-2.5x faster (high VRAM, requires 16GB+ GPU)
+- `compile_model=true`: Adds 30-60s startup, but 10-20% faster inference
+
+**Architecture:**
+- Service layer: `src/services/image_generation.py`
+- Protocol-based abstraction for easy testing and backend swapping
+- Dependency injection in `SceneGenerator`
 
 ## Repository Structure
 

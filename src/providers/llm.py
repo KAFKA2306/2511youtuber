@@ -117,14 +117,14 @@ class GeminiProvider:
                         print(f"⚠️  {model} overloaded (key {key_idx + 1}/{max_retries}, retry {retry + 1}/{backoff_retries}), sleeping {wait_time}s...")
                         time.sleep(wait_time)
                         continue
-                    
+
                     # For other errors, raise immediately
                     raise
 
                 except Exception:
                     # For non-503 errors, raise immediately
                     raise
-            
+
             # If we exhausted retries for this key, move to next key
             print(f"⚠️  Exhausted retries for key {key_idx + 1}/{max_retries}, trying next key...")
 
