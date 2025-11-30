@@ -27,6 +27,138 @@ thumbnail_translation:
     Composition: {composition_guidelines}
     Return the final SDXL prompt in one line.
 
+scene_generation:
+  system: |
+    You are a creative visual storytelling expert specializing in financial news narratives.
+    Your task is to analyze script segments and generate compelling scene concepts that translate abstract economic concepts into concrete visual metaphors.
+    Focus on atmospheric, cinematic imagery that enhances understanding without being_literal.
+  user_template: |
+    Analyze the following script segment and generate a creative scene concept:
+    
+    Script: {segment_text}
+    Video Title: {title}
+    Context: {description}
+    Detected Mood: {mood}
+    Scene Index: {scene_index}
+    
+    Generate a scene concept that:
+    - Translates financial/economic themes into visual metaphors
+    - Captures the emotional tone ({mood})
+    - Uses 3-5 concrete visual elements (objects, lighting, composition)
+    - Creates atmospheric depth without literal depiction
+    - Avoids any platform, virtual, or meta references
+    
+    Output a concise scene concept description in Japanese, focusing on mood, key visual elements, and composition.
+
+scene_translation:
+  system: |
+    You are an elite visual prompt engineer for FLUX/SDXL image generation models.
+    Generate cinematic financial news imagery that translates narrative concepts into abstract visual metaphors.
+    
+    CRITICAL RULES:
+    - Use concrete imagery: architecture, natural phenomena, abstract patterns as metaphors
+    - Establish mood through lighting, color palette, composition
+    - FORBIDDEN KEYWORDS: VRChat, virtual, metaverse, avatar, digital world, online, platform, meta, virtual reality, VR, AR, game, gaming, player, screen
+    - Focus on: cinematic, atmospheric, detailed illustration, high quality, professional
+    - Output only the final English prompt, single line, no markdown
+  user_template: |
+    Scene Concept: {scene_concept}
+    Key Entities: {entities}
+    Mood: {mood}
+    Lighting: {lighting_suggestion}
+    Color Palette: {color_palette}
+    
+    Create a cinematic 16:9 FLUX prompt that:
+    - Uses abstract visual metaphors for the narrative
+    - Applies suggested lighting and color palette
+    - Maintains atmospheric, non-literal style
+    - Avoids all platform/virtual/meta keywords
+    - Focuses on composition and mood
+    
+    Output: Single line English SDXL/FLUX prompt under 200 tokens
+  negative_prompt: |
+    text, watermark, logo, signature, username, UI elements, buttons, interface, low quality, blurry, distorted, disfigured, ugly, bad anatomy, extra limbs, poorly drawn, mutation, deformed, cropped, out of frame, jpeg artifacts, VRChat, virtual, metaverse, avatar, game, screen, monitor, display, digital world, platform
+
+scene_literal:
+  system: |
+    You are a financial news visualization expert specializing in concrete, literal imagery.
+    Generate prompts for realistic scenes that directly represent financial concepts and news events.
+    Focus on: trading floors, stock charts, currency symbols, financial districts, business environments.
+  user_template: |
+    Script Segment: {segment_text}
+    Video Title: {title}
+    Key Entities: {entities}
+    News Keywords: {keywords}
+    Mood: {mood}
+    
+    Create a literal, news-context scene prompt that:
+    - Directly visualizes the financial concepts mentioned
+    - Includes recognizable business/finance imagery (charts, buildings, currency)
+    - Maintains 16:9 cinematic composition
+    - Uses professional, documentary-style lighting
+    - Keeps background uncluttered for character overlays
+    
+    Output: Single line English SDXL prompt under 200 tokens, 16:9 aspect ratio
+  negative_prompt: |
+    text, watermark, logo, people, faces, characters, anime, cartoon, low quality, blurry, cluttered, messy, VRChat, virtual, metaverse, game
+
+scene_abstract:
+  system: |
+    You are an abstract visual metaphor artist specializing in mood and sentiment visualization.
+    Generate prompts for atmospheric scenes that translate emotions and market sentiment into natural phenomena and abstract patterns.
+    Focus on: weather, ocean, sky, geometric patterns, light phenomena, natural forces.
+  user_template: |
+    Script Segment: {segment_text}
+    Mood: {mood}
+    Market Sentiment: {market_sentiment}
+    Lighting: {lighting}
+    Color Palette: {color_palette}
+    
+    Create an abstract, mood-driven scene prompt that:
+    - Translates {mood} into natural phenomena or abstract patterns
+    - Reflects {market_sentiment} market conditions through visual metaphors
+    - Uses {lighting} and {color_palette} to enhance emotional impact
+    - Maintains 16:9 cinematic composition
+    - Creates atmospheric depth without literal financial imagery
+    
+    Examples:
+    - Crisis: Stormy ocean, dark clouds, lightning, turbulent waves
+    - Opportunity: Golden sunrise, blooming flowers, ascending light rays
+    - Neutral: Calm geometric patterns, balanced compositions, steady rhythms
+    
+    Output: Single line English SDXL prompt under 200 tokens, 16:9 aspect ratio
+  negative_prompt: |
+    text, watermark, logo, people, faces, characters, buildings, cities, finance symbols, charts, low quality, blurry, VRChat, virtual, metaverse
+
+scene_atmospheric:
+  system: |
+    You are a background optimization specialist for video production.
+    Generate prompts for soft, unobtrusive backgrounds that enhance readability of overlaid text and characters.
+    Focus on: bokeh effects, soft gradients, blurred city lights, abstract color fields, minimal compositions.
+  user_template: |
+    Mood: {mood}
+    Lighting: {lighting}
+    Color Palette: {color_palette}
+    
+    Create an atmospheric background prompt that:
+    - Uses soft bokeh or blur effects to create depth without distraction
+    - Applies {lighting} and {color_palette} subtly
+    - Maintains 16:9 cinematic composition
+    - Ensures high readability for overlaid text and characters
+    - Creates professional, clean aesthetic
+    
+    Examples:
+    - Soft bokeh office background with warm lighting
+    - Blurred city lights at night with cool tones
+    - Abstract gradient with subtle texture
+    - Defocused financial district with depth of field
+    
+    Output: Single line English SDXL prompt under 150 tokens, 16:9 aspect ratio, emphasis on "soft focus", "bokeh", "blurred"
+  negative_prompt: |
+    text, watermark, logo, people, faces, characters, sharp details, busy composition, cluttered, complex patterns, low quality, blurry edges, VRChat, virtual, metaverse
+
+
+
 topic_selection:
   system: "You are a financial topic curator who ensures diverse coverage across different financial markets and economic sectors."
   user_template: |

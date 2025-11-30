@@ -151,6 +151,17 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             )
         )
 
+    if config.steps.scene_generator.enabled:
+        from src.steps.scene_generator import SceneGenerator
+
+        steps.append(
+            SceneGenerator(
+                run_id=run_id,
+                run_dir=run_dir,
+                scene_config=config.steps.scene_generator.model_dump(),
+            )
+        )
+
     steps.append(
         VideoRenderer(
             run_id=run_id,

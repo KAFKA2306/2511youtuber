@@ -44,40 +44,53 @@ class RemotionRenderer(Step):
             inputs: Dictionary with keys:
                 - format_subtitles: Path to .srt subtitle file
                 - synthesize_audio: Path to .wav audio file
+                - generate_scenes (optional): Path to scene manifest JSON
         
         Returns:
             Path to rendered video file
         """
-        # Load required inputs
         subtitles_path = Path(inputs.get("format_subtitles", ""))
         audio_path = Path(inputs.get("synthesize_audio", ""))
+        scenes_path = Path(inputs.get("generate_scenes", "")) if inputs.get("generate_scenes") else None
         
         if not subtitles_path.exists():
             raise ValueError(f"Subtitle file not found: {subtitles_path}")
         if not audio_path.exists():
             raise ValueError(f"Audio file not found: {audio_path}")
         
-        # Prepare Remotion props
-        props = self._prepare_props(subtitles_path, audio_path)
+        props = self._prepare_props(subtitles_path, audio_path, scenes_path)
         run_dir = self.run_dir / self.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         props_file = run_dir / "remotion_props.json"
         props_file.write_text(json.dumps(props, ensure_ascii=False, indent=2), encoding="utf-8")
         
-        # Render video with Remotion
         output_path = self.get_output_path()
         self._run_remotion_render(props_file, output_path)
         
         return output_path
     
-    def _prepare_props(self, subtitles_path: Path, audio_path: Path) -> dict:
-        """Convert subtitle and audio data to Remotion props format."""
+    def _prepare_props(self, subtitles_path: Path, audio_path: Path, scenes_path: Path | None = None) -> dict:
+        """Convert subtitle, audio, and scene data to Remotion props format."""
         subtitles = self._parse_srt(subtitles_path)
         
-        return {
+        props = {
             "subtitles": subtitles,
             "audioUrl": f"file://{audio_path.absolute()}",
         }
+        
+        if scenes_path and scenes_path.exists():
+            scenes_data = json.loads(scenes_path.read_text(encoding="utf-8"))
+            scenes = scenes_data.get("scenes", [])
+            if scenes:
+                props["scenes"] = [
+                    {
+                        "timestamp": scene["timestamp"],
+                        "imagePath": f"file://{Path(scene['image_path']).absolute()}",
+                    }
+                    for scene in scenes
+                ]
+        
+        return props
     
     def _parse_srt(self, srt_path: Path) -> list[dict]:
         """

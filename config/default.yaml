@@ -198,6 +198,18 @@ steps:
     height: 1080
     num_steps: 6
 
+  scene_generator:
+    enabled: false  # Enable after running 'task hf:sync'
+    images_per_video: 4  # Number of scene timestamps
+    variants_per_type: 2  # Variants per type (literal/abstract/atmospheric)
+    width: 1280  # 16:9 aspect ratio for YouTube
+    height: 720
+    num_steps: 9  # Quality/speed balanced setting
+    scene_duration_seconds: 30
+    model_path: "external/hf-cache-hub/models/Z-Image-Turbo"
+    device: "cuda"
+
+
   metadata:
     enabled: true
     use_llm: true
