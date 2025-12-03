@@ -6,7 +6,7 @@ from pydub import AudioSegment
 
 from src.core.step import Step
 from src.models import Script
-from src.providers.tts import VOICEVOXProvider
+from src.providers.base import Provider
 
 
 class AudioSynthesizer(Step):
@@ -17,6 +17,7 @@ class AudioSynthesizer(Step):
         self,
         run_id: str,
         run_dir: Path,
+        tts_provider: Provider,
         voicevox_config: Dict,
         speaker_aliases: Dict[str, List[str]] | None = None,
         bgm_config: Dict | None = None,
@@ -27,9 +28,7 @@ class AudioSynthesizer(Step):
         self.speaker_aliases = speaker_aliases or {}
         self.bgm_config = bgm_config or {}
         self.voice_parameters = voice_parameters or {}
-        # Remove 'enabled' flag before passing config to provider
-        provider_cfg = {k: v for k, v in self.voicevox_config.items() if k != "enabled"}
-        self.provider = VOICEVOXProvider(**provider_cfg, aliases=self.speaker_aliases)
+        self.provider = tts_provider
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         script_path = Path(inputs["generate_script"])

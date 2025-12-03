@@ -5,9 +5,9 @@ from typing import Dict, List
 
 from src.core.step import Step
 from src.providers.base import Provider, execute_with_fallback
-from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
+from src.core.step import Step
+from src.providers.base import Provider, execute_with_fallback
 from src.tracking import AimTracker
-from src.utils.config import Config, NewsProvidersConfig
 from src.utils.history import gather_recent_topics
 
 
@@ -19,24 +19,20 @@ class NewsCollector(Step):
         self,
         run_id: str,
         run_dir: Path,
+        providers: List[Provider],
         query: str = "金融ニュース",
         count: int = 3,
         recent_topics_runs: int = 0,
         recent_topics_max_chars: int = 0,
         recent_topics_min_token_length: int = 2,
         recent_topics_stopwords: List[str] | None = None,
-        providers_config: NewsProvidersConfig | None = None,
-        gemini_model: str | None = None,
     ):
         super().__init__(run_id, run_dir)
-        if gemini_model is None:
-            gemini_model = Config.get_default_gemini_model()
+        self.providers = providers
         self.query = query
         self.count = count
         self.recent_topics_runs = recent_topics_runs
         self.recent_topics_max_chars = recent_topics_max_chars
-        self.providers_config = providers_config
-        self.gemini_model = gemini_model
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
@@ -50,7 +46,7 @@ class NewsCollector(Step):
 
         start = time.time()
         news_items = execute_with_fallback(
-            self._build_providers(),
+            self.providers,
             query=self.query,
             count=self.count,
             recent_topics_note=recent_note,
@@ -80,19 +76,4 @@ class NewsCollector(Step):
             json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
         return output_path
 
-    def _build_providers(self) -> List[Provider]:
-        providers: List[Provider] = []
-        config = self.providers_config
-        if config and config.perplexity and config.perplexity.enabled:
-            providers.append(
-                PerplexityNewsProvider(
-                    model=config.perplexity.model,
-                    temperature=config.perplexity.temperature,
-                    max_tokens=config.perplexity.max_tokens,
-                    search_recency_filter=config.perplexity.search_recency_filter,
-                )
-            )
-        else:
-            providers.append(PerplexityNewsProvider())
-        providers.append(GeminiNewsProvider(model=self.gemini_model))
-        return providers
+

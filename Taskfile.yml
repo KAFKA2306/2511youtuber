@@ -26,12 +26,12 @@ tasks:
       - sleep 3
       - echo ""
       - echo "⚙️  Configuring automation..."
-      - python scripts/automation.py --skip-cron
-      - python scripts/automation.py --install-cron
+      - uv run python scripts/automation.py --skip-cron
+      - uv run python scripts/automation.py --install-cron
       - echo ""
       - echo "✅ Bootstrap complete! Services running, cron installed."
       - echo ""
-      - task services-status
+      - task services:status
 
   setup:
     desc: Install dependencies only
@@ -56,6 +56,11 @@ tasks:
     desc: Run YouTube workflow with debug logging
     cmds:
       - uv run python -m apps.youtube.cli run --log-level DEBUG
+
+  gallery:generate:
+    desc: "Generate image gallery from a run (usage: task gallery:generate -- [RUN_ID])"
+    cmds:
+      - uv run python scripts/mass_generate_gallery.py {{.CLI_ARGS}}
 
   thumbnail-test:
     desc: Test AI thumbnail generation with existing run ID
@@ -121,8 +126,8 @@ tasks:
       - sleep 3
       - echo ""
       - echo "⚙️  Configuring automation..."
-      - python scripts/automation.py --skip-cron
-      - python scripts/automation.py --install-cron
+      - uv run python scripts/automation.py --skip-cron
+      - uv run python scripts/automation.py --install-cron
       - echo ""
       - echo "✅ Automation setup complete!"
       - crontab -l
@@ -130,12 +135,12 @@ tasks:
   automation:init:
     desc: Initialize automation services (without cron)
     cmds:
-      - python scripts/automation.py --skip-cron
+      - uv run python scripts/automation.py --skip-cron
 
   automation:cron:
     desc: Install cron schedule for automated workflows
     cmds:
-      - python scripts/automation.py --install-cron
+      - uv run python scripts/automation.py --install-cron
       - echo "✅ Cron installed. Schedule:"
       - crontab -l
 

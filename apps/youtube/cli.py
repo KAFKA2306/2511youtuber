@@ -6,6 +6,11 @@ from typing import List
 
 from src.core.orchestrator import WorkflowOrchestrator
 from src.providers.twitter import TwitterClient
+from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
+from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
+from src.providers.llm import GeminiProvider
+from src.providers.tts import VOICEVOXProvider
+from src.services.image_generation import ZImageTurboService
 from src.steps.audio import AudioSynthesizer
 from src.steps.buzzsprout import BuzzsproutUploader
 from src.steps.intro_outro import IntroOutroConcatenator
@@ -105,22 +110,40 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
         NewsCollector(
             run_id=run_id,
             run_dir=run_dir,
+            providers=_build_news_providers(config.providers.news, Config.get_default_gemini_model()),
             query=news_cfg.query,
             count=news_cfg.count,
             recent_topics_runs=news_cfg.recent_topics_runs,
             recent_topics_max_chars=news_cfg.recent_topics_max_chars,
             recent_topics_min_token_length=news_cfg.recent_topics_min_token_length,
             recent_topics_stopwords=news_cfg.recent_topics_stopwords,
-            providers_config=config.providers.news,
-            gemini_model=Config.get_default_gemini_model(),
         ),
-        ScriptGenerator(run_id=run_id, run_dir=run_dir, speakers_config=script_cfg.speakers),
+        ScriptGenerator(
+            run_id=run_id,
+            run_dir=run_dir,
+            llm_provider=GeminiProvider(model=Config.get_default_gemini_model()),
+            speakers_config=script_cfg.speakers
+        ),
         AudioSynthesizer(
             run_id=run_id,
             run_dir=run_dir,
-            voicevox_config=voicevox_config,
-            speaker_aliases=_speaker_aliases(script_cfg.speakers),
-            voice_parameters=voicevox_config.get("voice_parameters", {}),
+            tts_provider=VOICEVOXProvider(
+                **{k: v for k, v in config.providers.tts.voicevox.model_dump().items() if k not in ("enabled", "voice_parameters")},
+                aliases={
+                    script_cfg.speakers.analyst.name: script_cfg.speakers.analyst.aliases,
+                    script_cfg.speakers.reporter.name: script_cfg.speakers.reporter.aliases,
+                    script_cfg.speakers.narrator.name: script_cfg.speakers.narrator.aliases,
+                },
+                voice_parameters=config.providers.tts.voicevox.voice_parameters,
+            ),
+            voicevox_config=config.providers.tts.voicevox.model_dump(),
+            speaker_aliases={
+                script_cfg.speakers.analyst.name: script_cfg.speakers.analyst.aliases,
+                script_cfg.speakers.reporter.name: script_cfg.speakers.reporter.aliases,
+                script_cfg.speakers.narrator.name: script_cfg.speakers.narrator.aliases,
+            },
+            bgm_config=None, 
+            voice_parameters=config.providers.tts.voicevox.voice_parameters,
         ),
         SubtitleFormatter(
             run_id=run_id,
@@ -156,9 +179,13 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
 
         steps.append(
             SceneGenerator(
-                run_id=run_id,
-                run_dir=run_dir,
-                scene_config=config.steps.scene_generator.model_dump(),
+            run_id=run_id,
+            run_dir=run_dir,
+            image_service=ZImageTurboService(
+                model_path=config.steps.scene_generator.model_path,
+                device=config.steps.scene_generator.device,
+            ),
+            scene_config=config.steps.scene_generator.model_dump(),
             )
         )
 
@@ -249,3 +276,20 @@ def _create_run_id() -> str:
 def _speaker_aliases(speakers) -> dict[str, List[str]]:
     profiles = (speakers.analyst, speakers.reporter, speakers.narrator)
     return {profile.name: profile.aliases for profile in profiles}
+
+
+def _build_news_providers(config, gemini_model: str) -> List:
+    providers = []
+    if config and config.perplexity and config.perplexity.enabled:
+        providers.append(
+            PerplexityNewsProvider(
+                model=config.perplexity.model,
+                temperature=config.perplexity.temperature,
+                max_tokens=config.perplexity.max_tokens,
+                search_recency_filter=config.perplexity.search_recency_filter,
+            )
+        )
+    else:
+        providers.append(PerplexityNewsProvider())
+    providers.append(GeminiNewsProvider(model=gemini_model))
+    return providers

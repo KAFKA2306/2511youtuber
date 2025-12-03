@@ -10,7 +10,8 @@ import yaml
 from src.core.io_utils import load_json, write_text
 from src.core.step import Step
 from src.models import NewsItem, Script, ScriptContextNotes
-from src.providers.llm import GeminiProvider, load_prompt_template
+from src.providers.base import Provider
+from src.providers.llm import load_prompt_template
 from src.tracking import AimTracker
 from src.utils.history import load_previous_context
 from src.utils.text import extract_code_block
@@ -20,7 +21,13 @@ class ScriptGenerator(Step):
     name = "generate_script"
     output_filename = "script.json"
 
-    def __init__(self, run_id: str, run_dir: Path, speakers_config: Any | None = None):
+    def __init__(
+        self,
+        run_id: str,
+        run_dir: Path,
+        llm_provider: Provider,
+        speakers_config: Any | None = None,
+    ):
         super().__init__(run_id, run_dir)
         if not speakers_config:
             raise ValueError("Speaker configuration is required")
@@ -32,7 +39,7 @@ class ScriptGenerator(Step):
             data = data["speakers"]
         self.speakers = self._extract_speakers(data)
         self.carryover_notes = self._load_previous_context(run_dir)
-        self.provider = GeminiProvider()
+        self.provider = llm_provider
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
         news_path = Path(inputs.get("collect_news", ""))

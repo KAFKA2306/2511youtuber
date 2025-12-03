@@ -211,6 +211,20 @@ class ThumbnailStepConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+
+
+class SceneGeneratorStepConfig(BaseModel):
+    enabled: bool = False
+    images_per_video: int = 4
+    variants_per_type: int = 2
+    width: int = 1280
+    height: int = 720
+    num_steps: int = 9
+    scene_duration_seconds: int = 30
+    model_path: str = "external/hf-cache-hub/models/Z-Image-Turbo"
+    device: str = "cuda"
+
+
 class AIThumbnailStepConfig(BaseModel):
     enabled: bool = False
     width: int = 1920
@@ -276,6 +290,7 @@ class StepsConfig(BaseModel):
     video: VideoStepConfig
     thumbnail: ThumbnailStepConfig
     thumbnail_ai: AIThumbnailStepConfig = Field(default_factory=AIThumbnailStepConfig)
+    scene_generator: SceneGeneratorStepConfig = Field(default_factory=SceneGeneratorStepConfig)
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
     twitter: TwitterStepConfig
@@ -300,6 +315,7 @@ class VOICEVOXProviderConfig(BaseModel):
     speakers: Dict[str, int]
     manager_script: str | None = None
     auto_start: bool = False
+    voice_parameters: Dict = Field(default_factory=dict)
 
 
 class TTSProvidersConfig(BaseModel):

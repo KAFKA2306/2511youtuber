@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Dict, List
 
 from src.core.io_utils import load_json
+from src.models import Script, ScriptSegment
 from src.core.step import Step
 from src.services.image_generation import (
     ImageGenerationRequest,
     ImageGenerationService,
-    ZImageTurboService,
 )
 from src.utils.logger import get_logger
 
@@ -281,33 +281,25 @@ class SceneGenerator(Step):
         self,
         run_id: str,
         run_dir: Path,
+        image_service: ImageGenerationService,
         scene_config: Dict | None = None,
-        image_service: ImageGenerationService | None = None,
-    ) -> None:
+        prompts_config: Dict | None = None,
+    ):
         super().__init__(run_id, run_dir)
-        cfg = dict(scene_config or {})
-        self.enabled = bool(cfg.get("enabled", False))
-        self.images_per_video = int(cfg.get("images_per_video", 4))
-        self.variants_per_type = int(cfg.get("variants_per_type", 2))
-        self.width = int(cfg.get("width", 1280))
-        self.height = int(cfg.get("height", 720))
-        self.num_steps = int(cfg.get("num_steps", 9))
-        self.scene_duration_seconds = float(cfg.get("scene_duration_seconds", 30.0))
-        self.batch_size = int(cfg.get("batch_size", 1))
-        self.compile_model = bool(cfg.get("compile_model", False))
+        self.scene_config = scene_config or {}
+        self.prompts_config = prompts_config or {}
+        self.image_service = image_service
 
-        # Dependency injection: use provided service or create default
-        if image_service is None:
-            model_path = Path(cfg.get("model_path", "external/hf-cache-hub/models/Z-Image-Turbo"))
-            device = str(cfg.get("device", "cuda"))
-            self.image_service = ZImageTurboService(
-                model_path=model_path,
-                device=device,
-                batch_size=self.batch_size,
-                compile_model=self.compile_model,
-            )
-        else:
-            self.image_service = image_service
+        self.enabled = bool(self.scene_config.get("enabled", False))
+        self.images_per_video = int(self.scene_config.get("images_per_video", 4))
+        self.variants_per_type = int(self.scene_config.get("variants_per_type", 2))
+        self.width = int(self.scene_config.get("width", 1280))
+        self.height = int(self.scene_config.get("height", 720))
+        self.num_steps = int(self.scene_config.get("num_steps", 9))
+        self.scene_duration_seconds = float(self.scene_config.get("scene_duration_seconds", 30.0))
+        self.batch_size = int(self.scene_config.get("batch_size", 1))
+        self.compile_model = bool(self.scene_config.get("compile_model", False))
+
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_dir = self.get_output_path().parent
