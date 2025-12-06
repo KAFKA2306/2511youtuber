@@ -211,8 +211,6 @@ class ThumbnailStepConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-
-
 class SceneGeneratorStepConfig(BaseModel):
     enabled: bool = False
     images_per_video: int = 4
@@ -282,6 +280,21 @@ class BuzzsproutStepConfig(BaseModel):
     publish_immediately: bool = True
 
 
+class LinkedInStepConfig(BaseModel):
+    enabled: bool = False
+    dry_run: bool = True
+    access_token: str | None = None
+    author_urn: str | None = None
+
+
+class HatenaStepConfig(BaseModel):
+    enabled: bool = False
+    dry_run: bool = True
+    hatena_id: str | None = None
+    blog_id: str | None = None
+    api_key: str | None = None
+
+
 class StepsConfig(BaseModel):
     news: NewsStepConfig
     script: ScriptStepConfig
@@ -294,6 +307,8 @@ class StepsConfig(BaseModel):
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
     twitter: TwitterStepConfig
+    linkedin: LinkedInStepConfig = Field(default_factory=LinkedInStepConfig)
+    hatena: HatenaStepConfig = Field(default_factory=HatenaStepConfig)
     podcast: PodcastStepConfig
     buzzsprout: BuzzsproutStepConfig
 

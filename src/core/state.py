@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class WorkflowState(BaseModel):
     run_id: str
+    aim_run_id: str | None = None
     status: Literal["running", "completed", "failed", "partial"] = "running"
     completed_steps: List[str] = Field(default_factory=list)
     outputs: Dict[str, str] = Field(default_factory=dict)

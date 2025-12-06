@@ -282,8 +282,9 @@ def test_intro_outro_concatenation(tmp_path: Path) -> None:
     outro_dur = get_audio_duration(outro_path)
 
     expected_duration = duration_before + intro_dur + outro_dur
-    assert abs(duration_after - expected_duration) < 1.0, \
+    assert abs(duration_after - expected_duration) < 1.0, (
         f"Duration mismatch: {duration_after:.1f}s vs expected {expected_duration:.1f}s"
+    )
 
     print(f"✓ Intro/outro concat works: {duration_before:.1f}s → {duration_after:.1f}s")
 
@@ -346,6 +347,7 @@ def test_thumbnail_generation(tmp_path: Path) -> None:
 
     # Verify image dimensions
     from PIL import Image
+
     with Image.open(thumbnail_path) as img:
         width, height = img.size
         assert width >= 1280, f"Thumbnail width too small: {width}"
@@ -382,6 +384,7 @@ def test_subtitle_timing_matches_audio(tmp_path: Path) -> None:
     # Parse SRT to find last timestamp
     srt_content = subtitle_path.read_text(encoding="utf-8")
     import re
+
     timestamps = re.findall(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})", srt_content)
 
     if timestamps:

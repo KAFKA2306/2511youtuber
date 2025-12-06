@@ -113,8 +113,11 @@ class GeminiProvider:
 
                     # Handle 503 Service Unavailable (overloaded)
                     if "503" in error_str or "overloaded" in error_str.lower():
-                        wait_time = 2 * (2 ** retry)  # 2s, 4s, 8s
-                        print(f"⚠️  {model} overloaded (key {key_idx + 1}/{max_retries}, retry {retry + 1}/{backoff_retries}), sleeping {wait_time}s...")
+                        wait_time = 2 * (2**retry)  # 2s, 4s, 8s
+                        print(
+                            f"⚠️  {model} overloaded (key {key_idx + 1}/{max_retries}, "
+                            f"retry {retry + 1}/{backoff_retries}), sleeping {wait_time}s..."
+                        )
                         time.sleep(wait_time)
                         continue
 
@@ -139,8 +142,18 @@ class GeminiProvider:
         return f"gemini/{value}"
 
 
-def load_prompt_template(template_name: str) -> str:
+def load_prompt_template(template_name: str, run_id: str | None = None) -> str:
     prompts_path = Path(__file__).parent.parent.parent / "config" / "prompts.yaml"
-    with open(prompts_path) as f:
+    with open(prompts_path, "r", encoding="utf-8") as f:
         prompts = yaml.safe_load(f)
-    return prompts[template_name]["user_template"]
+
+    section = prompts[template_name]
+
+    if run_id:
+        from src.tracking import AimTracker
+
+        tracker = AimTracker.get_instance(run_id)
+        raw_content = yaml.dump(section, allow_unicode=True, default_flow_style=False)
+        tracker.track_template_version(template_name, raw_content)
+
+    return section["user_template"]

@@ -17,8 +17,21 @@ class ScriptSegment(BaseModel):
     text: str
 
 
+class SocialPlatformContent(BaseModel):
+    post_text: str
+    image_prompt: str = ""
+    slide_content: List[str] = Field(default_factory=list)
+
+
+class SocialContent(BaseModel):
+    twitter: SocialPlatformContent
+    linkedin: SocialPlatformContent
+    hatena_blog: SocialPlatformContent
+
+
 class Script(BaseModel):
     segments: List[ScriptSegment]
+    social_content: SocialContent | None = None
     total_duration_estimate: float = 0.0
     recent_topics_note: str = ""
     next_theme_note: str = ""

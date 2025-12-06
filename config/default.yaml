@@ -5,7 +5,7 @@ workflow:
 steps:
   news:
     count: 3
-    query: "bloomberg OR 最高値 OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
+    query: "bloomberg OR finance.yahoo OR news.qq OR kafkafinancialgroup.hatenablog OR 日経平均 OR 米国債 OR 高配当 OR 新NISA OR 決算 OR earnings OR 出来高"
     recent_topics_runs: 5
     recent_topics_max_chars: 500
     recent_topics_min_token_length: 2
@@ -288,6 +288,19 @@ steps:
     dry_run: true
     clip_duration_seconds: 60
     start_offset_seconds: 0
+
+  linkedin:
+    enabled: false
+    dry_run: true
+    access_token: "linkedin_access_token"
+    author_urn: "urn:li:person:YOUR_ID"
+
+  hatena:
+    enabled: false
+    dry_run: true
+    hatena_id: "your_hatena_id"
+    blog_id: "your_blog_id.hatenablog.com"
+    api_key: "hatena_api_key"
 
   podcast:
     enabled: false

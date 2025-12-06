@@ -12,6 +12,7 @@ import torch
 @dataclass
 class ImageGenerationRequest:
     """Request for image generation."""
+
     prompt: str
     negative_prompt: str = ""
     width: int = 1280
@@ -24,6 +25,7 @@ class ImageGenerationRequest:
 @dataclass
 class ImageGenerationResult:
     """Result of image generation."""
+
     image: Any  # PIL.Image.Image
     seed: int
     prompt: str
@@ -36,10 +38,7 @@ class ImageGenerationService(Protocol):
         """Generate a single image."""
         ...
 
-    def generate_batch(
-        self,
-        requests: List[ImageGenerationRequest]
-    ) -> List[ImageGenerationResult]:
+    def generate_batch(self, requests: List[ImageGenerationRequest]) -> List[ImageGenerationResult]:
         """Generate multiple images in batch."""
         ...
 
@@ -82,10 +81,7 @@ class ZImageTurboService:
         results = self.generate_batch([request])
         return results[0]
 
-    def generate_batch(
-        self,
-        requests: List[ImageGenerationRequest]
-    ) -> List[ImageGenerationResult]:
+    def generate_batch(self, requests: List[ImageGenerationRequest]) -> List[ImageGenerationResult]:
         """Generate multiple images in batch.
 
         Automatically handles batching based on configured batch_size.
@@ -97,7 +93,7 @@ class ZImageTurboService:
 
         results = []
         for i in range(0, len(requests), self.batch_size):
-            batch = requests[i:i + self.batch_size]
+            batch = requests[i : i + self.batch_size]
             batch_results = self._generate_batch_internal(pipe, batch)
             results.extend(batch_results)
 
@@ -167,9 +163,7 @@ class ZImageTurboService:
             from diffusers import ZImagePipeline
 
             self._pipeline = ZImagePipeline.from_pretrained(
-                str(self.model_path),
-                torch_dtype=torch.bfloat16,
-                low_cpu_mem_usage=False
+                str(self.model_path), torch_dtype=torch.bfloat16, low_cpu_mem_usage=False
             ).to(self.device)
 
             # Optionally compile the model

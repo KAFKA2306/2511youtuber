@@ -13,7 +13,7 @@ from src.steps.remotion_renderer import RemotionRenderer
 def test_remotion_basic_render(tmp_path: Path) -> None:
     """
     Test basic Remotion rendering with real subprocess call.
-    
+
     Prerequisites:
     - remotion/ directory with npm packages installed
     - npm install already run
@@ -34,7 +34,7 @@ def test_remotion_basic_render(tmp_path: Path) -> None:
         "3\n"
         "00:00:04,000 --> 00:00:06,000\n"
         "Testing subtitle rendering.\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
     # Create empty audio file placeholder
@@ -47,25 +47,21 @@ def test_remotion_basic_render(tmp_path: Path) -> None:
 
     # Check if Remotion project exists
     if not renderer.remotion_project_dir.exists():
-        pytest.skip(
-            "Remotion project not found. "
-            "Run: cd remotion && npm install"
-        )
+        pytest.skip("Remotion project not found. Run: cd remotion && npm install")
 
     # Check if node_modules exists
     if not (renderer.remotion_project_dir / "node_modules").exists():
-        pytest.skip(
-            "Remotion dependencies not installed. "
-            "Run: cd remotion && npm install"
-        )
+        pytest.skip("Remotion dependencies not installed. Run: cd remotion && npm install")
 
     # NOTE: This test will fail with empty audio file
     # For now, just verify the Python integration works
     try:
-        result_path = renderer.execute({
-            "format_subtitles": subtitles_path,
-            "synthesize_audio": audio_path,
-        })
+        result_path = renderer.execute(
+            {
+                "format_subtitles": subtitles_path,
+                "synthesize_audio": audio_path,
+            }
+        )
 
         # If we get here, rendering succeeded
         assert result_path.exists(), f"Output video not found: {result_path}"
@@ -102,14 +98,8 @@ def test_remotion_props_preparation(tmp_path: Path) -> None:
     # Create test files
     srt_path = tmp_path / "test.srt"
     srt_path.write_text(
-        "1\n"
-        "00:00:00,000 --> 00:00:02,000\n"
-        "First subtitle\n"
-        "\n"
-        "2\n"
-        "00:00:02,000 --> 00:00:04,000\n"
-        "Second subtitle\n",
-        encoding="utf-8"
+        "1\n00:00:00,000 --> 00:00:02,000\nFirst subtitle\n\n2\n00:00:02,000 --> 00:00:04,000\nSecond subtitle\n",
+        encoding="utf-8",
     )
 
     audio_path = tmp_path / "test.wav"
@@ -146,4 +136,5 @@ def test_remotion_props_preparation(tmp_path: Path) -> None:
 def test_remotion_import() -> None:
     """Verify RemotionRenderer can be imported."""
     from src.steps.remotion_renderer import RemotionRenderer
+
     assert RemotionRenderer is not None

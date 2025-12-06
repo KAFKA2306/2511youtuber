@@ -5,11 +5,10 @@ from pathlib import Path
 from typing import List
 
 from src.core.orchestrator import WorkflowOrchestrator
-from src.providers.twitter import TwitterClient
-from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
-from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
 from src.providers.llm import GeminiProvider
+from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
 from src.providers.tts import VOICEVOXProvider
+from src.providers.twitter import TwitterClient
 from src.services.image_generation import ZImageTurboService
 from src.steps.audio import AudioSynthesizer
 from src.steps.buzzsprout import BuzzsproutUploader
@@ -18,6 +17,8 @@ from src.steps.metadata import MetadataAnalyzer
 from src.steps.news import NewsCollector
 from src.steps.podcast import PodcastExporter
 from src.steps.script import ScriptGenerator
+from src.steps.social.hatena import HatenaConfig, HatenaStep
+from src.steps.social.linkedin import LinkedInConfig, LinkedInStep
 from src.steps.subtitle import SubtitleFormatter
 from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.twitter import TwitterPoster
@@ -79,7 +80,6 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     news_cfg = config.steps.news
     script_cfg = config.steps.script
     voicevox_cfg = config.providers.tts.voicevox
-    subtitle_cfg = config.steps.subtitle
     video_cfg = config.steps.video
     audio_cfg = config.steps.audio
     metadata_cfg = config.steps.metadata.model_dump()
@@ -96,12 +96,6 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     if video_cfg.crf is not None and "crf" not in encoder_options:
         encoder_options["crf"] = str(video_cfg.crf)
     encoder_global_args = [str(arg) for arg in video_cfg.encoder_global_args]
-    subtitle_style = video_cfg.subtitles
-    margin_l = subtitle_style.margin_l if subtitle_style else 0
-    margin_r = subtitle_style.margin_r if subtitle_style else 0
-    wrap_width_pixels = SubtitleFormatter.safe_pixel_width(video_cfg.resolution, margin_l, margin_r)
-    font_path = subtitle_style.font_path if subtitle_style else None
-    font_size = subtitle_style.font_size if subtitle_style else None
     resolution_values = video_cfg.resolution.lower().split("x")
     video_width = int(resolution_values[0])
     video_height = int(resolution_values[1])
@@ -122,13 +116,17 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             run_id=run_id,
             run_dir=run_dir,
             llm_provider=GeminiProvider(model=Config.get_default_gemini_model()),
-            speakers_config=script_cfg.speakers
+            speakers_config=script_cfg.speakers,
         ),
         AudioSynthesizer(
             run_id=run_id,
             run_dir=run_dir,
             tts_provider=VOICEVOXProvider(
-                **{k: v for k, v in config.providers.tts.voicevox.model_dump().items() if k not in ("enabled", "voice_parameters")},
+                **{
+                    k: v
+                    for k, v in config.providers.tts.voicevox.model_dump().items()
+                    if k not in ("enabled", "voice_parameters")
+                },
                 aliases={
                     script_cfg.speakers.analyst.name: script_cfg.speakers.analyst.aliases,
                     script_cfg.speakers.reporter.name: script_cfg.speakers.reporter.aliases,
@@ -142,7 +140,7 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 script_cfg.speakers.reporter.name: script_cfg.speakers.reporter.aliases,
                 script_cfg.speakers.narrator.name: script_cfg.speakers.narrator.aliases,
             },
-            bgm_config=None, 
+            bgm_config=None,
             voice_parameters=config.providers.tts.voicevox.voice_parameters,
         ),
         SubtitleFormatter(
@@ -179,13 +177,13 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
 
         steps.append(
             SceneGenerator(
-            run_id=run_id,
-            run_dir=run_dir,
-            image_service=ZImageTurboService(
-                model_path=config.steps.scene_generator.model_path,
-                device=config.steps.scene_generator.device,
-            ),
-            scene_config=config.steps.scene_generator.model_dump(),
+                run_id=run_id,
+                run_dir=run_dir,
+                image_service=ZImageTurboService(
+                    model_path=config.steps.scene_generator.model_path,
+                    device=config.steps.scene_generator.device,
+                ),
+                scene_config=config.steps.scene_generator.model_dump(),
             )
         )
 
@@ -247,6 +245,24 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                     sample_rate=audio_cfg.sample_rate,
                 )
             )
+
+    if config.steps.linkedin.enabled:
+        steps.append(
+            LinkedInStep(
+                run_id=run_id,
+                run_dir=run_dir,
+                config=LinkedInConfig(**config.steps.linkedin.model_dump(exclude={"enabled"})),
+            )
+        )
+
+    if config.steps.hatena.enabled:
+        steps.append(
+            HatenaStep(
+                run_id=run_id,
+                run_dir=run_dir,
+                config=HatenaConfig(**config.steps.hatena.model_dump(exclude={"enabled"})),
+            )
+        )
 
     if config.steps.podcast.enabled:
         steps.append(

@@ -37,7 +37,11 @@ class AIThumbnailGenerator(Step):
             return output_path
         metadata = load_json(Path(inputs["analyze_metadata"])) if inputs.get("analyze_metadata") else None
         title = self._resolve_title(metadata)
-        description, tags = (str(metadata.get("description", "")).strip(), ", ".join(metadata.get("tags", []))) if metadata else ("", "")
+        description, tags = (
+            (str(metadata.get("description", "")).strip(), ", ".join(metadata.get("tags", [])))
+            if metadata
+            else ("", "")
+        )
         prompts = load_prompts()
         prompt_en = self._generate_prompt(prompts, title, description, tags)
         negative_prompt = prompts.get("thumbnail_ai", {}).get("negative_prompt", "")
@@ -73,14 +77,18 @@ class AIThumbnailGenerator(Step):
         composition = ai_config.get("composition_guidelines", "")
         quality = ai_config.get("quality_modifiers", "")
         trans = prompts.get("thumbnail_translation", {})
-        return GeminiProvider().execute(
-            prompt=trans.get("user_template", "").format(
-                fixed_core=fixed_core,
-                title=title,
-                description=description,
-                tags=tags,
-                quality_modifiers=quality,
-                composition_guidelines=composition,
-            ),
-            system_prompt=trans.get("system", ""),
-        ).strip()
+        return (
+            GeminiProvider()
+            .execute(
+                prompt=trans.get("user_template", "").format(
+                    fixed_core=fixed_core,
+                    title=title,
+                    description=description,
+                    tags=tags,
+                    quality_modifiers=quality,
+                    composition_guidelines=composition,
+                ),
+                system_prompt=trans.get("system", ""),
+            )
+            .strip()
+        )

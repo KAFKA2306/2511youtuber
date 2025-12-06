@@ -62,6 +62,15 @@ class AimTracker:
         if self.run_id:
             self._run["run_id"] = self.run_id
 
+    @property
+    def run_hash(self) -> str:
+        """Return the internal Aim run hash."""
+        return self._run.hash if self._run else ""
+
+    def track_template_version(self, template_name: str, raw_content: str) -> None:
+        """Track the raw content of a prompt template version."""
+        self._run[f"{template_name}_raw_template"] = raw_content
+
     def track_prompt(
         self,
         step_name: str,

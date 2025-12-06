@@ -86,7 +86,7 @@ class MetadataAnalyzer(Step):
         return Path(write_text(self.get_output_path(), json.dumps(output, ensure_ascii=False, indent=2)))
 
     def _generate_metadata_with_llm(self, news_items: List[Dict], script) -> Dict:
-        template = load_prompt_template("metadata_generation")
+        template = load_prompt_template("metadata_generation", self.run_id)
         news_summary = self._format_news(news_items)
         script_excerpt = "\n".join(f"{seg.speaker}: {seg.text}" for seg in script.segments[:5])
         prompt = template.format(news_items=news_summary, script_excerpt=script_excerpt)

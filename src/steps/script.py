@@ -75,7 +75,7 @@ class ScriptGenerator(Step):
         )
 
     def _build_prompt(self, news_items: List[NewsItem]) -> str:
-        template = load_prompt_template("script_generation")
+        template = load_prompt_template("script_generation", self.run_id)
         news_text = "\n\n".join(f"タイトル: {item.title}\n要約: {item.summary}" for item in news_items)
         side_theme = self._pick_side_theme(news_items)
         # Calculate duration range in minutes
@@ -124,6 +124,16 @@ class ScriptGenerator(Step):
         data = self._coerce_to_dict(raw.strip(), depth)
         if not isinstance(data, dict):
             raise ValueError("Script output must be a mapping")
+
+        # Handle legacy format (just segments) vs new format (segments + social_content)
+        if "segments" not in data:
+            # Try to see if the dict itself is a list of segments (legacy edge case)
+            segments_from_mapping = self._dialog_segments_from_mapping(data)
+            if segments_from_mapping:
+                data = {"segments": segments_from_mapping}
+            else:
+                raise ValueError("Script output missing 'segments' key")
+
         script = Script(**data)
         for seg in script.segments:
             seg.text = re.sub(r"。(?![\r\n]|$)", "。\n", seg.text)
@@ -132,22 +142,44 @@ class ScriptGenerator(Step):
     def _coerce_to_dict(self, raw: str, depth: int) -> Any:
         if depth < 0:
             raise ValueError("Maximum recursion depth exceeded during parsing")
+
+        # Try JSON parsing first (preferred for new format)
+        try:
+            # Extract JSON block if wrapped in markdown code fence
+            json_candidate = extract_code_block(raw) or raw
+            return json.loads(json_candidate)
+        except json.JSONDecodeError:
+            # Attempt to fix common LLM JSON errors
+            try:
+                fixed = self._fix_malformed_json(json_candidate)
+                return json.loads(fixed)
+            except json.JSONDecodeError:
+                pass
+
+        # Fallback to legacy parsing logic
+        stripped = raw.strip()
         for candidate in self._candidates(raw):
             for loader in (yaml.safe_load, json.loads):
-                parsed = loader(candidate)
-                if isinstance(parsed, str):
-                    return self._coerce_to_dict(parsed, depth - 1)
-                if isinstance(parsed, dict) and "segments" not in parsed:
-                    if mapped := self._dialog_segments_from_mapping(parsed):
-                        return {"segments": mapped}
-                return parsed
-        stripped = raw.strip()
-        if stripped.startswith('"') and stripped.endswith('"'):
-            return self._coerce_to_dict(stripped[1:-1], depth - 1)
+                try:
+                    parsed = loader(candidate)
+                    if isinstance(parsed, str):
+                        if parsed != raw:
+                            return self._coerce_to_dict(parsed, depth - 1)
+                        continue
+                    if isinstance(parsed, dict):
+                        return parsed
+                    # Handle top-level list (legacy YAML format)
+                    if isinstance(parsed, list):
+                        return {"segments": parsed}
+                except Exception:
+                    continue
+
+        # Final fallbacks for plain text or broken YAML
         if fallback_yaml := self._segments_from_yaml_like(stripped):
             return {"segments": fallback_yaml}
         if fallback := self._dialog_segments_from_text(stripped):
             return {"segments": fallback}
+
         raise ValueError("Unable to parse script output")
 
     def _candidates(self, raw: str) -> List[str]:
@@ -192,6 +224,13 @@ class ScriptGenerator(Step):
         if normalized_quoted not in variants:
             variants.append(normalized_quoted)
         return variants
+
+    def _fix_malformed_json(self, text: str) -> str:
+        if '"social_content":' in text:
+            text = re.sub(
+                r'(\}\s*)\](\s*,\s*"(?:total_duration_estimate|recent_topics_note|next_theme_note)")', r"\1}\2", text
+            )
+        return text
 
     def _quote_text_lines(self, text: str) -> str:
         lines = []

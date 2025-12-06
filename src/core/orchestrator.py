@@ -20,6 +20,8 @@ class WorkflowOrchestrator:
     def execute(self) -> WorkflowResult:
         start_time = datetime.now()
         tracker = AimTracker.get_instance(self.run_id)
+        self.state.aim_run_id = tracker.run_hash
+        self.state.save(self.run_dir)
         current_step: Step | None = None
 
         try:

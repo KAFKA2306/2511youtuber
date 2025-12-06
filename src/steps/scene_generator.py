@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Dict, List
 
 from src.core.io_utils import load_json
-from src.models import Script, ScriptSegment
 from src.core.step import Step
 from src.services.image_generation import (
     ImageGenerationRequest,
@@ -22,8 +21,10 @@ logger = get_logger(__name__)
 # DOMAIN MODELS
 # ============================================================
 
+
 class SceneType(str, Enum):
     """Types of scene images to generate."""
+
     LITERAL = "literal"  # News context: charts, financial districts, trading floors
     ABSTRACT = "abstract"  # Mood/sentiment: stormy ocean, golden sunrise, geometric patterns
     ATMOSPHERIC = "atmospheric"  # Background optimized: soft bokeh, blurred city lights
@@ -32,6 +33,7 @@ class SceneType(str, Enum):
 @dataclass
 class SceneVariant:
     """Represents a single generated scene image variant."""
+
     scene_index: int
     scene_type: SceneType
     variant_index: int
@@ -46,6 +48,7 @@ class SceneVariant:
 @dataclass
 class SceneContext:
     """Rich context for scene generation."""
+
     title: str
     description: str
     segments: List[Dict]
@@ -58,13 +61,14 @@ class SceneContext:
 # SERVICE LAYER
 # ============================================================
 
+
 class ContextExtractor:
     """Extracts rich context from news and stats data."""
 
     @staticmethod
     def extract_news_keywords(news_data: Dict | List) -> List[str]:
         """Extract top keywords from news items.
-        
+
         Handles both formats:
         - Old: list of news items directly
         - New: dict with "news_items" key
@@ -263,10 +267,11 @@ class PromptBuilder:
 # MAIN STEP
 # ============================================================
 
+
 class SceneGenerator(Step):
     """
     Generate atmospheric scene images for video backgrounds using Z-Image-Turbo.
-    
+
     Implements Mass Generation Strategy:
     - Generates multiple variants per scene (Literal, Abstract, Atmospheric)
     - Uses rich context from news, stats, and script
@@ -299,7 +304,6 @@ class SceneGenerator(Step):
         self.scene_duration_seconds = float(self.scene_config.get("scene_duration_seconds", 30.0))
         self.batch_size = int(self.scene_config.get("batch_size", 1))
         self.compile_model = bool(self.scene_config.get("compile_model", False))
-
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_dir = self.get_output_path().parent
@@ -344,7 +348,7 @@ class SceneGenerator(Step):
                 "scene_duration_seconds": self.scene_duration_seconds,
                 "width": self.width,
                 "height": self.height,
-            }
+            },
         }
 
         output_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -363,6 +367,7 @@ class SceneGenerator(Step):
 
         # Load scene-specific prompts config
         import yaml
+
         scene_prompts_path = Path("config/scene_prompts.yaml")
         with open(scene_prompts_path, "r", encoding="utf-8") as f:
             scene_prompts_config = yaml.safe_load(f)
@@ -379,9 +384,7 @@ class SceneGenerator(Step):
             scene_dir.mkdir(exist_ok=True)
 
             # Get relevant segments
-            segment_group = self._get_segments_for_timestamp(
-                context.segments, timestamp, self.scene_duration_seconds
-            )
+            segment_group = self._get_segments_for_timestamp(context.segments, timestamp, self.scene_duration_seconds)
             segment_text = " ".join([s.get("text", "") for s in segment_group])[:500]
             segment_indices = [s.get("index", i) for i, s in enumerate(segment_group)]
 
@@ -414,8 +417,8 @@ class SceneGenerator(Step):
         for variant, result in zip(variants, results):
             result.image.save(variant.image_path)
             logger.info(
-                f"Saved scene {variant.scene_index+1}/{len(scene_timestamps)} "
-                f"[{variant.scene_type.value}] variant {variant.variant_index+1}/{self.variants_per_type} "
+                f"Saved scene {variant.scene_index + 1}/{len(scene_timestamps)} "
+                f"[{variant.scene_type.value}] variant {variant.variant_index + 1}/{self.variants_per_type} "
                 f"to {variant.image_path}"
             )
 
@@ -471,8 +474,6 @@ class SceneGenerator(Step):
 
         return request, variant
 
-
-
     def _calculate_total_duration(self, segments: List[Dict]) -> float:
         """Calculate total duration from segments."""
         total = 0.0
@@ -506,8 +507,7 @@ class SceneGenerator(Step):
             duration = len(text) / 15.0
             seg_end = current_time + duration
 
-            if (current_time <= timestamp + window_seconds / 2 and
-                seg_end >= timestamp - window_seconds / 2):
+            if current_time <= timestamp + window_seconds / 2 and seg_end >= timestamp - window_seconds / 2:
                 result.append({"index": idx, **seg})
 
             current_time = seg_end
@@ -535,9 +535,19 @@ class SceneGenerator(Step):
         entities = []
 
         common_entities = [
-            "Apple", "Google", "Microsoft", "Amazon", "Tesla",
-            "日経平均", "S&P500", "NASDAQ", "ドル円", "ビットコイン",
-            "FRB", "日銀", "ECB"
+            "Apple",
+            "Google",
+            "Microsoft",
+            "Amazon",
+            "Tesla",
+            "日経平均",
+            "S&P500",
+            "NASDAQ",
+            "ドル円",
+            "ビットコイン",
+            "FRB",
+            "日銀",
+            "ECB",
         ]
 
         for entity in common_entities:

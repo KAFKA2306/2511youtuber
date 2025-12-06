@@ -11,7 +11,7 @@ from src.core.step import Step
 class RemotionRenderer(Step):
     """
     Render video using Remotion.dev React framework.
-    
+
     This step bridges the Python workflow with Remotion's programmatic video generation.
     It converts subtitle and audio data into Remotion props and calls the CLI renderer.
     """
@@ -39,13 +39,13 @@ class RemotionRenderer(Step):
     def execute(self, inputs: Dict[str, Path]) -> Path:
         """
         Execute Remotion rendering.
-        
+
         Args:
             inputs: Dictionary with keys:
                 - format_subtitles: Path to .srt subtitle file
                 - synthesize_audio: Path to .wav audio file
                 - generate_scenes (optional): Path to scene manifest JSON
-        
+
         Returns:
             Path to rendered video file
         """
@@ -95,10 +95,10 @@ class RemotionRenderer(Step):
     def _parse_srt(self, srt_path: Path) -> list[dict]:
         """
         Parse SRT subtitle file into Remotion format.
-        
+
         Args:
             srt_path: Path to .srt file
-        
+
         Returns:
             List of subtitle dicts with start, end, and text fields
         """
@@ -130,11 +130,11 @@ class RemotionRenderer(Step):
     def _run_remotion_render(self, props_file: Path, output_path: Path):
         """
         Execute Remotion CLI to render video.
-        
+
         Args:
             props_file: Path to JSON file containing Remotion props
             output_path: Where to save the rendered video
-        
+
         Raises:
             RuntimeError: If Remotion render fails
         """

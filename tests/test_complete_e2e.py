@@ -31,13 +31,13 @@ def assert_valid_file(path: Path, min_size_kb: float = 0.1) -> None:
 def test_full_workflow_with_video_rendering(tmp_path: Path) -> None:
     """
     Complete end-to-end workflow including FFmpeg video rendering.
-    
+
     This is the ULTIMATE validation test:
     - Real Gemini API for news and script
-    - Real Voicevox for audio synthesis  
+    - Real Voicevox for audio synthesis
     - Real FFmpeg for video rendering
     - Validates actual production-ready video output
-    
+
     Expected runtime: 5-10 minutes
     """
     run_id = "test_full_e2e"
@@ -86,13 +86,14 @@ def test_full_workflow_with_video_rendering(tmp_path: Path) -> None:
     assert_valid_file(video_path, min_size_kb=500)
 
     video_duration = get_audio_duration(video_path)
-    assert abs(video_duration - audio_duration) < 2.0, \
+    assert abs(video_duration - audio_duration) < 2.0, (
         f"Video/audio duration mismatch: {video_duration:.1f}s vs {audio_duration:.1f}s"
+    )
 
     print("✅ FULL E2E TEST PASSED")
     print(f"   Video: {video_path}")
     print(f"   Duration: {video_duration:.1f}s")
-    print(f"   Size: {video_path.stat().st_size / (1024*1024):.1f}MB")
+    print(f"   Size: {video_path.stat().st_size / (1024 * 1024):.1f}MB")
 
 
 if __name__ == "__main__":

@@ -5,8 +5,6 @@ from typing import Dict, List
 
 from src.core.step import Step
 from src.providers.base import Provider, execute_with_fallback
-from src.core.step import Step
-from src.providers.base import Provider, execute_with_fallback
 from src.tracking import AimTracker
 from src.utils.history import gather_recent_topics
 
@@ -75,5 +73,3 @@ class NewsCollector(Step):
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump([item.model_dump(mode="json") for item in news_items], f, ensure_ascii=False, indent=2)
         return output_path
-
-

@@ -124,6 +124,8 @@ The repository is organized to separate concerns and facilitate maintenance.
     *   `ThumbnailGenerator`: Creates thumbnails (`thumbnail.png`).
     *   `YouTubeUploader`: Uploads to YouTube.
     *   `TwitterPoster`: Posts clips to X/Twitter.
+    *   `LinkedInPoster`: Posts text/images to LinkedIn (Trust Layer).
+    *   `HatenaPoster`: Posts articles to Hatena Blog (Knowledge Layer).
 
 ### Providers (Interface Adapters)
 -   **`GeminiProvider`**: Handles Google Gemini API calls, retries, and key rotation.
@@ -146,6 +148,8 @@ This file controls the entire behavior of the system.
 -   **`providers`**: Provider-specific settings.
     -   `llm`: Model selection, temperature.
     -   `tts`: Voicevox URL, speaker mapping.
+    -   `linkedin`: Access token, author URN.
+    -   `hatena`: Hatena ID, blog ID, API key.
 
 ### `config/prompts.yaml`
 Contains the prompt templates for LLMs.
@@ -259,6 +263,32 @@ This project supports a "Qualification Series" (e.g., Takken, Boki) in addition 
 -   **State**: Inspect `runs/<run_id>/state.json` to see the status of each step.
 
 ---
+
+## 8. Prompt Management & Versioning
+
+The system automatically versions every prompt template used in a run.
+
+### Reviewing History
+Use the Aim UI to compare prompts and results:
+```bash
+task prompt:review
+```
+Navigate to the dashboard to see inputs, prompts, and outputs side-by-side.
+
+### Restoring a Previous Version
+To revert `config/prompts.yaml` to a previous state:
+
+1.  **Find the Run ID**:
+    *   Use the timestamp folder name (e.g., `20251206_100224`).
+    *   OR check `runs/<timestamp>/state.json` for the `"aim_run_id"`.
+2.  **Run the restoration command**:
+    ```bash
+    task prompt:restore -- <RUN_ID>
+    ```
+    *   Example: `task prompt:restore -- 20251206_100224`
+    *   Options:
+        *   `--dry-run`: Preview changes without writing.
+        *   `--template <name>`: Restore a specific template (default: `script_generation`).
 
 ## Appendices
 
