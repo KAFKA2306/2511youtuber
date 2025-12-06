@@ -285,7 +285,7 @@ steps:
 
   twitter:
     enabled: true
-    dry_run: true
+    dry_run: false
     clip_duration_seconds: 60
     start_offset_seconds: 0
 
