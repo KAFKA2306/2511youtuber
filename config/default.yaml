@@ -284,7 +284,7 @@ steps:
       - "経済"
 
   twitter:
-    enabled: true
+    enabled: false
     dry_run: false
     clip_duration_seconds: 60
     start_offset_seconds: 0
@@ -402,8 +402,8 @@ automation:
         - "python"
         - "scripts/discord_news_bot.py"
   schedules:
-    - name: "workflow_4hourly"
+    - name: "workflow_twice_daily"
       command:
         - "bash"
         - "scripts/run_workflow_cron.sh"
-      cron: "0 */4 * * *"
+      cron: "0 6,18 * * *"
