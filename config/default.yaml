@@ -15,7 +15,7 @@ steps:
       crypto_web3: "ビットコイン 暗号資産 仮想通貨 イーサリアム ブロックチェーン Web3 NFT"
       tech_semicon: "半導体 生成AI 人工知能 テクノロジー DX スタートアップ"
     
-    fetch_count: 50
+    fetch_count: 10
     final_count: 3
     cooldown_hours: 24
     
