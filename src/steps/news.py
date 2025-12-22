@@ -108,20 +108,59 @@ class NewsCollector(Step):
 
     def _select_bucket(self) -> Tuple[str, str]:
         """
-        Select a bucket. 
-        Logic: Hash of run_id or random for simple rotation.
-        User suggested: "Rotate".
+        Select a bucket that is NOT saturated based on recent history.
+        Avoids buckets whose primary entities appear frequently in recent topics.
         """
         if self.bucket_schedule and self.bucket_schedule in self.query_buckets:
             return self.bucket_schedule, self.query_buckets[self.bucket_schedule]
-            
-        keys = list(self.query_buckets.keys())
-        # Use simple hash of run_id (timestamp string) to be deterministic for re-runs of same ID,
-        # but changing for new runs.
-        # run_id "20251222_180000" -> roughly changes every second
-        # If we run 2x a day, we want different buckets.
-        # Let's use random.choice for now as it ensures diversity over time distribution.
-        selected_key = random.choice(keys)
+        
+        # Get recent topics to check for saturation
+        recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
+        
+        # Extract entities from ALL recent topics
+        saturated_entities = set()
+        for topic in recent_topics:
+            saturated_entities.update(self._extract_entities(topic))
+        
+        logger.info(f"Saturated entities from history: {saturated_entities}")
+        
+        # Map buckets to their primary entities
+        bucket_primary_entities = {
+            "macro_economy": {"日銀", "FRB"},
+            "japanese_stock": {"日経平均", "TOPIX", "決算"},
+            "us_stock": {"S&P500", "NYダウ", "NASDAQ"},
+            "forex_rates": {"ドル円"},
+            "commodities": {"原油", "金相場"},
+            "crypto_web3": {"ビットコイン", "イーサリアム"},
+            "tech_semicon": {"エヌビディア"},
+        }
+        
+        # Find buckets that are NOT saturated
+        available_buckets = []
+        for bucket_key in self.query_buckets.keys():
+            primary = bucket_primary_entities.get(bucket_key, set())
+            overlap = primary & saturated_entities
+            if not overlap:  # No overlap = bucket is fresh
+                available_buckets.append(bucket_key)
+                logger.info(f"Bucket '{bucket_key}' is AVAILABLE (no saturation)")
+            else:
+                logger.info(f"Bucket '{bucket_key}' is SATURATED (overlap: {overlap})")
+        
+        # If all buckets are saturated, pick one with least overlap
+        if not available_buckets:
+            logger.warning("All buckets saturated! Selecting one with least entity overlap.")
+            min_overlap = float('inf')
+            best_bucket = list(self.query_buckets.keys())[0]
+            for bucket_key in self.query_buckets.keys():
+                primary = bucket_primary_entities.get(bucket_key, set())
+                overlap_count = len(primary & saturated_entities)
+                if overlap_count < min_overlap:
+                    min_overlap = overlap_count
+                    best_bucket = bucket_key
+            available_buckets = [best_bucket]
+        
+        # Random selection from available buckets
+        selected_key = random.choice(available_buckets)
         return selected_key, self.query_buckets[selected_key]
 
     def _normalize_and_cluster(self, candidates: List[NewsItem]) -> List[List[NewsItem]]:
