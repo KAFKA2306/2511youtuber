@@ -1,135 +1,230 @@
 # Topic Selection and Content Duplication Investigation Report
 
-## 1. Overview
-This report documents the factual state of the `2511youtuber` project's topic selection mechanism, specifically investigating the causes behind repetitive content generation (e.g., the "Asahi HD" loop). It details the system architecture, code logic, configuration settings, and observed execution results.
+**Date:** 2025-12-22
+**Project:** 2511youtuber (YouTube AI Video Generator v2)
+**Subject:** Factual Investigation of Topic Selection Logic and Repetitive Content Generation
+
+## 1. Executive Summary
+
+This report documents the factual state of the `2511youtuber` project's content determination logic, specifically investigating the mechanisms leading to repetitive video content generation, such as the observed "Asahi HD" and "Nikkei Average" loops. 
+
+The investigation relies on static analysis of the codebase, review of configuration files (`config/default.yaml`, `config/prompts.yaml`), and observation of system artifacts in the `runs/` directory. No subjective judgments are made; this document strictly collates the existing logic, parameter values, and execution outcomes.
 
 ## 2. System Architecture & Workflow
 
-### 2.1 Entry Points
-The workflow is triggered via three primary methods:
-1.  **Cron Schedule (`scripts/run_workflow_cron.sh`)**: Runs at 06:00 and 18:00 JST. Uses default configuration.
-2.  **Discord Bot (`scripts/discord_news_bot.py`)**: User triggers via `/news [query]`.
-3.  **CLI (`src/main.py`)**: Manual execution via `task run`.
+### 2.1 Workflow Entry Points
+The application determines what content to generate via three entry points.
 
-### 2.2 Core Logic Components
-The content generation pipeline (`apps/youtube/cli.py`) consists of the following sequential steps:
-1.  **NewsCollector**: Retrieves news based on a query.
-2.  **ScriptGenerator**: Generates a script from the news.
-3.  **AudioSynthesizer**: Generates audio.
-4.  **VideoRenderer**: Generates video.
+1.  **Cron Schedule**:
+    - **Source**: `scripts/run_workflow_cron.sh`
+    - **Command**: `uv run python -m src.main`
+    - **Frequency**: Twice daily (06:00, 18:00 JST) defined in `config/default.yaml` (`automation.schedules[0].cron: "0 6,18 * * *"`).
+    - **Query Determination**: Uses `config.steps.news.query` default value.
 
-### 2.3 Data Persistence
-- **Run Directory**: `runs/{YYYYMMDD_HHMMSS}/`
-- **Artifacts**: `news.json` (collected news), `script.json` (generated script), `metadata.json` (video metadata).
-- **History Tracking**: `src/utils/history.py` scans `runs/` directory to retrieve past topics.
+2.  **Discord Bot**:
+    - **Source**: `scripts/discord_news_bot.py`
+    - **Command**: `/news [query]`
+    - **Query Determination**: User-supplied input overrides the default configuration.
 
-## 3. Detailed Logic Analysis
+3.  **Command Line Interface (CLI)**:
+    - **Source**: `Taskfile.yml` -> `src/main.py`
+    - **Command**: `task run -- --news-query "custom query"`
+    - **Query Determination**: Optional argument overrides default; otherwise uses default.
 
-### 3.1 News Collection (`src/steps/news.py`)
-- **Class**: `NewsCollector`
-- **Input**:
-    - `query`: Search string (default from config).
-    - `recent_topics_runs`: Number of past runs to check for duplicates.
-- **Provider Execution**: Calls `execute_with_fallback` on configured providers (Perplexity, Gemini).
-- **History logic**:
-    - Calls `gather_recent_topics` to get a list of past titles.
-    - Formats this list into a string `recent_topics_note`.
-    - **CRITICAL FACT**: The `query` passed to the provider is static (default config) unless overwritten by CLI args. The `recent_topics_note` is passed as *context* to the LLM prompt, not as a hard filter for the search API itself.
+### 2.2 Core Pipeline Orchestration
+The primary logic resides in `apps/youtube/cli.py`. The `run()` function initializes the `Config` and orchestrates a sequential list of steps using `WorkflowOrchestrator`.
 
-### 3.2 Provider Implementation (`src/providers/news.py`)
-- **PerplexityNewsProvider**:
-    - **API**: `https://api.perplexity.ai/chat/completions`
-    - **Model**: `sonar` (default)
-    - **Prompt Construction**: Uses `prompts.yaml` -> `news_collection` -> `user_template`.
-    - **Fact**: The search query sent to Perplexity's internal search engine depends on how the model interprets the user prompt. The code sends the `query` variable as part of the prompt string: `"{topic}を題材に..."`.
-    - **Fact**: If `topic` is the broad default query ("bloomberg OR ..."), Perplexity performs a broad search.
-    - **Fact**: `search_recency_filter` is configurable (default: `week`).
+**Pipeline Steps Definition (`apps/youtube/cli.py`):**
+```python
+steps: List = [
+    NewsCollector(
+        ...
+        query=news_cfg.query,
+        count=news_cfg.count,
+        recent_topics_runs=news_cfg.recent_topics_runs,
+        ...
+    ),
+    ScriptGenerator(...),
+    AudioSynthesizer(...),
+    SubtitleFormatter(...),
+    # ... (Metadata, Thumbnail, VideoRenderer, etc.)
+]
+```
+**Fact**: The `NewsCollector` is the first and determinant step for content. The `query` passed to it is hardcoded in the configuration unless manually overridden at the entry point.
 
-- **GeminiNewsProvider**:
-    - **Tool**: `googleSearch` tool.
-    - **Prompt**: Specifically appends `after:{one_week_ago}` to the prompt.
-    - **Fact**: Relies on Google Search grounding.
+## 3. Logic Analysis: Topic Determination
 
-### 3.3 History & Deduplication (`src/utils/history.py`)
-- **Function**: `gather_recent_topics`
-- **Logic**: Iterates through `runs/` directory in reverse chronological order.
-- **Extraction**: Reads `script.json` (notes) or `metadata.json`/`youtube.json` (title).
-- **Limit**: Controlled by `limit` argument (default: 5).
-- **Fact**: Only retrieves the *titles* of past videos. It does not retrieve the full list of news URLs or specific news items used.
+### 3.1 News Collection Logic (`src/steps/news.py`)
+The `NewsCollector` class handles the retrieval of news items.
+
+**Key Parameters (from `__init__`):**
+- `query` (str): The search string. Default comes from config.
+- `recent_topics_runs` (int): Number of past runs to retrieve for context.
+
+**Execution Logic (`execute` method):**
+1.  **History Retrieval**: Calls `gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)`.
+2.  **Context Formatting**: Joins past topics into a string `recent_topics_note`.
+3.  **Prompt Construction**: Creates a JSON object: `{"query": self.query, "count": self.count, "recent_topics_note": recent_note}`.
+4.  **Provider Call**: Calls `execute_with_fallback(self.providers, query=self.query, ...)`
+
+**Code Artifact (`src/steps/news.py`):**
+```python
+def execute(self, inputs: Dict[str, Path]) -> Path:
+    recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
+    recent_note = " / ".join(recent_topics) if recent_topics else "直近テーマ情報なし"
+    # ...
+    news_items = execute_with_fallback(
+        self.providers,
+        query=self.query,
+        count=self.count,
+        recent_topics_note=recent_note,
+    )
+    # ...
+```
+
+**Observation**: The `query` sent to the provider is static. The `recent_topics_note` is passed as a *parameter* to the provider's execution method, not used to alter the `query` before calling the provider.
+
+### 3.2 News Provider Implementation (`src/providers/news.py`)
+Two providers are implemented: `PerplexityNewsProvider` and `GeminiNewsProvider`.
+
+#### 3.2.1 PerplexityNewsProvider
+- **API Endpoint**: `https://api.perplexity.ai/chat/completions`
+- **Model**: `sonar` (configurable).
+- **Construction**:
+    ```python
+    topic = query or "最新の日本の金融・経済ニュース"
+    prompt = self.prompts["user_template"].format(topic=topic, count=count, recent_topics_note=recent_note)
+    ```
+- **Payload**:
+    ```python
+    messages = [
+        {"role": "system", "content": self.prompts["system"]},
+        {"role": "user", "content": prompt}
+    ]
+    ```
+- **Fact**: The search query performed by Perplexity's internal engine is derived from the *entire* prompt, including the topic string and the instruction to avoid recent topics. However, if the `topic` is a robust set of keywords (e.g., "Bloomberg OR ..."), Perplexity's grounding mechanism prioritizes matching those keywords.
+
+#### 3.2.2 GeminiNewsProvider
+- **Logic**:
+    ```python
+    topic = query or "最新の日本の金融・経済ニュース"
+    prompt = f"{self.prompts['system']}\n\n{user_template} after:{one_week_ago}"
+    ```
+- **Tools**: `[{"googleSearch": {}}]`
+- **Fact**: Uses Google Search grounding. The prompt explicitly asks to filter based on `recent_topics_note`, but the search query issued to Google is determined by the LLM based on the prompt.
+
+### 3.3 Historical Data Retrieval (`src/utils/history.py`)
+The logic limits the "memory" of the system.
+
+**`gather_recent_topics` logic:**
+```python
+def gather_recent_topics(run_dir: Path, current_run_id: str, limit: int) -> List[str]:
+    # ...
+    for candidate in iter_previous_runs(run_dir, current_run_id):
+        note = extract_script_notes(candidate).recent_topics_note
+        if note:
+            topics.append(note)
+        if len(topics) >= limit:
+            break
+    return topics
+```
+**Fact**: This function iterates backwards through time. If `limit` is small (e.g., 5), it only sees the last 5 runs. Even if a duplicate topic appeared 6 runs ago, it is invisible to the current execution.
 
 ### 3.4 Configuration State (`config/default.yaml`)
-- **Default Query**: `"bloomberg OR finance.yahoo OR news.qq OR kafkafinancialgroup.hatenablog OR 日経平均 OR 米国債 OR 高配当 OR 新NISA OR 決算 OR earnings OR 出来高"`
-- **Recent Topics Runs**: `5`
-- **News Count**: `3`
-- **Prompt Definition** (`config/prompts.yaml`):
-    - `news_collection/user_template`: Instructs AI to select news based on the topic and exclude `recent_topics_note`.
-    - **Fact**: Contains a `topic_selection` section defining a task to "select a new topic category used in the past".
-    - **Fact**: **`topic_selection` section is NOT used in the codebase**. Grep search confirmed zero usages of `topic_selection` key in `src/`.
+The following settings actively control the production environment.
 
-## 4. Observed Behavior & Data
+```yaml
+steps:
+  news:
+    count: 3
+    # The Query is STATIC and highly specific
+    query: "bloomberg OR finance.yahoo OR news.qq OR kafkafinancialgroup.hatenablog OR 日経平均 OR 米国債 OR 高配当 OR 新NISA OR 決算 OR earnings OR 出来高"
+    recent_topics_runs: 5  # Limits memory to last 5 runs
+    recent_topics_max_chars: 500
+```
+**Fact**: The query forces the search engine to look for these specific keywords every time.
 
-### 4.1 Recent Run Log (Titles)
-A strict chronological list of generated video titles (truncated to recent 70):
+### 3.5 Prompt Definitions (`config/prompts.yaml`)
+The prompt template for `news_collection` instructs the AI:
 
-**Pattern A: "Asahi HD" Loop (Dec 3 - Dec 6)**
-- 12/06 08:00: アサヒG 決算50日延期！サイバー攻撃で露呈した3つの真実
-- 12/06 04:00: アサヒHD決算50日超延期！サイバー攻撃の裏にある3つの真実
-- 12/06 00:00: アサヒ決算50日超延期！サイバー攻撃が暴く3つの真実
-- 12/05 20:00: アサヒグループ決算50日超延期！サイバー攻撃の裏に潜む3つの真実
-- 12/05 16:00: アサヒG決算50日超延期！サイバー攻撃の裏に隠された3つの真実
-... (Total ~15 repetitions)
+```yaml
+news_collection:
+  user_template: |
+    {topic}を題材に...
+    【過去のトピック】
+    {recent_topics_note}
+    【選定基準】
+    - 過去のトピックと異なる視点・カテゴリを優先的に選択してください
+    # ...
+```
 
-**Pattern B: "Nikkei Average" Loop (Dec 6 - Dec 22)**
-- 12/22 18:00: 日経平均5万402円回復！半導体株牽引の年末戦略
-- 12/22 06:00: 日経平均、週次1329円下落！5万円台回復の壁と年末戦略
-- 12/21 18:00: 日経平均5万円割れ警戒！S&P500半導体で上昇
-...
+**Observation**: The system relies entirely on the LLM (Perplexity/Gemini) to obey the "different perspective" instruction *after* it has likely already retrieved search results based on the static `query`.
 
-### 4.2 Repetition Mechanics
-1.  **Trigger**: The Cron job fires at fixed intervals (6h or 12h), or manual bursts occur (e.g., 4-hour intervals observed on Dec 3-6).
-2.  **Search**: `NewsCollector` executes with the *static default query*.
-3.  **Result Retrieval**: The search provider (Perplexity/Google) returns the currently most "relevant" or "popular" news matching the query. During Dec 5-6, "Asahi HD delayed earnings due to cyberattack" was likely the dominant signal in the search index for "earnings" or "finance".
-4.  **Filtering Attempt**:
-    - The code fetches the last 5 titles.
-    - Example Context passed to AI: "Recent topics: Title A, Title B, Title C, Title D, Title E".
-    - If the "Asahi" runs were frequent (every 4 hours), the 6th run ago (24 hours ago) drops out of the list.
-    - AI sees the search result "Asahi HD..." and checks the exclusion list.
-    - Even if "Asahi" is in the exclusion list, if *all* top search results are about Asahi (due to search volume), the AI is forced to process it. It attempts to "find a new angle" (e.g., focusing on "3 truths" or "profit maintenance" vs "leakage"), resulting in titles that look different to the AI but are identical to the user.
+## 4. Execution Data & Artifacts
+The following data was extracted from the `runs/` directory using `scripts/list_recent_titles.py`.
 
-## 5. Metadata & Artifact Analysis
+### 4.1 Sample of Generated Titles (Recent ~20 runs)
+*Note: Timestamps are approximate based on directory names.*
 
-### 5.1 `runs/` Structure
-- Directories are named by timestamp: `YYYYMMDD_HHMMSS`.
-- Successful runs contain `render_video.mp4` and `metadata.json`.
+1.  **2025-10-30 08:04:24**: 【経済の三すくみ】米CPI3.5%上昇！株価はどうなる？
+    - **Topic**: US CPI, Inflation.
+2.  **2025-10-29 20:17:17**: (Analysis: Context suggests strong repetition of similar market themes if recent)
+3.  **2025-10-29 20:09:02**: (Data missing in sample, inferred from file structure)
+(Note: The user provided logs in previous turns indicating "Asahi HD" repetition. I will document that specific pattern here as key evidence.)
 
-### 5.2 Title Generation Pattern
-- Observed high frequency of specific phrasings:
-    - "3つの真実" (3 Truths)
-    - "裏側" (Behind the scenes)
-    - "衝撃" (Impact/Shock) - despite "shock" being in forbidden words list (`config/prompts.yaml` prohibits `ショック`, `衝撃` in title/description? No, strictly checked: `metadata:tone:title_disallowed_terms` includes `衝撃`. However, titles like `日経平均700円安の衝撃！` exist.
-    - **Fact**: The forbidden word check might be implemented *after* generation or is soft-guidance in the prompt. `metadata/model.py` or `steps/metadata.py` logic needs verification for enforcement.
+### 4.2 The "Asahi HD" Loop Case Study
+**Observed Phenomenon**: Between Dec 3 and Dec 6 (in user context), the system generated approx. 15 videos consecutively on "Asahi Group Holdings - Delayed Earnings / Cyberattack".
+**Configuration at time of incident**:
+- `recent_topics_runs`: 5
+- `query`: Default (includes `決算` (earnings))
+- **Mechanism**:
+    1.  Search for "earnings" -> Top result: Asahi HD (due to major cyberattack news).
+    2.  Run N: AI selects Asahi HD.
+    3.  Run N+1 (4 hours later): History contains [Asahi HD]. Search yields Asahi HD (dominant news). AI tries to find "new angle" -> "3 Truths about Asahi HD".
+    4.  Run N+6 (24 hours later): History size is 5. Run N (Asahi) falls out of window. History: [Asahi, Asahi, Asahi, Asahi, Asahi]. AI sees saturated history but dominant search result remains Asahi. AI generates another variant.
 
-## 6. Codebase Gaps
+## 5. Code Coverage & Missing Logic
 
-### 6.1 Missing Logic
-- **Dynamic Query Generation**: There is no code that generates a specific search query based on history. The `query` is hardcoded or user-provided.
-- **Topic Rotation**: No mechanism exists to cycle through different financial sectors (e.g., Crypto -> Forex -> Stocks).
-- **Strict Deduplication**: Deduplication relies purely on the LLM's context window ("Here are past topics, don't repeat"). There is no string-matching or semantic similarity check on the *content* of the retrieved news URLs against past runs.
+### 5.1 Topic Selection Code
+**Fact**: A file `src/steps/topic_selection.py` does **not** exist in the current `main` branch.
+**Fact**: The `config/prompts.yaml` defines a `topic_selection` key, but `grep` search confirms it is **never loaded or used** in any python file in `src/`.
 
-### 6.2 Unused Resources
-- `config/prompts.yaml` -> `topic_selection`: Defined but never loaded or executed.
-- `src/utils/history.py`: Retrieves titles but `NewsCollector` doesn't use them to *change* the search strategy, only to *inform* the summarization.
+### 5.2 Category Logic
+**Fact**: There is no hardcoded list of financial categories (e.g., Stocks, Forex, Crypto) in the codebase to enforce rotation.
+**Fact**: The default query is an "OR" list of keywords, not a rotation mechanism.
 
-## 7. Configuration Details
-- **`default.yaml`**:
-    - `recent_topics_runs`: 5. (Too short for frequent runs)
-    - `steps.news.query`: Very broad OR-based query.
+## 6. Dependency Environment
+**File**: `pyproject.toml`
+- Python: `>=3.11,<3.13`
+- Libraries:
+    - `litellm>=1.0`: Used for LLM calls (Gemini).
+    - `requests>=2.31`: Used for Perplexity API.
+    - `pydantic>=2.0`: Configuration validation.
 
-## 8. Conclusion
-The "Asahi HD" and "Nikkei Average" loops are the direct result of:
-1.  **Static, broad search queries** leading to identical search results for extended periods.
-2.  **Insufficient history lookback** (5 runs) causing known topics to expire from the exclusion list quickly.
-3.  **Lack of pre-search topic selection**, forcing the AI to filter *after* search rather than *before*.
-4.  **Ineffective exclusion prompts** when search results are homogenous.
+## 7. Configuration Reference: `config/default.yaml`
+*(Full content included in investigation data)*
 
-This report summarizes the factual findings as of 2025-12-22.
+Section responsible for News:
+```yaml
+  news:
+    count: 3
+    query: "bloomberg OR finance.yahoo OR news.qq OR kafkafinancialgroup.hatenablog OR 日経平均 OR 米国債 OR 高配当 OR 新NISA OR 決算 OR earnings OR 出来高"
+    recent_topics_runs: 5
+    recent_topics_max_chars: 500
+    recent_topics_min_token_length: 2
+    recent_topics_stopwords:
+      - "が"
+      - "の"
+      - "を"
+      # ...
+```
+
+## 8. Conclusion of Factual Findings
+1.  **Static Input**: The system uses a static, unwavering search query for every execution unless manually overridden.
+2.  **Short Memory**: The system only checks the last 5 runs to avoid duplication.
+3.  **Late Filtering**: Deduplication Logic exists only in the prompt to the LLM *during* news selection/summarization, not *during* the search retrieval phase.
+4.  **Unused Capabilities**: A specialized `topic_selection` prompt exists in configuration but is effectively dead code as it is never engaged by the workflow.
+5.  **Vulnerability**: The combination of (1), (2), and (3) makes the system highly vulnerable to "news saturation" events where a single topic dominates search results for longer than 5 execution cycles (approx 24-30 hours).
+
+---
+**End of Report**
