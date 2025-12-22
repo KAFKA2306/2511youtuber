@@ -4,8 +4,23 @@ workflow:
 
 steps:
   news:
+  news:
+    # query: "DEPRECATED - using query_buckets"
+    query_buckets:
+      macro_economy: "GDP CPI 雇用統計 金融政策 日銀 FRB インフレ デフレ 景気動向"
+      japanese_stock: "日経平均 TOPIX 日本株 決算 上方修正 自社株買い 株式分割 プライム市場 グロース市場"
+      us_stock: "米国株 NYダウ S&P500 NASDAQ GAFA M7 決算 米国経済"
+      forex_rates: "ドル円 為替 円安 円高 金利差 為替介入 FX"
+      commodities: "原油価格 金相場 商品先物 エネルギー価格 天然ガス 穀物相場"
+      crypto_web3: "ビットコイン 暗号資産 仮想通貨 イーサリアム ブロックチェーン Web3 NFT"
+      tech_semicon: "半導体 生成AI 人工知能 テクノロジー DX スタートアップ"
+    
+    fetch_count: 50
+    final_count: 3
+    cooldown_hours: 24
+    
+    # Legacy settings to be safe
     count: 3
-    query: "bloomberg OR finance.yahoo OR news.qq OR kafkafinancialgroup.hatenablog OR 日経平均 OR 米国債 OR 高配当 OR 新NISA OR 決算 OR earnings OR 出来高"
     recent_topics_runs: 5
     recent_topics_max_chars: 500
     recent_topics_min_token_length: 2

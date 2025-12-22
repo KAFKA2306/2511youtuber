@@ -6,6 +6,7 @@ from typing import Annotated, Dict, Literal, Union
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.utils.constants import DEFAULT_COOLDOWN_HOURS, DEFAULT_FETCH_COUNT, QUERY_BUCKETS
 from src.utils.secrets import load_secret_values
 
 
@@ -15,8 +16,14 @@ class WorkflowConfig(BaseModel):
 
 
 class NewsStepConfig(BaseModel):
-    count: int
-    query: str
+    query_buckets: Dict[str, str] = Field(default_factory=lambda: QUERY_BUCKETS)
+    bucket_schedule: str | None = None  # Optional: specific bucket to force
+    fetch_count: int = DEFAULT_FETCH_COUNT
+    final_count: int = 3
+    cooldown_hours: int = DEFAULT_COOLDOWN_HOURS
+    # Legacy/Deprecated
+    count: int = 3
+    query: str | None = None
     recent_topics_runs: int = 0
     recent_topics_max_chars: int = 0
     recent_topics_min_token_length: int = 2
