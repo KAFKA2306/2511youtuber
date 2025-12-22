@@ -1,7 +1,9 @@
+"""
+Simplified NewsCollector with Bucket Rotation.
+Minimal complexity while preventing topic repetition.
+"""
 import json
 import time
-import random
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -14,16 +16,21 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Simple keyword lists for entity detection
+ENTITY_KEYWORDS = [
+    "日経平均", "TOPIX", "S&P500", "NYダウ", "NASDAQ",
+    "ドル円", "ビットコイン", "イーサリアム",
+    "日銀", "FRB", "原油", "金相場", "半導体",
+    "アサヒ", "トヨタ", "ソニー", "エヌビディア", "テスラ",
+]
+
+
 class NewsCollector(Step):
     """
-    Revised NewsCollector with Bucket & Filtering Logic.
-    
-    Strategy:
-    1. Select a Query Bucket (rotate or schedule).
-    2. Fetch many candidates (fetch_count=50).
-    3. Normalize & Deduplicate (URL/Title).
-    4. Apply Cooldown (exclude recent topics).
-    5. Final Selection (pick top N).
+    Simplified NewsCollector.
+    1. Round-robin bucket selection (skips saturated buckets)
+    2. Fetch candidates
+    3. Filter by entity overlap with history
     """
     name = "collect_news"
     output_filename = "news.json"
@@ -33,266 +40,113 @@ class NewsCollector(Step):
         run_id: str,
         run_dir: Path,
         providers: List[Provider],
-        query: str = "", # Deprecated/Unused
-        count: int = 3, # Deprecated (legacy)
         query_buckets: Dict[str, str] | None = None,
         bucket_schedule: str | None = None,
-        fetch_count: int = 50,
+        fetch_count: int = 10,
         final_count: int = 3,
         cooldown_hours: int = 24,
-        recent_topics_runs: int = 30, # Used for cooldown lookup
-        recent_topics_max_chars: int = 2000,
-        recent_topics_min_token_length: int = 2,
-        recent_topics_stopwords: List[str] | None = None,
+        recent_topics_runs: int = 30,
+        **kwargs,  # Absorb legacy params
     ):
         super().__init__(run_id, run_dir)
         self.providers = providers
-        # Config mapping
         self.query_buckets = query_buckets or {}
         self.bucket_schedule = bucket_schedule
         self.fetch_count = fetch_count
         self.final_count = final_count
-        self.cooldown_hours = cooldown_hours
         self.recent_topics_runs = recent_topics_runs
-        
-        # Legacy fallback if buckets missing
-        if not self.query_buckets:
-            logger.warning("No query_buckets found. Falling back to legacy 'query' mode.")
-            self.query_buckets = {"legacy": query}
-            
+
     def execute(self, inputs: Dict[str, Path]) -> Path:
         tracker = AimTracker.get_instance(self.run_id)
-        start_time = time.time()
-        
-        # 1. Bucket Selection
-        bucket_key, bucket_query = self._select_bucket()
-        logger.info(f"Selected News Bucket: {bucket_key} (Query: {bucket_query})")
-        
-        # 2. Fetch Candidates
-        # Note: We pass empty recent_topics_note to provider because we handle dedupe ourselves now
-        raw_candidates = execute_with_fallback(
-            self.providers,
-            query=bucket_query,
-            count=self.fetch_count,
-            recent_topics_note="", 
+        start = time.time()
+
+        # 1. Select bucket (skip saturated ones)
+        bucket_key, query = self._select_bucket()
+        logger.info(f"Selected: {bucket_key} -> {query}")
+
+        # 2. Fetch
+        items = execute_with_fallback(
+            self.providers, query=query, count=self.fetch_count, recent_topics_note=""
         )
-        logger.info(f"Fetched {len(raw_candidates)} raw candidates.")
+        logger.info(f"Fetched {len(items)} items")
 
-        # 3. Normalize & Cluster
-        clusters = self._normalize_and_cluster(raw_candidates)
-        logger.info(f"Formed {len(clusters)} unique clusters from raw items.")
+        # 3. Filter duplicates
+        recent = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
+        filtered = self._filter_duplicates(items, recent)
+        logger.info(f"After filter: {len(filtered)}/{len(items)} items")
 
-        # 4. Apply Cooldown
-        recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
-        allowed_clusters, rejection_log = self._apply_cooldown(clusters, recent_topics)
-        logger.info(f"Cooldown passed: {len(allowed_clusters)}/{len(clusters)} clusters.")
-        
-        if not allowed_clusters:
-            # Emergency Fallback: If all rejected, pick one from rejected that is oldest?
-            # Or just raise error. The user said "If wiped out, no generation".
-            # But to be safe for uptime, we might want to log strictly and fail.
-            logger.error("All clusters rejected by cooldown logic! Rejection Log: " + str(rejection_log)[:1000])
-            raise ValueError("News candidates exhausted by cooldown filter. Stopping generation.")
+        if not filtered:
+            raise ValueError("All news filtered out by cooldown")
 
-        # 5. Final Selection
-        # Simple selection: Take top N from allowed.
-        # Future improvement: smarter scoring.
-        final_items = [c[0] for c in allowed_clusters[:self.final_count]] # c[0] is representative item
-        
-        # Track metadata
-        duration = time.time() - start_time
-        self._track_execution(tracker, bucket_key, bucket_query, raw_candidates, final_items, duration)
+        final = filtered[:self.final_count]
 
-        # Save output
-        return self._save_output(final_items)
+        # Track & save
+        tracker.track_prompt(
+            step_name="collect_news", template_name="bucket",
+            prompt=query, inputs={"bucket": bucket_key},
+            output=json.dumps([i.title for i in final], ensure_ascii=False),
+            model="rule", duration=time.time() - start,
+        )
+        return self._save(final)
 
     def _select_bucket(self) -> Tuple[str, str]:
-        """
-        Select a bucket that is NOT saturated based on recent history.
-        Avoids buckets whose primary entities appear frequently in recent topics.
-        """
+        """Select first non-saturated bucket (round-robin by run timestamp)."""
         if self.bucket_schedule and self.bucket_schedule in self.query_buckets:
             return self.bucket_schedule, self.query_buckets[self.bucket_schedule]
-        
-        # Get recent topics to check for saturation
-        recent_topics = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
-        
-        # Extract entities from ALL recent topics
-        saturated_entities = set()
-        for topic in recent_topics:
-            saturated_entities.update(self._extract_entities(topic))
-        
-        logger.info(f"Saturated entities from history: {saturated_entities}")
-        
-        # Map buckets to their primary entities
-        bucket_primary_entities = {
-            "macro_economy": {"日銀", "FRB"},
-            "japanese_stock": {"日経平均", "TOPIX", "決算"},
-            "us_stock": {"S&P500", "NYダウ", "NASDAQ"},
-            "forex_rates": {"ドル円"},
-            "commodities": {"原油", "金相場"},
-            "crypto_web3": {"ビットコイン", "イーサリアム"},
-            "tech_semicon": {"エヌビディア"},
-        }
-        
-        # Find buckets that are NOT saturated
-        available_buckets = []
-        for bucket_key in self.query_buckets.keys():
-            primary = bucket_primary_entities.get(bucket_key, set())
-            overlap = primary & saturated_entities
-            if not overlap:  # No overlap = bucket is fresh
-                available_buckets.append(bucket_key)
-                logger.info(f"Bucket '{bucket_key}' is AVAILABLE (no saturation)")
-            else:
-                logger.info(f"Bucket '{bucket_key}' is SATURATED (overlap: {overlap})")
-        
-        # If all buckets are saturated, pick one with least overlap
-        if not available_buckets:
-            logger.warning("All buckets saturated! Selecting one with least entity overlap.")
-            min_overlap = float('inf')
-            best_bucket = list(self.query_buckets.keys())[0]
-            for bucket_key in self.query_buckets.keys():
-                primary = bucket_primary_entities.get(bucket_key, set())
-                overlap_count = len(primary & saturated_entities)
-                if overlap_count < min_overlap:
-                    min_overlap = overlap_count
-                    best_bucket = bucket_key
-            available_buckets = [best_bucket]
-        
-        # Random selection from available buckets
-        selected_key = random.choice(available_buckets)
-        return selected_key, self.query_buckets[selected_key]
 
-    def _normalize_and_cluster(self, candidates: List[NewsItem]) -> List[List[NewsItem]]:
-        """
-        Deduplicate by URL and Title Similarity.
-        Returns list of clusters (each cluster is a list of NewsItems, representative first).
-        """
-        clusters: List[List[NewsItem]] = []
+        recent = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
+        saturated = self._get_saturated_entities(recent)
+        logger.info(f"Saturated: {saturated}")
+
+        # Try buckets in order, pick first non-saturated
+        bucket_keys = list(self.query_buckets.keys())
+        # Rotate starting point based on run_id hash
+        start_idx = hash(self.run_id) % len(bucket_keys) if bucket_keys else 0
         
-        for item in candidates:
-            # 1. Exact URL Dedupe (Check if already in any cluster)
-            if any(c[0].url == item.url for c in clusters):
+        for i in range(len(bucket_keys)):
+            key = bucket_keys[(start_idx + i) % len(bucket_keys)]
+            query = self.query_buckets[key]
+            # Check if any query keyword is saturated
+            query_entities = self._extract_entities(query)
+            if not (query_entities & saturated):
+                logger.info(f"Bucket '{key}' OK")
+                return key, query
+            logger.info(f"Bucket '{key}' saturated, skip")
+
+        # Fallback: use first bucket anyway
+        key = bucket_keys[start_idx % len(bucket_keys)]
+        return key, self.query_buckets[key]
+
+    def _filter_duplicates(self, items: List[NewsItem], recent: List[str]) -> List[NewsItem]:
+        """Remove items whose entities overlap with recent topics."""
+        saturated = self._get_saturated_entities(recent)
+        result = []
+        seen_urls = set()
+        
+        for item in items:
+            if item.url in seen_urls:
                 continue
-                
-            # 2. Title Similarity (Jaccard or substring)
-            # Simple check: if title is very similar to existing cluster representative
-            is_duplicate = False
-            for cluster in clusters:
-                rep = cluster[0]
-                if self._calculate_similarity(item.title, rep.title) > 0.6:
-                    cluster.append(item)
-                    is_duplicate = True
-                    break
+            seen_urls.add(item.url)
             
-            if not is_duplicate:
-                clusters.append([item])
-                
-        return clusters
+            item_entities = self._extract_entities(item.title)
+            if not (item_entities & saturated):
+                result.append(item)
+        return result
 
-    def _apply_cooldown(self, clusters: List[List[NewsItem]], recent_topics: List[str]) -> Tuple[List[List[NewsItem]], List[str]]:
-        """
-        Filter out clusters that match recent topics.
-        Returns: (allowed_clusters, log_of_rejections)
-        """
-        allowed = []
-        log = []
-        
-        for cluster in clusters:
-            rep = cluster[0]
-            is_cool = True
-            for past_topic in recent_topics:
-                # Check similarity between candidate title and past topic title
-                sim = self._calculate_similarity(rep.title, past_topic)
-                if sim > 0.3: # Threshold for "Same Topic"
-                    is_cool = False
-                    log.append(f"Rejected '{rep.title}' vs Past '{past_topic}' (Sim: {sim:.2f})")
-                    break
-            
-            if is_cool:
-                allowed.append(cluster)
-                
-        return allowed, log
-
-    def _calculate_similarity(self, text1: str, text2: str) -> float:
-        """
-        Entity-based similarity for Japanese financial headlines.
-        Extracts key financial entities and checks overlap.
-        """
-        if not text1 or not text2:
-            return 0.0
-        if text1 == text2:
-            return 1.0
-        
-        entities1 = self._extract_entities(text1)
-        entities2 = self._extract_entities(text2)
-        
-        if not entities1 or not entities2:
-            return 0.0
-            
-        intersection = len(entities1 & entities2)
-        union = len(entities1 | entities2)
-        return intersection / union
-    
-    def _extract_entities(self, text: str) -> set:
-        """
-        Extract key financial entities from Japanese text.
-        Returns a set of normalized entity strings.
-        """
-        import re
+    def _get_saturated_entities(self, topics: List[str]) -> set:
+        """Extract all entities from recent topics."""
         entities = set()
-        
-        # Key financial indices and terms
-        patterns = [
-            r'日経平均',
-            r'TOPIX',
-            r'S&P500|S&P\s*500|エスアンドピー',
-            r'NYダウ|ダウ平均',
-            r'NASDAQ|ナスダック',
-            r'ドル円|円ドル|USD/JPY',
-            r'ビットコイン|BTC',
-            r'イーサリアム|ETH',
-            r'日銀|日本銀行',
-            r'FRB|連邦準備',
-            r'原油|WTI|ブレント',
-            r'金相場|ゴールド',
-            # Company patterns (simplified)
-            r'アサヒ(?:HD|グループ|ホールディングス)?',
-            r'トヨタ',
-            r'ソニー',
-            r'任天堂',
-            r'エヌビディア|NVIDIA',
-            r'テスラ|TSLA',
-            # Event types
-            r'決算',
-            r'利上げ|利下げ',
-            r'円安|円高',
-            r'暴落|急落|急騰|高騰',
-        ]
-        
-        for pattern in patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                # Normalize the entity name
-                match = re.search(pattern, text, re.IGNORECASE)
-                if match:
-                    entities.add(pattern.split('|')[0].split('(?')[0])  # Use first variant as key
-        
+        for topic in topics:
+            entities.update(self._extract_entities(topic))
         return entities
 
-    def _track_execution(self, tracker, bucket, query, raw, final, duration):
-        tracker.track_prompt(
-            step_name="collect_news",
-            template_name="bucket_selection", 
-            prompt=f"Bucket: {bucket}\nQuery: {query}",
-            inputs={"bucket": bucket},
-            output=json.dumps([{"title": i.title} for i in final], ensure_ascii=False),
-            model="heuristic",
-            duration=duration,
-        )
+    def _extract_entities(self, text: str) -> set:
+        """Simple keyword matching."""
+        return {kw for kw in ENTITY_KEYWORDS if kw in text}
 
-    def _save_output(self, items: List[NewsItem]) -> Path:
-        output_path = self.get_output_path()
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump([item.model_dump(mode="json") for item in items], f, ensure_ascii=False, indent=2)
-        return output_path
+    def _save(self, items: List[NewsItem]) -> Path:
+        path = self.get_output_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump([i.model_dump(mode="json") for i in items], f, ensure_ascii=False, indent=2)
+        return path
