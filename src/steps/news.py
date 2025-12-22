@@ -16,12 +16,19 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Simple keyword lists for entity detection
-ENTITY_KEYWORDS = [
-    "日経平均", "TOPIX", "S&P500", "NYダウ", "NASDAQ",
-    "ドル円", "ビットコイン", "イーサリアム",
-    "日銀", "FRB", "原油", "金相場", "半導体",
-    "アサヒ", "トヨタ", "ソニー", "エヌビディア", "テスラ",
+# Regex patterns for entity detection (supports variants)
+import re
+
+ENTITY_PATTERNS = [
+    r"日経平均", r"TOPIX",
+    r"S&P500|S&P\s*500", r"NYダウ|ダウ平均", r"NASDAQ|ナスダック",
+    r"ドル円|円ドル|USD/JPY", r"ユーロ円|EUR/JPY",
+    r"ビットコイン|BTC", r"イーサリアム|ETH",
+    r"日銀|日本銀行", r"FRB|連邦準備",
+    r"原油|WTI|ブレント", r"金相場|ゴールド", r"半導体",
+    r"アサヒ(?:HD|グループ)?", r"トヨタ", r"ソニー", r"任天堂",
+    r"エヌビディア|NVIDIA", r"テスラ|TSLA",
+    r"決算", r"利上げ|利下げ", r"円安|円高",
 ]
 
 
@@ -141,8 +148,13 @@ class NewsCollector(Step):
         return entities
 
     def _extract_entities(self, text: str) -> set:
-        """Simple keyword matching."""
-        return {kw for kw in ENTITY_KEYWORDS if kw in text}
+        """Regex-based entity extraction."""
+        entities = set()
+        for pattern in ENTITY_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                # Use first variant as normalized key
+                entities.add(pattern.split("|")[0].split("(")[0])
+        return entities
 
     def _save(self, items: List[NewsItem]) -> Path:
         path = self.get_output_path()
