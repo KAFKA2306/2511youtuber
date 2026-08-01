@@ -104,8 +104,8 @@ steps:
     device: "cuda"
 
   metadata:
-    enabled: false
-    use_llm: false
+    enabled: true
+    use_llm: true
     llm_model: null
     fallback_llm_model: null
     target_keywords: ["金融", "経済", "投資", "株"]
@@ -114,9 +114,9 @@ steps:
     default_tags: []
 
   youtube:
-    enabled: false
-    dry_run: true
-    default_visibility: "private"
+    enabled: true
+    dry_run: false
+    default_visibility: "public"
     category_id: 25
     default_tags: []
 
