@@ -31,15 +31,29 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def run(*, news_query: str | None = None) -> int:
+def run(*, news_query: str | None = None, force_dry_run: bool = False) -> int:
     logger.info("Starting YouTube AI Video Generator v2")
     config = Config.load()
     if news_query:
         config.steps.news.query = news_query
+    if force_dry_run:
+        config.steps.youtube.enabled = True
+        config.steps.youtube.dry_run = True
+        config.steps.youtube.default_visibility = "private"
+        config.steps.twitter.dry_run = True
+        config.steps.linkedin.dry_run = True
+        config.steps.hatena.dry_run = True
+        config.steps.buzzsprout.publish_immediately = False
 
     run_id = _create_run_id()
     run_dir = Path(config.workflow.default_run_dir)
-    logger.info("Initializing workflow run_id=%s", run_id)
+    logger.info(
+        "Initializing workflow run_id=%s youtube_enabled=%s dry_run=%s visibility=%s",
+        run_id,
+        config.steps.youtube.enabled,
+        config.steps.youtube.dry_run,
+        config.steps.youtube.default_visibility,
+    )
 
     steps = _build_steps(config, run_id, run_dir)
     orchestrator = WorkflowOrchestrator(run_id=run_id, steps=steps, run_dir=run_dir)
@@ -59,9 +73,10 @@ def run(*, news_query: str | None = None) -> int:
     )
 
     if result.status == "success":
-        print("\n✅ Video generation completed successfully!")
+        print("\n✅ Video generation and publication completed successfully!")
         print(f"Run ID: {run_id}")
         print(f"Video: {result.outputs.get('render_video', 'N/A')}")
+        print(f"YouTube: {result.outputs.get('upload_youtube', 'N/A')}")
         print(f"Duration: {result.duration_seconds:.1f} seconds")
         return 0
     if result.status == "partial":
@@ -88,7 +103,11 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     voicevox_config.pop("enabled", None)
     video_config = video_cfg.model_dump()
     video_config["effects"] = [effect.model_dump() for effect in video_cfg.effects]
-    encoder_options = {str(key): str(value) for key, value in video_cfg.encoder_options.items() if value is not None}
+    encoder_options = {
+        str(key): str(value)
+        for key, value in video_cfg.encoder_options.items()
+        if value is not None
+    }
     if video_cfg.codec and "vcodec" not in encoder_options:
         encoder_options["vcodec"] = str(video_cfg.codec)
     if video_cfg.preset and "preset" not in encoder_options:
@@ -104,7 +123,9 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
         NewsCollector(
             run_id=run_id,
             run_dir=run_dir,
-            providers=_build_news_providers(config.providers.news, Config.get_default_gemini_model()),
+            providers=_build_news_providers(
+                config.providers.news, Config.get_default_gemini_model()
+            ),
             query_buckets=news_cfg.query_buckets,
             bucket_schedule=news_cfg.bucket_schedule,
             fetch_count=news_cfg.fetch_count,
@@ -144,14 +165,17 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             bgm_config=None,
             voice_parameters=config.providers.tts.voicevox.voice_parameters,
         ),
-        SubtitleFormatter(
-            run_id=run_id,
-            run_dir=run_dir,
-        ),
+        SubtitleFormatter(run_id=run_id, run_dir=run_dir),
     ]
 
     if metadata_cfg.get("enabled", False):
-        steps.append(MetadataAnalyzer(run_id=run_id, run_dir=run_dir, metadata_config=metadata_cfg))
+        steps.append(
+            MetadataAnalyzer(
+                run_id=run_id,
+                run_dir=run_dir,
+                metadata_config=metadata_cfg,
+            )
+        )
 
     if config.steps.thumbnail.enabled:
         steps.append(
@@ -212,7 +236,9 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
                 preset=video_cfg.preset,
                 crf=video_cfg.crf,
                 thumbnail_overlay=video_config.get("thumbnail_overlay"),
-                thumbnail_clip=video_config.get("intro_outro", {}).get("thumbnail_clip"),
+                thumbnail_clip=video_config.get("intro_outro", {}).get(
+                    "thumbnail_clip"
+                ),
             )
         )
 
@@ -252,7 +278,9 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             LinkedInStep(
                 run_id=run_id,
                 run_dir=run_dir,
-                config=LinkedInConfig(**config.steps.linkedin.model_dump(exclude={"enabled"})),
+                config=LinkedInConfig(
+                    **config.steps.linkedin.model_dump(exclude={"enabled"})
+                ),
             )
         )
 
@@ -261,7 +289,9 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             HatenaStep(
                 run_id=run_id,
                 run_dir=run_dir,
-                config=HatenaConfig(**config.steps.hatena.model_dump(exclude={"enabled"})),
+                config=HatenaConfig(
+                    **config.steps.hatena.model_dump(exclude={"enabled"})
+                ),
             )
         )
 
