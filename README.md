@@ -1,217 +1,190 @@
 # YouTube AI Video Generator v2
 
-YouTube AI Video Generator v2 assembles narrated Japanese finance videos from daily news by chaining modular workflow steps. The command-line entry point wires together news collection, Gemini-based script generation, Voicevox audio synthesis, subtitle formatting, and FFmpeg rendering, with optional metadata and publishing steps enabled through configuration.
+**リポジトリ:** https://github.com/KAFKA2306/2511youtuber
 
-## 🚀 Quick Start
+日々のニュースから、日本語の金融・経済動画を生成するワークフローです。ニュース取得、台本生成、シーン画像生成、VOICEVOX音声、字幕、FFmpeg動画、サムネイル、メタデータを独立した工程として接続します。
 
-### Prerequisites
-Install [Task](https://taskfile.dev) runner for streamlined commands:
-```bash
-# Using snap (recommended)
-snap install task
+旧版の[2510youtuber](https://github.com/KAFKA2306/2510youtuber)を整理し、設定、チェックポイント、サービス管理、テスト、定期実行を強化した後継プロジェクトです。
 
-# Or using apt
-apt install taskwarrior
+## 処理の流れ
+
+```text
+ニュース候補を取得
+  → 出典・日時・重複を確認
+  → Gemini系プロバイダーで日本語台本を生成
+  → シーン画像を生成
+  → VOICEVOXで音声を生成
+  → 字幕時間を割り当て
+  → FFmpegで動画をレンダリング
+  → サムネイル・説明文などを生成
+  → 人間が内容と権利を確認
+  → 設定で有効な場合だけ配信処理へ進む
 ```
 
-### First-Time Setup
+## 主な工程
+
+| 工程 | 実装 | 主な出力 |
+| --- | --- | --- |
+| ニュース取得 | `src/steps/news.py` | `news.json` |
+| 台本生成 | `src/steps/script.py` | `script.json` |
+| シーン生成 | `src/steps/scene_generator.py` | `scene_manifest.json` |
+| 音声合成 | `src/steps/audio.py` | `audio.wav` |
+| 字幕生成 | `src/steps/subtitle.py` | `subtitles.srt` |
+| 動画生成 | `src/steps/video.py` | `video.mp4` |
+
+メタデータ、サムネイル、アップロード、SNS配信は`config/default.yaml`で有効化された場合のみ実行します。
+
+## 必要環境
+
+- Pythonと`uv`
+- `go-task`
+- FFmpeg
+- VOICEVOX Engine
+- 利用するニュース・LLMプロバイダーの認証情報
+- シーン画像生成を使う場合はPyTorch対応環境と十分なVRAM
+
+`apt install taskwarrior`は`go-task`とは別製品なので使用しません。Taskの導入は公式のgo-task手順を使用してください。
+
+## 初期設定
+
 ```bash
-# Complete bootstrap: dependencies + services + automation
 task bootstrap
 ```
 
-This will:
-- Install Python dependencies via `uv sync`
-- Start background services (Aim, Voicevox, Discord bot)
-- Configure automation and install cron schedule
+このタスクは、リポジトリの現在のTask定義に従い、依存関係、補助サービス、定期実行設定を構成します。実行前に内容を確認してください。特にcron登録や常駐サービスの変更は、利用環境へ影響します。
 
-### Manual Setup (if Task is not available)
+手動設定:
+
 ```bash
-# 1. Install dependencies
 uv sync
-
-# 2. Configure environment
 cp config/.env.example config/.env
-# Edit config/.env with your API keys
-
-# 3. Start background services
-nohup bash scripts/start_aim.sh >/dev/null 2>&1 &
-nohup bash scripts/voicevox_manager.sh start >/dev/null 2>&1 &
-nohup uv run python scripts/discord_news_bot.py >/dev/null 2>&1 &
-
-# 4. Setup automation
-python scripts/automation.py --skip-cron
-python scripts/automation.py --install-cron
 ```
 
-### Running Workflows
+`config/.env`へ必要なAPIキーを設定します。秘密情報はコミットしません。
+
+## 動画生成
+
 ```bash
-# Run main workflow
 task run
-
-# Run with custom news query
-task run -- --news-query "FOMC 金利"
-
-# Check service status
-task services:status
+task youtube:run
+task youtube:dev
 ```
 
-## 📚 Command Reference
+ニュース検索語を指定する例:
 
-### Workflow Execution
-| Command | Description |
-|---------|-------------|
-| `task run` | Run main workflow with optional args |
-| `task youtube:run` | Run YouTube video generation |
-| `task youtube:dev` | Run with debug logging |
-| `task thumbnail-test -- <run_id>` | Test AI thumbnail generation |
-
-**Scene Generation Test:**
 ```bash
-# Test scene generation with existing run
+task run -- --news-query "FOMC 金利"
+```
+
+シーン生成の個別確認:
+
+```bash
 uv run python scripts/test_scene_gen.py <run_id>
 ```
 
-### Service Management
-| Command | Description |
-|---------|-------------|
-| `task services:start` | Start all services (Aim, Voicevox, Discord) |
-| `task services:status` | Check service statuses |
-| `task voicevox:start` | Start Voicevox TTS engine |
-| `task voicevox:stop` | Stop Voicevox TTS engine |
-| `task discord:start` | Start Discord news bot |
-| `task aim:dashboard` | Start Aim dashboard UI |
+## サービス管理
 
-### Automation
-| Command | Description |
-|---------|-------------|
-| `task automation:setup` | Full automation setup (git pull + services + cron) |
-| `task automation:init` | Initialize automation (no cron) |
-| `task automation:cron` | Install cron schedule only |
+```bash
+task services:start
+task services:status
+task voicevox:start
+task voicevox:stop
+task discord:start
+task aim:dashboard
+```
 
-### Development
-| Command | Description |
-|---------|-------------|
-| `task lint` | Run linting checks |
-| `task lint:fix` | Auto-fix linting and format |
-| `task format` | Format code |
-| `task test` | Run fast tests (alias for test:fast) |
-| `task test:fast` | Run fast tests (skips video rendering) |
-| `task test:all` | Run ALL tests (complete validation) |
-| `task clean` | Clean cache files |
+常駐サービスを起動する前に、ポート、ログ保存先、既存プロセスとの競合を確認してください。
 
-### Git
-| Command | Description |
-|---------|-------------|
-| `task git:sync -- "message"` | Add, commit, push in one command |
-| `task git:status` | Show git status |
+## シーン画像生成
 
-## Workflow Summary
-
-| Step | Module | Output | Notes |
-| --- | --- | --- | --- |
-| News collection | `src/steps/news.py` | `news.json` | Executes Perplexity and Gemini providers with fallback chaining |
-| Script generation | `src/steps/script.py` | `script.json` | Prompts Gemini with speaker profiles and previous run context |
-| Scene generation | `src/steps/scene_generator.py` | `scene_manifest.json` | Generates atmospheric scene images using Z-Image-Turbo diffusion model |
-| Audio synthesis | `src/steps/audio.py` | `audio.wav` | Calls Voicevox HTTP API per segment and concatenates audio |
-| Subtitle formatting | `src/steps/subtitle.py` | `subtitles.srt` | Allocates time slices and wraps Japanese lines |
-| Video rendering | `src/steps/video.py` | `video.mp4` | Ken Burns effects, overlays, subtitle burn-in via FFmpeg |
-
-Optional steps add metadata analysis, thumbnail generation, platform uploads, and social distribution when enabled in `config/default.yaml`.
-
-## Configuration
-
-- **`config/default.yaml`** — workflow toggles, provider credentials, rendering parameters
-- **`config/prompts.yaml`** — prompt templates for news, script, and metadata providers
-- **`config/scene_prompts.yaml`** — scene generation prompts (literal, abstract, atmospheric)
-- **`config/.env`** — API keys (copy from `.env.example` and fill in)
-- **`assets/`** — fonts and character art for thumbnails and video overlays
-
-### Scene Generation (Z-Image-Turbo)
-
-The system uses a **clean architecture service layer** for image generation:
+設定は`config/default.yaml`と`config/scene_prompts.yaml`にあります。
 
 ```yaml
-# config/default.yaml
 steps:
   scene:
     enabled: true
     images_per_video: 4
     variants_per_type: 2
-    batch_size: 2          # NEW: Process 2 images at once (faster)
-    compile_model: false   # NEW: Enable torch.compile for speedup
+    batch_size: 2
+    compile_model: false
     width: 1280
     height: 720
     num_steps: 9
 ```
 
-**Performance Tuning:**
-- `batch_size=1`: Safe default (baseline speed)
-- `batch_size=2`: ~1.5-1.8x faster (moderate VRAM)
-- `batch_size=4`: ~2-2.5x faster (high VRAM, requires 16GB+ GPU)
-- `compile_model=true`: Adds 30-60s startup, but 10-20% faster inference
+`batch_size`を増やすと高速化する可能性がありますが、必要VRAMも増えます。速度倍率はGPU、モデル、解像度、ドライバーに依存するため、READMEでは固定値を保証しません。
 
-**Architecture:**
-- Service layer: `src/services/image_generation.py`
-- Protocol-based abstraction for easy testing and backend swapping
-- Dependency injection in `SceneGenerator`
+画像生成の抽象化は`src/services/image_generation.py`にあり、`SceneGenerator`へ依存注入します。
 
-## Repository Structure
+## 設定ファイル
 
-```
-├── apps/              # Application entry points (YouTube CLI)
-├── config/            # YAML configuration, prompt templates, env example
-├── docs/              # System overview and operations guides
-├── scripts/           # Automation, service management, utilities
-├── src/               # Core workflow, providers, and step implementations
-├── tests/             # Unit, integration, and e2e test suites
-└── runs/              # Generated artifacts per run (created on demand)
-```
+| ファイル | 内容 |
+| --- | --- |
+| `config/default.yaml` | 工程の有効化、動画設定、プロバイダー設定 |
+| `config/prompts.yaml` | ニュース・台本・メタデータ用プロンプト |
+| `config/scene_prompts.yaml` | シーン画像のプロンプト |
+| `config/.env` | APIキーなどの非公開設定 |
+| `assets/` | フォント、キャラクター画像、動画素材 |
 
-Workflow classes live under `src/core/`, typed configuration models in `src/utils/config.py`, and step implementations in `src/steps/`.
+## テスト
 
-## Testing Strategy
-
-This project uses **real E2E tests** with actual APIs and system components—no mocks, no stubs:
-
-**Test Categories:**
-- **Fast Tests** (default): News → Script → Audio → Subtitle pipeline using real Gemini API and Voicevox. Skips video rendering for speed (~2-5 min).
-- **Slow Tests**: Complete workflow including FFmpeg video rendering and intro/outro concatenation (~10-20 min).
-
-**What Gets Tested:**
-- ✓ Real Gemini API calls for news collection and script generation
-- ✓ Real Voicevox TTS audio synthesis
-- ✓ Real FFmpeg video rendering (slow tests only)
-- ✓ Checkpoint/resume functionality
-- ✓ Custom query variations
-- ✓ Duration constraints
-- ✓ Metadata and thumbnail generation
-- ✗ YouTube uploads (excluded due to rate limits)
-
-**Running Tests:**
 ```bash
-# Fast tests (default) - validates core pipeline
 task test:fast
-
-# Complete validation (includes video rendering)
 task test:all
+task lint
+task format
 ```
 
-Tests use real data and validate actual functionality—if tests pass, the system works in production.
+- `test:fast` — 動画レンダリングなど重い処理を省いた主要工程の検証
+- `test:all` — リポジトリが定義する全テスト
 
-## Automation
+一部のE2Eテストは実API、VOICEVOX、FFmpegを利用します。テスト成功は、その実行環境・入力・時点における確認であり、YouTube公開、本番運用、すべてのニュース内容の正確性を保証しません。
 
-The system runs automated workflows every 4 hours via cron:
-```cron
-0 */4 * * * cd /home/kafka/2511youtuber && bash scripts/run_workflow_cron.sh
+## 自動実行
+
+リポジトリにはcronを構成する仕組みがあります。
+
+```bash
+task automation:init
+task automation:cron
+task automation:setup
 ```
 
-Logs are written to `logs/automation/workflow_4hourly.log`.
+README作成時の設定例では4時間ごとの実行を想定していますが、実際の登録内容は`scripts/automation.py`と現在のcrontabを確認してください。
 
-## Additional Documentation
+ログ例:
 
-- [docs/system_overview.md](docs/system_overview.md) — Architecture, dependencies, run lifecycle
-- [docs/operations.md](docs/operations.md) — Setup, execution, testing, maintenance
-- [docs/automation_playbook.md](docs/automation_playbook.md) — Automation setup and troubleshooting
-- [AGENTS.md](AGENTS.md) — Repository guidelines and development workflow
+```text
+logs/automation/workflow_4hourly.log
+```
 
+## 主な構成
+
+```text
+apps/       CLIなどのアプリケーション入口
+config/     YAML設定、プロンプト、環境変数例
+docs/       システム・運用文書
+scripts/    サービス管理、定期実行、診断
+src/        ワークフロー、プロバイダー、各工程
+tests/      単体・統合・E2Eテスト
+runs/       実行ごとの生成物
+```
+
+詳細:
+
+- [システム概要](docs/system_overview.md)
+- [運用手順](docs/operations.md)
+- [自動実行プレイブック](docs/automation_playbook.md)
+- [開発ルール](AGENTS.md)
+
+## 公開前の必須確認
+
+- ニュースの一次情報と発生日
+- 数値、企業名、人物名、日付
+- 台本が出典の意味を変えていないか
+- 画像、音楽、フォント、VOICEVOX話者の利用条件
+- 誹謗中傷、個人情報、著作権侵害の有無
+- YouTubeタイトル・説明文が誤認を招かないか
+- 自動アップロードが意図的に有効化されているか
+
+**README最終監査:** 2026-08-01
