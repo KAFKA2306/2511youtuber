@@ -18,5 +18,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "pydantic>=2,<3" PyYAML
-      - run: python -m unittest discover -s tests -p "test_default_config_safety.py" -v
+      - run: pip install "pydantic>=2,<3" PyYAML pytest
+      - run: pytest -q tests/test_default_config_safety.py tests/unit/test_context_notes.py
