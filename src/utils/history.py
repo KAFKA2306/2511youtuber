@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Iterator, List
 
 from src.core.io_utils import load_json
-from src.models import ScriptContextNotes
+from src.models import ScriptContextNotes, sanitize_context_note
 
 
 def iter_previous_runs(run_dir: Path, current_run_id: str) -> Iterator[Path]:
@@ -30,12 +30,12 @@ def extract_script_notes(run_path: Path) -> ScriptContextNotes:
 
 
 def extract_title(data: dict) -> str:
-    title = str(data.get("title") or "").strip()
+    title = sanitize_context_note(data.get("title"))
     if title:
         return title
     nested = data.get("metadata")
     if isinstance(nested, dict):
-        nested_title = str(nested.get("title") or "").strip()
+        nested_title = sanitize_context_note(nested.get("title"))
         if nested_title:
             return nested_title
     return ""
