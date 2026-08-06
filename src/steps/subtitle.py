@@ -12,6 +12,7 @@ from src.core.step import Step
 class SubtitleFormatter(Step):
     name = "prepare_subtitles"
     output_filename = "subtitles.srt"
+    _PAGE_BREAK_PATTERN = re.compile(r"(?<=[。！？!?])")
 
     def __init__(
         self,
@@ -87,14 +88,25 @@ class SubtitleFormatter(Step):
 
         timestamps = []
         current_time = 0.0
-        for i, (seg, clean_text) in enumerate(cleaned_segments):
-            char_ratio = len(clean_text) / total_chars if total_chars > 0 else 0.0
+        for i, (_, clean_text) in enumerate(cleaned_segments):
+            char_ratio = len(clean_text) / total_chars
             duration = available * char_ratio if available > 0 else 0.0
-            end_time = current_time + duration
+            segment_end = current_time + duration
             if i == len(cleaned_segments) - 1:
-                end_time = audio_duration
-            timestamps.append({"start": current_time, "end": end_time, "text": clean_text})
-            current_time = end_time + (gap if i < len(cleaned_segments) - 1 else 0)
+                segment_end = audio_duration
+
+            pages = self._paginate_text(clean_text)
+            page_chars = sum(len(page) for page in pages)
+            page_start = current_time
+            for page_index, page in enumerate(pages):
+                if page_index == len(pages) - 1:
+                    page_end = segment_end
+                else:
+                    page_end = page_start + (segment_end - current_time) * len(page) / page_chars
+                timestamps.append({"start": page_start, "end": page_end, "text": page})
+                page_start = page_end
+
+            current_time = segment_end + (gap if i < len(cleaned_segments) - 1 else 0)
         return timestamps
 
     def _generate_srt(self, timestamps: list[Dict]) -> str:
@@ -114,19 +126,26 @@ class SubtitleFormatter(Step):
         ms = int((seconds % 1) * 1000)
         return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
-    def _wrap_text(self, text: str) -> List[str]:
-        limit = max(self.max_chars_per_line, 1)
-        wrapped: List[str] = []
+    def _paginate_text(self, text: str) -> List[str]:
+        """Split subtitle text into sentence-aware pages with at most two lines."""
+
+        page_capacity = max(self.max_chars_per_line, 1) * 2
+        pages: List[str] = []
         for raw_line in text.split("\n"):
             line = raw_line.strip()
             if not line:
-                wrapped.append("")
                 continue
-            start = 0
-            while start < len(line):
-                wrapped.append(line[start : start + limit])
-                start += limit
-        return wrapped or [""]
+            sentences = [part.strip() for part in self._PAGE_BREAK_PATTERN.split(line) if part.strip()]
+            for sentence in sentences:
+                start = 0
+                while start < len(sentence):
+                    pages.append(sentence[start : start + page_capacity])
+                    start += page_capacity
+        return pages or [""]
+
+    def _wrap_text(self, text: str) -> List[str]:
+        limit = max(self.max_chars_per_line, 1)
+        return [text[start : start + limit] for start in range(0, len(text), limit)] or [""]
 
     def _clean_text(self, text: str) -> str:
         cleaned = re.sub(r"\s*\(間\)\s*", " ", text)
