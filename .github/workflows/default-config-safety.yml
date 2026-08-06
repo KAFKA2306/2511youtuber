@@ -18,5 +18,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "pydantic>=2,<3" PyYAML pytest
-      - run: pytest -q tests/test_default_config_safety.py tests/unit/test_context_notes.py
+      - run: pip install "pydantic>=2,<3" PyYAML
+      - name: Validate publication defaults
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          raw = yaml.safe_load(Path("config/default.yaml").read_text(encoding="utf-8"))
+          steps = raw["steps"]
+          assert isinstance(steps["news"], dict)
+          assert steps["metadata"]["enabled"] is True
+          assert steps["youtube"]["enabled"] is True
+          assert steps["youtube"]["dry_run"] is False
+          assert steps["youtube"]["default_visibility"] == "public"
+          assert steps["twitter"]["enabled"] is False
+          assert steps["linkedin"]["enabled"] is False
+          assert steps["hatena"]["enabled"] is False
+          assert raw["automation"]["enabled"] is False
+          PY
+      - name: Validate context-note history
+        run: python -m unittest tests/unit/test_context_notes.py -v
