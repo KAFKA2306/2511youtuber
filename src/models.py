@@ -1,8 +1,36 @@
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Mapping
 
 from pydantic import BaseModel, Field
+
+
+_CONTEXT_PLACEHOLDERS = {
+    "金融ニュース速報：日本経済の最新動向",
+    "市場は急激な変動を見せています",
+    "今日のテーマから派生する新しい視点や発見の余地",
+    "直近テーマ情報なし",
+}
+
+
+def sanitize_context_note(value: Any) -> str:
+    """Return an empty string for known generated placeholders.
+
+    Context notes are persisted and reused by later runs, so accepting a canned
+    fallback once would otherwise amplify it indefinitely. Whitespace and common
+    punctuation are normalized before exact placeholder comparison; real titles
+    and summaries are preserved unchanged apart from outer whitespace.
+    """
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    normalized = re.sub(r"\s+", "", text).rstrip("。.!！")
+    placeholders = {re.sub(r"\s+", "", item).rstrip("。.!！") for item in _CONTEXT_PLACEHOLDERS}
+    if normalized in placeholders:
+        return ""
+    return text
 
 
 class NewsItem(BaseModel):
@@ -60,6 +88,6 @@ class ScriptContextNotes:
     def from_mapping(cls, data: Mapping[str, Any] | None) -> "ScriptContextNotes":
         if not data:
             return cls()
-        recent = str(data.get("recent_topics_note") or data.get("recent_topic_note") or "").strip()
-        next_note = str(data.get("next_theme_note") or "").strip()
+        recent = sanitize_context_note(data.get("recent_topics_note") or data.get("recent_topic_note"))
+        next_note = sanitize_context_note(data.get("next_theme_note"))
         return cls(recent_topics_note=recent, next_theme_note=next_note)
