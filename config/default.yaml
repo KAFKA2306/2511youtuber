@@ -76,14 +76,23 @@ steps:
     enabled: false
     width: 1280
     height: 720
-    background_color: "#FFE14A"
-    title_color: "#C62828"
-    subtitle_color: "#FFD166"
+    background_color: "#fef155"
+    title_color: "#EB001B"
+    subtitle_color: "#EB001B"
+    safe_margin_pct: 9
+    title_height_min_pct: 30
+    title_height_max_pct: 40
+    preview_width: 200
+    outline_inner_color: "#FFFFFF"
+    outline_inner_width: 3
+    outline_outer_color: "#000000"
+    outline_outer_width: 6
     padding: 80
     max_lines: 4
     max_chars_per_line: 12
-    title_font_size: 96
+    title_font_size: 288
     subtitle_font_size: 56
+    font_path: "assets/fonts/ZenMaruGothic-Bold.ttf"
     overlays: []
 
   thumbnail_ai:
