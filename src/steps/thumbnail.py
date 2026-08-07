@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -41,27 +42,32 @@ class ThumbnailGenerator(Step):
         super().__init__(run_id, run_dir)
         cfg = dict(thumbnail_config or {})
         if cfg.get("randomize_palette", True):
-            palette = random.choice(_palette_candidates(cfg))
-            cfg.update(palette)
+            candidates = _palette_candidates(cfg)
+            if candidates:
+                cfg.update(random.choice(candidates))
         self.enabled = bool(cfg.get("enabled", True))
         self.width = int(cfg.get("width", 1280))
         self.height = int(cfg.get("height", 720))
-        self.background_color = str(cfg.get("background_color", "#1a2238"))
-        self.title_color = str(cfg.get("title_color", "#FFFFFF"))
-        self.subtitle_color = str(cfg.get("subtitle_color", "#FFD166"))
-        self.show_subtitle = bool(cfg.get("show_subtitle", True))
+        self.background_color = str(cfg.get("background_color", "#fef155"))
+        self.title_color = str(cfg.get("title_color", "#EB001B"))
+        self.subtitle_color = str(cfg.get("subtitle_color", "#EB001B"))
+        self.show_subtitle = bool(cfg.get("show_subtitle", False))
         self.padding = int(cfg.get("padding", 80))
-        self.title_font_size = int(cfg.get("title_font_size", 206))
+        self.safe_margin_pct = float(cfg.get("safe_margin_pct", 9.0))
+        self.title_height_min_pct = float(cfg.get("title_height_min_pct", 30.0))
+        self.title_height_max_pct = float(cfg.get("title_height_max_pct", 40.0))
+        self.preview_width = int(cfg.get("preview_width", 200))
+        self.title_font_size = int(cfg.get("title_font_size", 360))
         self.subtitle_font_size = int(cfg.get("subtitle_font_size", 56))
-        self.max_lines = int(cfg.get("max_lines", 3))
+        self.max_lines = int(cfg.get("max_lines", 4))
         self.max_chars_per_line = int(cfg.get("max_chars_per_line", 12))
         self.font_path = cfg.get("font_path")
         self.overlay_configs = list(cfg.get("overlays", []))
         self.right_guard_band_px = int(cfg.get("right_guard_band_px", 0))
-        self.outline_inner_color = str(cfg.get("outline_inner_color", "#EB001B"))
-        self.outline_inner_width = int(cfg.get("outline_inner_width", 20))
+        self.outline_inner_color = str(cfg.get("outline_inner_color", "#FFFFFF"))
+        self.outline_inner_width = int(cfg.get("outline_inner_width", 3))
         self.outline_outer_color = str(cfg.get("outline_outer_color", "#000000"))
-        self.outline_outer_width = int(cfg.get("outline_outer_width", 20))
+        self.outline_outer_width = int(cfg.get("outline_outer_width", 6))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_path = self.get_output_path()
@@ -78,17 +84,41 @@ class ThumbnailGenerator(Step):
         bg_rgb = getrgb(self.background_color) + (255,)
         image = Image.new("RGBA", (self.width, self.height), color=bg_rgb)
         draw = ImageDraw.Draw(image)
-        title_font = self._load_font(self.title_font_size)
-        subtitle_font = self._load_font(self.subtitle_font_size)
-        text_right = self.width - self.padding - max(0, self.right_guard_band_px)
-        title_bottom = self._render_text(draw, title, title_font, self.title_color, self.padding, text_right)
+        margin_x, margin_y = self._safe_margins()
+        text_right = self.width - margin_x - max(0, self.right_guard_band_px)
+        max_title_height = int(self.height * self.title_height_max_pct / 100)
+        title_font, actual_font_size = self._fit_title_font(title, text_right - margin_x, max_title_height)
+        title_bottom = self._render_text(
+            draw,
+            title,
+            title_font,
+            self.title_color,
+            margin_y,
+            text_right,
+            left_edge=margin_x,
+        )
+        title_height_pct = 100 * max(0, title_bottom - margin_y) / self.height
+
         if self.show_subtitle and subtitle:
-            y_offset = title_bottom + self.padding // 2
-            self._render_text(draw, subtitle, subtitle_font, self.subtitle_color, y_offset, text_right)
+            subtitle_font = self._load_font(self.subtitle_font_size)
+            y_offset = title_bottom + max(8, margin_y // 2)
+            self._render_text(
+                draw,
+                subtitle,
+                subtitle_font,
+                self.subtitle_color,
+                y_offset,
+                text_right,
+                left_edge=margin_x,
+            )
 
         for overlay in self._prepare_overlays():
             image.paste(overlay["image"], overlay["position"], mask=overlay["image"])
-        image.convert("RGB").save(output_path, format="PNG")
+
+        rgb_image = image.convert("RGB")
+        rgb_image.save(output_path, format="PNG")
+        self._save_preview(rgb_image, output_path)
+        self._save_metadata(output_path, title, actual_font_size, title_height_pct)
         return output_path
 
     def _resolve_title(self, metadata: Dict | None, script) -> str:
@@ -105,12 +135,37 @@ class ThumbnailGenerator(Step):
             return script.segments[1].text.strip() or "解説付き"
         return script.segments[0].speaker.strip() if script.segments else "解説付き"
 
+    def _safe_margins(self) -> Tuple[int, int]:
+        pct = max(0.0, min(49.0, self.safe_margin_pct)) / 100
+        return round(self.width * pct), round(self.height * pct)
+
     def _load_font(self, size: int) -> ImageFont.ImageFont:
         if self.font_path:
             font_file = Path(self.font_path)
             if font_file.exists():
                 return ImageFont.truetype(str(font_file), size)
-        return ImageFont.load_default()
+        return ImageFont.load_default(size=size)
+
+    def _fit_title_font(
+        self, text: str, max_width: int, max_height: int
+    ) -> tuple[ImageFont.ImageFont, int]:
+        max_size = max(24, self.title_font_size)
+        for size in range(max_size, 23, -4):
+            font = self._load_font(size)
+            lines = self._wrap_text(text, font, max_width)
+            if self._text_block_height(font, lines) <= max_height:
+                return font, size
+        return self._load_font(24), 24
+
+    def _text_block_height(self, font: ImageFont.ImageFont, lines: List[str]) -> int:
+        if not lines:
+            return 0
+        heights = []
+        for line in lines:
+            bbox = font.getbbox(line or " ")
+            heights.append(max(1, int(bbox[3] - bbox[1])))
+        spacing = max(4, self.padding // 4)
+        return sum(heights) + spacing * max(0, len(lines) - 1)
 
     def _prepare_overlays(self) -> List[Dict]:
         overlays = []
@@ -140,7 +195,9 @@ class ThumbnailGenerator(Step):
         elif cfg.get("width_ratio"):
             w = int(self.width * float(cfg["width_ratio"]))
             h = int(h * w / overlay.size[0])
-        return overlay.resize((max(1, w), max(1, h)), Image.LANCZOS) if (w, h) != overlay.size else overlay
+        if (w, h) == overlay.size:
+            return overlay
+        return overlay.resize((max(1, w), max(1, h)), Image.Resampling.LANCZOS)
 
     def _resolve_position(self, size: Tuple[int, int], cfg: Dict) -> Tuple[int, int]:
         anchor = str(cfg.get("anchor", "bottom_right")).lower()
@@ -162,13 +219,21 @@ class ThumbnailGenerator(Step):
         return max(0, min(self.width - w, x)), max(0, min(self.height - h, y))
 
     def _render_text(
-        self, draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, color: str, top: int, right_edge: int
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.ImageFont,
+        color: str,
+        top: int,
+        right_edge: int,
+        *,
+        left_edge: int | None = None,
     ) -> int:
-        max_width = max(self.padding, right_edge - self.padding)
+        x = self.padding if left_edge is None else left_edge
+        max_width = max(1, right_edge - x)
         lines = self._wrap_text(text, font, max_width)
         y = top
         for i, line in enumerate(lines):
-            x = self.padding
             draw.text(
                 (x, y),
                 line,
@@ -218,3 +283,27 @@ class ThumbnailGenerator(Step):
             return int(font.getlength(text))
         bbox = font.getbbox(text)
         return int(bbox[2] - bbox[0])
+
+    def _save_preview(self, image: Image.Image, output_path: Path) -> Path:
+        width = max(1, min(self.width, self.preview_width))
+        height = max(1, round(self.height * width / self.width))
+        preview_path = output_path.with_name(f"{output_path.stem}.preview.png")
+        image.resize((width, height), Image.Resampling.LANCZOS).save(preview_path, format="PNG")
+        return preview_path
+
+    def _save_metadata(self, output_path: Path, title: str, font_size: int, title_height_pct: float) -> Path:
+        metadata_path = output_path.with_name(f"{output_path.stem}.metadata.json")
+        payload = {
+            "copy": title,
+            "font_size_main": font_size,
+            "outline_white_px": self.outline_inner_width,
+            "outline_black_px": self.outline_outer_width,
+            "safe_margin_pct": self.safe_margin_pct,
+            "background_color": self.background_color,
+            "text_color": self.title_color,
+            "preview_width_px": max(1, min(self.width, self.preview_width)),
+            "title_height_pct": round(title_height_pct, 2),
+            "title_height_target_pct": [self.title_height_min_pct, self.title_height_max_pct],
+        }
+        metadata_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return metadata_path
