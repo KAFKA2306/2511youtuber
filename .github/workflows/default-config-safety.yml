@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "pydantic>=2,<3" PyYAML
+      - run: pip install "pydantic>=2,<3" PyYAML Pillow ffmpeg-python pydub
       - name: Validate publication defaults
         run: |
           python - <<'PY'
@@ -39,3 +39,5 @@ jobs:
           PY
       - name: Validate context-note history
         run: python -m unittest tests/unit/test_context_notes.py -v
+      - name: Validate subtitle pagination
+        run: python -m unittest tests/unit/steps/test_subtitle_pagination.py -v
