@@ -37,6 +37,8 @@ jobs:
           assert steps["hatena"]["enabled"] is False
           assert raw["automation"]["enabled"] is False
           PY
+      - name: Validate prompt version provenance
+        run: python -m unittest tests/unit/test_prompt_version.py -v
       - name: Validate context-note history
         run: python -m unittest tests/unit/test_context_notes.py -v
       - name: Validate subtitle pagination
