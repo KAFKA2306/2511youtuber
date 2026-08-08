@@ -8,6 +8,7 @@ from typing import Dict, Iterable, List
 from src.core.state import WorkflowResult, WorkflowState
 from src.core.step import Step
 from src.tracking import AimTracker
+from src.utils.prompt_version import prompt_bundle_version
 
 
 class WorkflowOrchestrator:
@@ -16,6 +17,14 @@ class WorkflowOrchestrator:
         self.steps: List[Step] = list(steps)
         self.run_dir = Path(run_dir)
         self.state = WorkflowState.load_or_create(run_id, self.run_dir)
+
+        current_prompt_version = prompt_bundle_version()
+        if self.state.prompt_version and self.state.prompt_version != current_prompt_version:
+            raise ValueError(
+                "Prompt bundle changed since this run started: "
+                f"state={self.state.prompt_version} current={current_prompt_version}"
+            )
+        self.state.prompt_version = current_prompt_version
 
     def execute(self) -> WorkflowResult:
         start_time = datetime.now()
