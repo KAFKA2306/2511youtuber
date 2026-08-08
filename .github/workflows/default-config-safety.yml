@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "pydantic>=2,<3" PyYAML Pillow
+      - run: pip install "pydantic>=2,<3" PyYAML Pillow ffmpeg-python pydub
       - name: Validate publication defaults
         run: |
           python - <<'PY'
