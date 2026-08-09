@@ -186,6 +186,31 @@ providers:
       max_tokens: 2048
       search_recency_filter: "week"
 
+tone:
+  # Low & Slow: 等身大の検証過程を共有する。釣り・煽り・過度な自画自賛は避け、
+  # 失敗も含めた透明性を担保する。
+  enabled: true
+  title_forbidden_terms:
+    - "神回"
+    - "覇権"
+    - "完全勝利"
+    - "最強"
+  description_forbidden_terms:
+    - "絶対に成功"
+    - "確実に儲かる"
+    - "必ず成功"
+    - "完全勝利"
+  replacements:
+    "神回": "検証ログ"
+    "覇権": "検証中"
+    "完全勝利": "検証で得られた知見"
+    "最強": "現時点の手応え"
+    "絶対に成功": "成功条件を検証"
+    "確実に儲かる": "再現性を検証"
+    "必ず成功": "成功条件を検証"
+  description_footer: "このチャンネルはLow & Slow。失敗や未検証の点も含めて、再現できる範囲を正直に共有します。"
+  failure_transparency_marker: "失敗や未検証"
+
 logging:
   level: "INFO"
   format: "json"
