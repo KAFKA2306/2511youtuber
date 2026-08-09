@@ -36,6 +36,19 @@ jobs:
           assert steps["linkedin"]["enabled"] is False
           assert steps["hatena"]["enabled"] is False
           assert raw["automation"]["enabled"] is False
+
+          tone = raw["tone"]
+          assert tone["enabled"] is True
+          assert tone["title_forbidden_terms"]
+          assert tone["description_forbidden_terms"]
+          replacements = tone["replacements"]
+          for term in set(tone["title_forbidden_terms"] + tone["description_forbidden_terms"]):
+              assert term in replacements, f"missing tone replacement: {term}"
+              assert replacements[term].strip(), f"empty tone replacement: {term}"
+          marker = tone["failure_transparency_marker"].strip()
+          footer = tone["description_footer"].strip()
+          assert marker
+          assert marker in footer
           PY
       - name: Validate prompt version provenance
         run: python -m unittest tests/unit/test_prompt_version.py -v
