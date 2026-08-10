@@ -1,0 +1,68 @@
+name: News diversity selection
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/steps/news.py"
+      - "src/providers/news.py"
+      - "src/utils/prompt_version.py"
+      - "config/default.yaml"
+      - "config/news_selection.yaml"
+      - "tests/unit/steps/test_news_diversity.py"
+      - ".github/workflows/news-diversity.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/steps/news.py"
+      - "src/providers/news.py"
+      - "src/utils/prompt_version.py"
+      - "config/default.yaml"
+      - "config/news_selection.yaml"
+      - "tests/unit/steps/test_news_diversity.py"
+      - ".github/workflows/news-diversity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news-diversity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install focused dependencies
+        run: pip install "pydantic>=2,<3" "PyYAML>=6,<7" "pytest>=7,<9" "requests>=2.31,<3" "litellm>=1,<2"
+      - name: Compile news selection implementation
+        run: python -m py_compile src/steps/news.py src/providers/news.py src/utils/prompt_version.py tests/unit/steps/test_news_diversity.py
+      - name: Validate news selection prompt
+        run: python - <<'PY'
+          from pathlib import Path
+          import yaml
+          cfg = yaml.safe_load(Path("config/news_selection.yaml").read_text(encoding="utf-8"))
+          template = cfg["news_selection"]["user_template"]
+          for field in ("{candidates}", "{recent_topics_note}", "{count}"):
+              assert field in template, field
+          PY
+      - name: Verify news diversity contracts
+        run: python -m pytest tests/unit/steps/test_news_diversity.py tests/unit/steps/test_news_di.py -q
+      - name: Verify default collection contract
+        run: python - <<'PY'
+          from pathlib import Path
+          import yaml
+          cfg = yaml.safe_load(Path("config/default.yaml").read_text(encoding="utf-8"))["steps"]["news"]
+          assert cfg["fetch_count"] == cfg["final_count"] * 3
+          assert cfg["recent_topics_runs"] == 5
+          assert cfg["recent_topics_min_token_length"] == 2
+          assert cfg["recent_topics_max_chars"] == 500
+          assert cfg["query"]
+          PY
+      - name: Remove generated Python caches
+        if: always()
+        run: find . -type d -name __pycache__ -prune -exec rm -rf {} +
+      - name: Verify checkout remains clean
+        if: always()
+        run: test -z "$(git status --porcelain)"
