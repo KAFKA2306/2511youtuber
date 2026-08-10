@@ -4,6 +4,7 @@ workflow:
 
 steps:
   news:
+    query: "bloomberg OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     query_buckets:
       macro_economy: "GDP CPI 雇用統計 金融政策 日銀 FRB インフレ 景気動向"
       japanese_stock: "日経平均 TOPIX 日本株 決算 上方修正 自社株買い 株式分割"
@@ -12,7 +13,7 @@ steps:
       commodities: "原油価格 金相場 商品先物 エネルギー価格"
       crypto_web3: "ビットコイン 暗号資産 イーサリアム ブロックチェーン"
       tech_semicon: "半導体 生成AI 人工知能 テクノロジー"
-    fetch_count: 10
+    fetch_count: 9
     final_count: 3
     cooldown_hours: 24
     count: 3
