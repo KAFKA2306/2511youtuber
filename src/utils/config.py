@@ -235,7 +235,6 @@ class AIThumbnailStepConfig(BaseModel):
     width: int = 1920
     height: int = 1080
     num_steps: int = 6
-    text_overlay_enabled: bool = True
 
 
 class MetadataStepConfig(BaseModel):
@@ -263,25 +262,20 @@ class TwitterStepConfig(BaseModel):
     enabled: bool = False
     dry_run: bool = True
     clip_duration_seconds: int = 60
-    start_offset_seconds: int = 0
-
-
-class LinkedInStepConfig(BaseModel):
-    enabled: bool = False
-    dry_run: bool = True
-
-
-class HatenaStepConfig(BaseModel):
-    enabled: bool = False
-    dry_run: bool = True
+    start_offset_seconds: float = 0.0
+    thumbnail_path: str | None = None
+    api_key: str | None = None
+    api_secret: str | None = None
+    access_token: str | None = None
+    access_secret: str | None = None
 
 
 class PodcastStepConfig(BaseModel):
     enabled: bool = False
-    feed_title: str
-    feed_description: str
-    feed_author: str
-    feed_url: str
+    feed_title: str = "金融ニュース解説ポッドキャスト"
+    feed_description: str = "AI生成の日本経済・金融ニュース解説"
+    feed_author: str = "2510 YouTuber AI"
+    feed_url: str = "https://example.com/podcast"
 
 
 class BuzzsproutStepConfig(BaseModel):
@@ -290,7 +284,22 @@ class BuzzsproutStepConfig(BaseModel):
     token_key: str = "buzzsprout_api_token"
     podcast_id_key: str = "buzzsprout_podcast_id"
     title_template: str = "金融ニュース解説 Episode {run_id}"
-    publish_immediately: bool = False
+    publish_immediately: bool = True
+
+
+class LinkedInStepConfig(BaseModel):
+    enabled: bool = False
+    dry_run: bool = True
+    access_token: str | None = None
+    author_urn: str | None = None
+
+
+class HatenaStepConfig(BaseModel):
+    enabled: bool = False
+    dry_run: bool = True
+    hatena_id: str | None = None
+    blog_id: str | None = None
+    api_key: str | None = None
 
 
 class StepsConfig(BaseModel):
@@ -300,66 +309,63 @@ class StepsConfig(BaseModel):
     subtitle: SubtitleStepConfig
     video: VideoStepConfig
     thumbnail: ThumbnailStepConfig
-    thumbnail_ai: AIThumbnailStepConfig
-    scene_generator: SceneGeneratorStepConfig
+    thumbnail_ai: AIThumbnailStepConfig = Field(default_factory=AIThumbnailStepConfig)
+    scene_generator: SceneGeneratorStepConfig = Field(default_factory=SceneGeneratorStepConfig)
     metadata: MetadataStepConfig
     youtube: YouTubeStepConfig
     twitter: TwitterStepConfig
-    linkedin: LinkedInStepConfig
-    hatena: HatenaStepConfig
+    linkedin: LinkedInStepConfig = Field(default_factory=LinkedInStepConfig)
+    hatena: HatenaStepConfig = Field(default_factory=HatenaStepConfig)
     podcast: PodcastStepConfig
     buzzsprout: BuzzsproutStepConfig
 
 
-class GeminiLLMConfig(BaseModel):
+class GeminiProviderConfig(BaseModel):
     model: str
     fallback_model: str | None = None
-    temperature: float = 0.2
-    max_tokens: int = 32768
+    temperature: float
+    max_tokens: int
 
 
 class LLMProvidersConfig(BaseModel):
-    gemini: GeminiLLMConfig
+    gemini: GeminiProviderConfig
 
 
-class VoicevoxTTSConfig(BaseModel):
-    enabled: bool = False
+class VOICEVOXProviderConfig(BaseModel):
+    enabled: bool
     url: str
-    manager_script: str
-    auto_start: bool = False
     speakers: Dict[str, int]
-    voice_parameters: Dict[str, Dict] = Field(default_factory=dict)
+    manager_script: str | None = None
+    auto_start: bool = False
+    voice_parameters: Dict = Field(default_factory=dict)
 
 
 class TTSProvidersConfig(BaseModel):
-    voicevox: VoicevoxTTSConfig
+    voicevox: VOICEVOXProviderConfig
 
 
-class PerplexityNewsConfig(BaseModel):
+class PerplexityNewsProviderConfig(BaseModel):
     enabled: bool = False
-    model: str
+    model: str = "sonar"
     temperature: float = 0.2
     max_tokens: int = 2048
-    search_recency_filter: str = "week"
+    search_recency_filter: str | None = None
 
 
 class NewsProvidersConfig(BaseModel):
-    perplexity: PerplexityNewsConfig
+    perplexity: PerplexityNewsProviderConfig | None = None
+
+
+class CloudflareAIConfig(BaseModel):
+    account_id: str = "dc1aa018702e10045b00865b63f144d0"
+    model: str = "@cf/black-forest-labs/flux-1-schnell"
 
 
 class ProvidersConfig(BaseModel):
     llm: LLMProvidersConfig
     tts: TTSProvidersConfig
     news: NewsProvidersConfig
-
-
-class ToneConfig(BaseModel):
-    enabled: bool = True
-    title_forbidden_terms: list[str] = Field(default_factory=list)
-    description_forbidden_terms: list[str] = Field(default_factory=list)
-    replacements: Dict[str, str] = Field(default_factory=dict)
-    description_footer: str = ""
-    failure_transparency_marker: str = ""
+    cloudflare_ai: CloudflareAIConfig = Field(default_factory=CloudflareAIConfig)
 
 
 class LoggingConfig(BaseModel):
@@ -369,22 +375,27 @@ class LoggingConfig(BaseModel):
 
 class AutomationServiceConfig(BaseModel):
     name: str
-    command: str
-    healthcheck: str | None = None
-    required: bool = True
-    timeout_seconds: int = 30
+    enabled: bool = True
+    command: list[str]
+    cwd: str | None = None
+    env: Dict[str, str] = Field(default_factory=dict)
+    background: bool = True
+    log_file: str | None = None
 
 
 class AutomationScheduleConfig(BaseModel):
     name: str
-    command: str
-    cron: str
     enabled: bool = True
+    command: list[str]
+    cwd: str | None = None
+    cron: str
+    env: Dict[str, str] = Field(default_factory=dict)
+    log_file: str | None = None
 
 
 class AutomationConfig(BaseModel):
-    enabled: bool = False
-    venv_activate: str = ".venv/bin/activate"
+    enabled: bool = True
+    venv_activate: str | None = None
     log_dir: str = "logs/automation"
     services: list[AutomationServiceConfig] = Field(default_factory=list)
     schedules: list[AutomationScheduleConfig] = Field(default_factory=list)
@@ -394,21 +405,35 @@ class Config(BaseModel):
     workflow: WorkflowConfig
     steps: StepsConfig
     providers: ProvidersConfig
-    tone: ToneConfig = Field(default_factory=ToneConfig)
     logging: LoggingConfig
     automation: AutomationConfig = Field(default_factory=AutomationConfig)
 
     @classmethod
-    def load(cls, path: Path | str = "config/default.yaml") -> "Config":
-        path = Path(path)
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        return cls.model_validate(data)
+    def load(cls, config_path: str | Path | None = None) -> "Config":
+        if config_path is None:
+            config_path = Path(__file__).parent.parent.parent / "config" / "default.yaml"
+        else:
+            config_path = Path(config_path)
+
+        with open(config_path) as f:
+            data = yaml.safe_load(f)
+
+        return cls(**data)
+
+    def get_gemini_api_keys(self) -> list[str]:
+        return load_secret_values("GEMINI_API_KEY")
+
+    @classmethod
+    def get_default_gemini_model(cls) -> str:
+        config = cls.load()
+        return config.providers.llm.gemini.model
 
 
-def load_prompts(path: Path | str = "config/prompts.yaml") -> Dict:
-    path = Path(path)
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+def load_prompts(prompts_path: str | Path | None = None) -> Dict:
+    if prompts_path is None:
+        prompts_path = Path(__file__).parent.parent.parent / "config" / "prompts.yaml"
+    else:
+        prompts_path = Path(prompts_path)
 
-
-def load_secrets() -> Dict[str, str]:
-    return load_secret_values()
+    with open(prompts_path) as f:
+        return yaml.safe_load(f)
