@@ -134,3 +134,25 @@ class GeminiNewsProvider:
             for e in parsed
         ]
         return items[:count]
+
+    def select_news(self, prompt: str) -> str:
+        """Rank already-fetched candidates without enabling web search or inventing sources."""
+        if not self.api_keys:
+            raise RuntimeError("No Gemini API keys configured")
+        response = litellm.completion(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a financial news editor. Select only from the candidates "
+                        "provided by the user and return strict JSON."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+            max_tokens=min(self.max_tokens, 2048),
+            api_key=self.api_keys[0],
+        )
+        return response.choices[0].message.content

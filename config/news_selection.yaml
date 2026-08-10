@@ -1,0 +1,26 @@
+news_selection:
+  system: "You are a financial news editor. Select only from the supplied candidate list and never invent or rewrite a source."
+  user_template: |
+    以下は実際に収集済みの金融ニュース候補です。候補そのものを変更せず、{count}件を選んでください。
+
+    【候補ニュース】
+    {candidates}
+
+    【直近5回のトピック】
+    {recent_topics_note}
+
+    【選定基準】
+    - 直近トピックと同じ主題・同じ市場への偏りを避ける
+    - 選ぶ{count}件どうしでもカテゴリを分散する
+    - 市場への重要度と具体的な事実・数値を優先する
+    - 候補に存在しないニュース、URL、事実を追加しない
+    - 日経平均と日経平均株価は同一テーマとして扱う
+
+    【出力契約】
+    JSONのみを返してください。indexは候補ニュースのindexをそのまま使い、重複させないでください。
+    {{
+      "selections": [
+        {{"index": 0, "reason": "選定理由"}}
+      ]
+    }}
+    selectionsは必ず{count}件にしてください。
