@@ -39,7 +39,8 @@ jobs:
       - name: Compile news selection implementation
         run: python -m py_compile src/steps/news.py src/providers/news.py src/utils/prompt_version.py tests/unit/steps/test_news_diversity.py
       - name: Validate news selection prompt
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           from pathlib import Path
           import yaml
           cfg = yaml.safe_load(Path("config/news_selection.yaml").read_text(encoding="utf-8"))
@@ -50,7 +51,8 @@ jobs:
       - name: Verify news diversity contracts
         run: python -m pytest tests/unit/steps/test_news_diversity.py tests/unit/steps/test_news_di.py -q
       - name: Verify default collection contract
-        run: python - <<'PY'
+        run: |
+          python - <<'PY'
           from pathlib import Path
           import yaml
           cfg = yaml.safe_load(Path("config/default.yaml").read_text(encoding="utf-8"))["steps"]["news"]
@@ -59,6 +61,7 @@ jobs:
           assert cfg["recent_topics_min_token_length"] == 2
           assert cfg["recent_topics_max_chars"] == 500
           assert cfg["query"]
+          assert list(cfg["query_buckets"].values()) == [cfg["query"]]
           PY
       - name: Remove generated Python caches
         if: always()
