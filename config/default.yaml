@@ -6,13 +6,7 @@ steps:
   news:
     query: "bloomberg OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     query_buckets:
-      macro_economy: "GDP CPI 雇用統計 金融政策 日銀 FRB インフレ 景気動向"
-      japanese_stock: "日経平均 TOPIX 日本株 決算 上方修正 自社株買い 株式分割"
-      us_stock: "米国株 NYダウ S&P500 NASDAQ 決算 米国経済"
-      forex_rates: "ドル円 為替 円安 円高 金利差 為替介入"
-      commodities: "原油価格 金相場 商品先物 エネルギー価格"
-      crypto_web3: "ビットコイン 暗号資産 イーサリアム ブロックチェーン"
-      tech_semicon: "半導体 生成AI 人工知能 テクノロジー"
+      broad: "bloomberg OR 出来高 OR 決算 OR finance.yahoo OR earnings OR news.qq OR kafkafinancialgroup.hatenablog"
     fetch_count: 9
     final_count: 3
     cooldown_hours: 24
