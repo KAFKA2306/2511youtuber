@@ -13,7 +13,6 @@ import yaml
 from src.core.step import Step
 from src.models import NewsItem
 from src.providers.base import Provider, execute_with_fallback
-from src.tracking import AimTracker
 from src.utils.history import gather_recent_topics
 from src.utils.logger import get_logger
 from src.utils.text import extract_code_block
@@ -81,7 +80,6 @@ class NewsCollector(Step):
         self.recent_topics_max_chars = recent_topics_max_chars
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
-        tracker = AimTracker.get_instance(self.run_id)
         start = time.time()
         recent = gather_recent_topics(self.run_dir, self.run_id, self.recent_topics_runs)
 
@@ -110,6 +108,9 @@ class NewsCollector(Step):
             )
 
         self._save_selection_record(selection_record)
+        from src.tracking import AimTracker
+
+        tracker = AimTracker.get_instance(self.run_id)
         tracker.track_prompt(
             step_name="collect_news",
             template_name="news_selection",
@@ -183,11 +184,6 @@ class NewsCollector(Step):
         prompt_path = Path(__file__).resolve().parents[2] / "config" / "news_selection.yaml"
         section = yaml.safe_load(prompt_path.read_text(encoding="utf-8"))["news_selection"]
         template = section["user_template"]
-        tracker = AimTracker.get_instance(self.run_id)
-        tracker.track_template_version(
-            "news_selection",
-            yaml.safe_dump(section, allow_unicode=True, sort_keys=False),
-        )
         candidate_payload = [
             {
                 "index": idx,
