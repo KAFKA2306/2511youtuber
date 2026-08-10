@@ -8,10 +8,11 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import yaml
+
 from src.core.step import Step
 from src.models import NewsItem
 from src.providers.base import Provider, execute_with_fallback
-from src.providers.llm import load_prompt_template
 from src.tracking import AimTracker
 from src.utils.history import gather_recent_topics
 from src.utils.logger import get_logger
@@ -19,7 +20,6 @@ from src.utils.text import extract_code_block
 
 logger = get_logger(__name__)
 
-# Regex patterns for entity detection. The first alternative is the normalized key.
 ENTITY_PATTERNS = [
     r"日経平均(?:株価)?",
     r"TOPIX",
@@ -48,14 +48,7 @@ ENTITY_PATTERNS = [
 
 
 class NewsCollector(Step):
-    """Collect a broad candidate set, then select a diverse final set.
-
-    The collector intentionally separates retrieval from editorial selection:
-    providers fetch real candidate news first, then an injected LLM can rank those
-    concrete candidates against recent topics. If the LLM is unavailable or its
-    response violates the strict selection contract, a deterministic entity-aware
-    fallback keeps the workflow usable without inventing news.
-    """
+    """Collect broad candidates first, then select a diverse concrete news set."""
 
     name = "collect_news"
     output_filename = "news.json"
@@ -135,13 +128,14 @@ class NewsCollector(Step):
     def select_news(
         self, candidates: List[NewsItem], recent_topics: List[str]
     ) -> Tuple[List[NewsItem], Dict[str, Any]]:
-        """Select final news from concrete candidates and return an audit record."""
+        """Select final news from actual candidates and return an audit record."""
         prompt = self._build_selection_prompt(candidates, recent_topics)
-        provider = self.llm_provider
+        provider = self._selection_provider()
 
         if provider is not None and provider.is_available():
             try:
-                raw = provider.execute(prompt=prompt)
+                selector = getattr(provider, "select_news", None)
+                raw = selector(prompt=prompt) if callable(selector) else provider.execute(prompt=prompt)
                 selections = self._parse_selection(raw, len(candidates))
                 if len(selections) == self.final_count:
                     selected = [candidates[item["index"]] for item in selections]
@@ -158,7 +152,7 @@ class NewsCollector(Step):
                     self.final_count,
                     len(selections),
                 )
-            except Exception as exc:  # noqa: BLE001 - selection must have safe fallback
+            except Exception as exc:  # noqa: BLE001 - safe deterministic fallback is intentional
                 logger.warning("LLM news selection failed; using deterministic fallback: %s", exc)
 
         selected = self._diverse_fallback(candidates, recent_topics)
@@ -175,10 +169,25 @@ class NewsCollector(Step):
             model="rule",
         )
 
+    def _selection_provider(self) -> Provider | None:
+        if self.llm_provider is not None:
+            return self.llm_provider
+        for provider in self.providers:
+            if callable(getattr(provider, "select_news", None)):
+                return provider
+        return None
+
     def _build_selection_prompt(
         self, candidates: List[NewsItem], recent_topics: List[str]
     ) -> str:
-        template = load_prompt_template("news_selection", self.run_id)
+        prompt_path = Path(__file__).resolve().parents[2] / "config" / "news_selection.yaml"
+        section = yaml.safe_load(prompt_path.read_text(encoding="utf-8"))["news_selection"]
+        template = section["user_template"]
+        tracker = AimTracker.get_instance(self.run_id)
+        tracker.track_template_version(
+            "news_selection",
+            yaml.safe_dump(section, allow_unicode=True, sort_keys=False),
+        )
         candidate_payload = [
             {
                 "index": idx,
@@ -255,7 +264,6 @@ class NewsCollector(Step):
         return self._select_bucket()
 
     def _select_bucket(self) -> Tuple[str, str]:
-        """Retain bucket rotation as a backwards-compatible retrieval fallback."""
         if self.bucket_schedule and self.bucket_schedule in self.query_buckets:
             return self.bucket_schedule, self.query_buckets[self.bucket_schedule]
         if not self.query_buckets:
