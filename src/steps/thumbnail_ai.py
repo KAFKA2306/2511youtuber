@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from pathlib import Path
 from typing import Dict
+
+from PIL import Image, ImageDraw, ImageOps
 
 from src.core.io_utils import load_json
 from src.core.step import Step
 from src.providers.cloudflare_ai import CloudflareAIClient
 from src.providers.llm import GeminiProvider
-from src.utils.config import load_prompts
+from src.steps.thumbnail import ThumbnailGenerator
+from src.utils.config import Config, load_prompts
 
 
 class AIThumbnailGenerator(Step):
@@ -28,6 +32,7 @@ class AIThumbnailGenerator(Step):
         self.width = int(cfg.get("width", 1920))
         self.height = int(cfg.get("height", 1080))
         self.num_steps = int(cfg.get("num_steps", 6))
+        self.text_overlay_enabled = bool(cfg.get("text_overlay_enabled", True))
 
     def execute(self, inputs: Dict[str, Path | str]) -> Path:
         output_path = self.get_output_path()
@@ -53,6 +58,7 @@ class AIThumbnailGenerator(Step):
                     "tags": tags,
                     "prompt": prompt_en,
                     "negative_prompt": negative_prompt,
+                    "text_overlay": "deterministic-local" if self.text_overlay_enabled else "disabled",
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -65,11 +71,58 @@ class AIThumbnailGenerator(Step):
             height=self.height,
             num_steps=self.num_steps,
         )
+        if self.text_overlay_enabled:
+            image_data = self._compose_title(image_data, title)
         output_path.write_bytes(image_data)
         return output_path
 
     def _resolve_title(self, metadata: Dict) -> str:
         return str(metadata["title"]).strip()
+
+    def _compose_title(self, image_data: bytes, title: str) -> bytes:
+        """Render exact title text locally over an AI-generated background.
+
+        The image model is intentionally responsible only for the visual background.
+        Text is rendered with the repository's normal thumbnail typography so the
+        requested Japanese copy is deterministic and auditable.
+        """
+        with Image.open(BytesIO(image_data)) as source:
+            image = ImageOps.fit(
+                source.convert("RGBA"),
+                (self.width, self.height),
+                method=Image.Resampling.LANCZOS,
+            )
+
+        text_cfg = Config.load().steps.thumbnail.model_dump()
+        text_cfg.update(
+            {
+                "enabled": True,
+                "width": self.width,
+                "height": self.height,
+                "randomize_palette": False,
+                "show_subtitle": False,
+                "overlays": [],
+            }
+        )
+        renderer = ThumbnailGenerator(self.run_id, self.run_dir, text_cfg)
+        draw = ImageDraw.Draw(image)
+        margin_x, margin_y = renderer._safe_margins()
+        text_right = self.width - margin_x - max(0, renderer.right_guard_band_px)
+        max_title_height = int(self.height * renderer.title_height_max_pct / 100)
+        title_font, _ = renderer._fit_title_font(title, text_right - margin_x, max_title_height)
+        renderer._render_text(
+            draw,
+            title,
+            title_font,
+            renderer.title_color,
+            margin_y,
+            text_right,
+            left_edge=margin_x,
+        )
+
+        result = BytesIO()
+        image.convert("RGB").save(result, format="PNG")
+        return result.getvalue()
 
     def _generate_prompt(self, prompts: Dict, title: str, description: str, tags: str) -> str:
         ai_config = prompts.get("thumbnail_ai", {})

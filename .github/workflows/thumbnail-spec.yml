@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  issue-28-contract:
+  thumbnail-contract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,8 +19,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install focused dependencies
-        run: pip install "Pillow>=12,<13" "pydantic>=2,<3" "PyYAML>=6,<7" "pytest>=7,<9"
+        run: pip install "Pillow>=12,<13" "pydantic>=2,<3" "PyYAML>=6,<7" "pytest>=7,<9" "requests>=2.31,<3" "litellm>=1,<2"
       - name: Compile thumbnail implementation
-        run: python -m py_compile src/steps/thumbnail.py tests/unit/steps/test_thumbnail_spec.py
-      - name: Verify thumbnail contract
-        run: python -m pytest tests/unit/steps/test_thumbnail_spec.py -q
+        run: python -m py_compile src/steps/thumbnail.py src/steps/thumbnail_ai.py tests/unit/steps/test_thumbnail_spec.py tests/unit/steps/test_thumbnail_ai_text_overlay.py
+      - name: Verify thumbnail contracts
+        run: python -m pytest tests/unit/steps/test_thumbnail_spec.py tests/unit/steps/test_thumbnail_ai_text_overlay.py -q
+      - name: Remove generated Python caches
+        if: always()
+        run: find . -type d -name __pycache__ -prune -exec rm -rf {} +
+      - name: Verify checkout remains clean
+        if: always()
+        run: test -z "$(git status --porcelain)"
