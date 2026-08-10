@@ -10,14 +10,18 @@ NEWS_SELECTION_PROMPTS_PATH = CONFIG_DIR / "news_selection.yaml"
 
 
 def prompt_bundle_version(prompts_path: str | Path | None = None) -> str:
-    """Return an immutable content version for the prompt bundle."""
+    """Return an immutable content version for the prompt bundle.
+
+    Explicit paths preserve the historical contract: SHA-256 of that file's raw
+    bytes. The default application bundle also covers the dedicated news selector
+    prompt so production provenance changes whenever either prompt source changes.
+    """
     if prompts_path is not None:
-        paths = [Path(prompts_path)]
-    else:
-        paths = [DEFAULT_PROMPTS_PATH, NEWS_SELECTION_PROMPTS_PATH]
+        digest = hashlib.sha256(Path(prompts_path).read_bytes()).hexdigest()
+        return f"sha256:{digest}"
 
     digest = hashlib.sha256()
-    for path in paths:
+    for path in (DEFAULT_PROMPTS_PATH, NEWS_SELECTION_PROMPTS_PATH):
         digest.update(path.name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
