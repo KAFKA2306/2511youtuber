@@ -11,7 +11,7 @@ from src.steps.thumbnail_ai import AIThumbnailGenerator
 def _background_bytes(size: tuple[int, int]) -> bytes:
     image = Image.new("RGB", size, "#446688")
     buffer = BytesIO()
-    image.save(buffer, format="JPEG")
+    image.save(buffer, format="PNG")
     return buffer.getvalue()
 
 
