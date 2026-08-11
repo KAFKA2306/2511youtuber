@@ -151,7 +151,6 @@ class VOICEVOXProvider:
             f"{self.url}/audio_query",
             params={"text": text, "speaker": speaker_id},
         )
-        query.raise_for_status()
         query_data = query.json()
 
         if "speedScale" in voice_params:
@@ -168,7 +167,6 @@ class VOICEVOXProvider:
             params={"speaker": speaker_id},
             json=query_data,
         )
-        synthesis.raise_for_status()
         return AudioSegment.from_file(BytesIO(synthesis.content), format="wav")
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
