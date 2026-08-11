@@ -1,3 +1,5 @@
+import math
+import re
 import subprocess
 import unicodedata
 from difflib import get_close_matches
@@ -12,6 +14,12 @@ from pydub import AudioSegment
 class VOICEVOXProvider:
     name = "voicevox"
     _bootstrapped: Dict[str, bool] = {}
+    _voice_tag_pattern = re.compile(r"\[VOICE:\s*([^\]]*)\]", re.IGNORECASE)
+    _voice_param_names = {
+        "speed": "speedScale",
+        "pitch": "pitchScale",
+        "intonation": "intonationScale",
+    }
 
     def __init__(
         self,
@@ -86,6 +94,42 @@ class VOICEVOXProvider:
 
         return params
 
+    @classmethod
+    def _parse_voice_directive(cls, text: str) -> tuple[str, Dict[str, float]]:
+        matches = list(cls._voice_tag_pattern.finditer(text))
+        if not matches:
+            return text, {}
+        if len(matches) > 1:
+            raise ValueError("VOICE directive must appear at most once")
+
+        values: Dict[str, float] = {}
+        body = matches[0].group(1).strip()
+        if not body:
+            raise ValueError("VOICE directive must contain at least one parameter")
+
+        for item in body.split(","):
+            if "=" not in item:
+                raise ValueError(f"Invalid VOICE parameter: {item.strip()}")
+            raw_name, raw_value = item.split("=", 1)
+            name = raw_name.strip().lower()
+            if name not in cls._voice_param_names:
+                raise ValueError(f"Unsupported VOICE parameter: {name}")
+            target = cls._voice_param_names[name]
+            if target in values:
+                raise ValueError(f"Duplicate VOICE parameter: {name}")
+            try:
+                value = float(raw_value.strip())
+            except ValueError as exc:
+                raise ValueError(f"Invalid VOICE value for {name}") from exc
+            if not math.isfinite(value):
+                raise ValueError(f"VOICE value for {name} must be finite")
+            values[target] = value
+
+        cleaned = (text[: matches[0].start()] + text[matches[0].end() :]).strip()
+        if not cleaned:
+            raise ValueError("VOICE directive cannot replace the spoken text")
+        return cleaned, values
+
     def _classify_segment_type(self, text: str) -> str:
         if "？" in text or "?" in text:
             return "question"
@@ -101,11 +145,13 @@ class VOICEVOXProvider:
 
         segment_type = kwargs.get("segment_type") or self._classify_segment_type(text)
         voice_params = self._get_voice_params(speaker, segment_type)
+        voice_params.update(kwargs.get("voice_overrides") or {})
 
         query = requests.post(
             f"{self.url}/audio_query",
             params={"text": text, "speaker": speaker_id},
         )
+        query.raise_for_status()
         query_data = query.json()
 
         if "speedScale" in voice_params:
@@ -122,9 +168,14 @@ class VOICEVOXProvider:
             params={"speaker": speaker_id},
             json=query_data,
         )
+        synthesis.raise_for_status()
         return AudioSegment.from_file(BytesIO(synthesis.content), format="wav")
 
     def execute(self, text: str, speaker: str, **kwargs) -> AudioSegment:
+        text, voice_overrides = self._parse_voice_directive(text)
+        synth_kwargs = dict(kwargs)
+        synth_kwargs["voice_overrides"] = voice_overrides
+
         if text.strip() == "(間)":
             return AudioSegment.silent(duration=500)
         if "(間)" in text:
@@ -133,8 +184,8 @@ class VOICEVOXProvider:
             for index, part in enumerate(parts):
                 segment = part.strip()
                 if segment:
-                    audio += self._synth(segment, speaker, **kwargs)
+                    audio += self._synth(segment, speaker, **synth_kwargs)
                 if index < len(parts) - 1:
                     audio += AudioSegment.silent(duration=500)
             return audio
-        return self._synth(text, speaker, **kwargs)
+        return self._synth(text, speaker, **synth_kwargs)
