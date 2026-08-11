@@ -3,6 +3,12 @@ import pytest
 from src.providers.tts import VOICEVOXProvider
 
 
+@pytest.fixture(autouse=True)
+def slow_down_tests():
+    """Override the repository-wide API delay for these pure unit tests."""
+    yield
+
+
 def test_parse_voice_directive_strips_tag_and_maps_fields():
     text, params = VOICEVOXProvider._parse_voice_directive(
         "営業利益率を確認します [VOICE: speed=1.2, pitch=-0.05, intonation=1.5]"
