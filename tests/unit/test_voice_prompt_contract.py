@@ -2,6 +2,8 @@ import json
 import sys
 import types
 
+import pytest
+
 from src.providers.llm import load_prompt_template
 from src.providers.tts import VOICEVOXProvider
 
@@ -10,6 +12,12 @@ tracking_stub.AimTracker = type("AimTracker", (), {})
 sys.modules.setdefault("src.tracking", tracking_stub)
 
 from src.steps.script import ScriptGenerator
+
+
+@pytest.fixture(autouse=True)
+def slow_down_tests():
+    """Override the repository-wide API delay for these pure contract tests."""
+    yield
 
 
 def test_script_generation_prompt_includes_strict_voice_contract():
