@@ -142,18 +142,33 @@ class GeminiProvider:
         return f"gemini/{value}"
 
 
+def _voice_prompt_contract() -> str:
+    path = Path(__file__).parent.parent.parent / "config" / "voice_prompt_contract.txt"
+    text = path.read_text(encoding="utf-8").strip()
+    if not text:
+        raise ValueError("VOICE prompt contract must not be empty")
+    return text
+
+
 def load_prompt_template(template_name: str, run_id: str | None = None) -> str:
     prompts_path = Path(__file__).parent.parent.parent / "config" / "prompts.yaml"
     with open(prompts_path, "r", encoding="utf-8") as f:
         prompts = yaml.safe_load(f)
 
     section = prompts[template_name]
+    template = section["user_template"]
+    voice_contract = ""
+    if template_name == "script_generation":
+        voice_contract = _voice_prompt_contract()
+        template = f"{template.rstrip()}\n\n{voice_contract}\n"
 
     if run_id:
         from src.tracking import AimTracker
 
         tracker = AimTracker.get_instance(run_id)
         raw_content = yaml.dump(section, allow_unicode=True, default_flow_style=False)
+        if voice_contract:
+            raw_content = f"{raw_content.rstrip()}\n\n# runtime voice contract\n{voice_contract}\n"
         tracker.track_template_version(template_name, raw_content)
 
-    return section["user_template"]
+    return template
