@@ -1,7 +1,14 @@
 import json
+import sys
+import types
 
 from src.providers.llm import load_prompt_template
 from src.providers.tts import VOICEVOXProvider
+
+tracking_stub = types.ModuleType("src.tracking")
+tracking_stub.AimTracker = type("AimTracker", (), {})
+sys.modules.setdefault("src.tracking", tracking_stub)
+
 from src.steps.script import ScriptGenerator
 
 
