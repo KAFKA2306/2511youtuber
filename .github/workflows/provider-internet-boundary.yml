@@ -1,0 +1,32 @@
+name: Provider internet boundary
+
+on:
+  pull_request:
+    paths:
+      - "src/providers/llm.py"
+      - "src/providers/news.py"
+      - "tests/test_provider_internet_boundary.py"
+      - "docs/internet-access.md"
+      - ".github/workflows/provider-internet-boundary.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/providers/llm.py"
+      - "src/providers/news.py"
+      - "tests/test_provider_internet_boundary.py"
+      - "docs/internet-access.md"
+      - ".github/workflows/provider-internet-boundary.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m unittest tests.test_provider_internet_boundary
+      - run: test -z "$(git status --porcelain --untracked-files=all)"
