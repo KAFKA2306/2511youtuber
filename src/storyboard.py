@@ -100,21 +100,29 @@ class VideoStoryboard(BaseModel):
 
         known_assets = set(asset_ids)
         previous_end: float | None = None
-        for shot in sorted(self.shots, key=lambda item: (item.start_sec, item.end_sec, item.shot_id)):
+        ordered = sorted(
+            self.shots,
+            key=lambda item: (item.start_sec, item.end_sec, item.shot_id),
+        )
+        for shot in ordered:
             if shot.end_sec > self.duration_seconds + 1e-9:
                 raise ValueError(f"shot {shot.shot_id} exceeds storyboard duration")
             if previous_end is not None:
                 if shot.start_sec < previous_end - 1e-9:
                     raise ValueError(f"shot {shot.shot_id} overlaps the previous shot")
-                if self.gap_policy == "forbid" and shot.start_sec > previous_end + 1e-9:
+                if (
+                    self.gap_policy == "forbid"
+                    and shot.start_sec > previous_end + 1e-9
+                ):
                     raise ValueError(f"gap before shot {shot.shot_id} is forbidden")
             missing = set(shot.reference_asset_ids) - known_assets
             if missing:
-                raise ValueError(f"shot {shot.shot_id} references unknown assets: {sorted(missing)}")
+                raise ValueError(
+                    f"shot {shot.shot_id} references unknown assets: {sorted(missing)}"
+                )
             previous_end = shot.end_sec
 
         if self.gap_policy == "forbid":
-            ordered = sorted(self.shots, key=lambda item: item.start_sec)
             if ordered[0].start_sec > 1e-9:
                 raise ValueError("timeline must start at 0 when gap_policy=forbid")
             if ordered[-1].end_sec < self.duration_seconds - 1e-9:
