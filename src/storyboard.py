@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+import typing
 
 from pydantic import BaseModel, Field, model_validator
 
 
-AssetKind = Literal["image", "video", "audio"]
-AssetRole = Literal[
+AssetKind = typing.Literal["image", "video", "audio"]
+AssetRole = typing.Literal[
     "first_frame",
     "last_frame",
     "reference_image",
     "reference_video",
     "reference_audio",
 ]
-GapPolicy = Literal["allow", "forbid"]
+GapPolicy = typing.Literal["allow", "forbid"]
 
 
 class ReferenceAsset(BaseModel):
