@@ -22,11 +22,11 @@ jobs:
           cache: pip
       - name: Install focused test dependencies
         run: python -m pip install "pydantic>=2,<3" "requests>=2.31" "pytest>=8" "ruff>=0.1"
-      - name: Run Storyboard tests
-        run: python -m pytest tests/test_storyboard_video_generation.py -q
       - name: Lint Storyboard boundary
         run: >-
-          ruff check
+          ruff check --output-format github
           src/storyboard.py
           src/providers/video_generation.py
           tests/test_storyboard_video_generation.py
+      - name: Run Storyboard tests
+        run: python -m pytest tests/test_storyboard_video_generation.py -q
