@@ -115,6 +115,51 @@ def test_minimax_reference_limits_and_mode_mixing():
         MiniMaxH3Provider(api_key="test").compile_request(storyboard)
 
 
+def test_minimax_reference_content_matches_v2_nested_url_contract():
+    ref = ReferenceAsset(
+        asset_id="character",
+        kind="image",
+        uri="https://example.invalid/character.png",
+        role="reference_image",
+    )
+    request = MiniMaxH3Provider(api_key="test").compile_request(
+        make_storyboard(reference_assets=[ref])
+    )
+    assert request["content"][1] == {
+        "type": "image_url",
+        "image_url": {"url": "https://example.invalid/character.png"},
+        "role": "reference_image",
+    }
+
+
+def test_minimax_total_reference_media_duration_fails_closed():
+    video = ReferenceAsset(
+        asset_id="motion",
+        kind="video",
+        uri="https://example.invalid/motion.mp4",
+        role="reference_video",
+        duration_seconds=10,
+    )
+    audio = ReferenceAsset(
+        asset_id="sound",
+        kind="audio",
+        uri="https://example.invalid/sound.mp3",
+        role="reference_audio",
+        duration_seconds=6,
+    )
+    with pytest.raises(ValueError, match="total reference video/audio duration"):
+        MiniMaxH3Provider(api_key="test").compile_request(
+            make_storyboard(reference_assets=[video, audio])
+        )
+
+
+def test_minimax_text_only_adaptive_ratio_fails_closed():
+    with pytest.raises(ValueError, match="concrete aspect ratio"):
+        MiniMaxH3Provider(api_key="test").compile_request(
+            make_storyboard(aspect_ratio="adaptive")
+        )
+
+
 def test_minimax_provider_does_not_require_network_for_compile():
     storyboard = make_storyboard()
     provider = MiniMaxH3Provider(api_key="")
