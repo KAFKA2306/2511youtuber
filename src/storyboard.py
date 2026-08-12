@@ -5,7 +5,6 @@ import typing
 
 from pydantic import BaseModel, Field, model_validator
 
-
 AssetKind = typing.Literal["image", "video", "audio"]
 AssetRole = typing.Literal[
     "first_frame",
