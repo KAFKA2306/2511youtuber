@@ -35,7 +35,11 @@ class StoryboardPromptCompiler:
             lines.append("Global negative constraints: " + "; ".join(storyboard.negative_constraints))
 
         assets = {asset.asset_id: asset for asset in storyboard.reference_assets}
-        for shot in sorted(storyboard.shots, key=lambda item: (item.start_sec, item.end_sec, item.shot_id)):
+        ordered_shots = sorted(
+            storyboard.shots,
+            key=lambda item: (item.start_sec, item.end_sec, item.shot_id),
+        )
+        for shot in ordered_shots:
             fields = [
                 f"[{shot.start_sec:.3f}-{shot.end_sec:.3f}s] {shot.shot_id}",
                 f"message={shot.message}",
@@ -58,7 +62,8 @@ class StoryboardPromptCompiler:
                 fields.append("style_invariants=" + "; ".join(shot.style_invariants))
             if shot.reference_asset_ids:
                 refs = [assets[asset_id] for asset_id in shot.reference_asset_ids]
-                fields.append("references=" + ", ".join(f"{ref.asset_id}:{ref.role}" for ref in refs))
+                descriptions = [f"{ref.asset_id}:{ref.role}" for ref in refs]
+                fields.append("references=" + ", ".join(descriptions))
             if shot.negative_constraints:
                 fields.append("negative_constraints=" + "; ".join(shot.negative_constraints))
             lines.append(" | ".join(fields))
@@ -129,13 +134,16 @@ class MiniMaxH3Provider:
             raise ValueError("MiniMax-H3 duration must be between 4 and 15 seconds")
         if storyboard.resolution_target not in {"768P", "2K"}:
             raise ValueError("MiniMax-H3 resolution must be 768P or 2K")
-        if storyboard.aspect_ratio not in {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}:
+        valid_ratios = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}
+        if storyboard.aspect_ratio not in valid_ratios:
             raise ValueError("unsupported MiniMax-H3 aspect ratio")
 
         assets = storyboard.reference_assets
         first = [asset for asset in assets if asset.role == "first_frame"]
         last = [asset for asset in assets if asset.role == "last_frame"]
         refs = [asset for asset in assets if asset.role.startswith("reference_")]
+        if not assets and storyboard.aspect_ratio == "adaptive":
+            raise ValueError("MiniMax-H3 text-to-video requires a concrete aspect ratio")
         if len(first) > 1 or len(last) > 1:
             raise ValueError("MiniMax-H3 accepts at most one first frame and one last frame")
         if (first or last) and refs:
@@ -147,16 +155,33 @@ class MiniMaxH3Provider:
         if sum(asset.role == "reference_audio" for asset in assets) > 3:
             raise ValueError("MiniMax-H3 accepts at most 3 reference audio files")
 
+        reference_media = [asset for asset in refs if asset.kind in {"video", "audio"}]
+        known_duration = sum(asset.duration_seconds or 0 for asset in reference_media)
+        if known_duration > 15:
+            raise ValueError("MiniMax-H3 total reference video/audio duration must not exceed 15 seconds")
+
         for asset in assets:
             self._validate_asset_metadata(asset)
 
     @staticmethod
     def _validate_asset_metadata(asset: ReferenceAsset) -> None:
-        if asset.kind == "image" and asset.byte_size is not None and asset.byte_size > 30 * 1024 * 1024:
+        if (
+            asset.kind == "image"
+            and asset.byte_size is not None
+            and asset.byte_size > 30 * 1024 * 1024
+        ):
             raise ValueError(f"{asset.asset_id}: MiniMax-H3 image exceeds 30 MB")
-        if asset.kind == "video" and asset.byte_size is not None and asset.byte_size > 50 * 1024 * 1024:
+        if (
+            asset.kind == "video"
+            and asset.byte_size is not None
+            and asset.byte_size > 50 * 1024 * 1024
+        ):
             raise ValueError(f"{asset.asset_id}: MiniMax-H3 video exceeds 50 MB")
-        if asset.kind == "audio" and asset.byte_size is not None and asset.byte_size > 15 * 1024 * 1024:
+        if (
+            asset.kind == "audio"
+            and asset.byte_size is not None
+            and asset.byte_size > 15 * 1024 * 1024
+        ):
             raise ValueError(f"{asset.asset_id}: MiniMax-H3 audio exceeds 15 MB")
         if asset.kind in {"video", "audio"} and asset.duration_seconds is not None:
             if not 2 <= asset.duration_seconds <= 15:
@@ -169,7 +194,11 @@ class MiniMaxH3Provider:
             ratio = asset.width / asset.height
             if not 0.4 <= ratio <= 2.5:
                 raise ValueError(f"{asset.asset_id}: aspect ratio must be within [0.4, 2.5]")
-        if asset.kind == "video" and asset.fps is not None and not 23.976 <= asset.fps <= 60:
+        if (
+            asset.kind == "video"
+            and asset.fps is not None
+            and not 23.976 <= asset.fps <= 60
+        ):
             raise ValueError(f"{asset.asset_id}: fps must be within [23.976, 60]")
 
     def compile_request(self, storyboard: VideoStoryboard) -> dict[str, Any]:
@@ -179,7 +208,10 @@ class MiniMaxH3Provider:
         for asset in storyboard.reference_assets:
             content.append(self._asset_content(asset))
 
-        image_to_video = any(asset.role in {"first_frame", "last_frame"} for asset in storyboard.reference_assets)
+        image_to_video = any(
+            asset.role in {"first_frame", "last_frame"}
+            for asset in storyboard.reference_assets
+        )
         return {
             "model": self.model,
             "content": content,
@@ -195,7 +227,11 @@ class MiniMaxH3Provider:
             "video": "video_url",
             "audio": "audio_url",
         }[asset.kind]
-        return {"type": content_type, content_type: asset.uri, "role": asset.role}
+        return {
+            "type": content_type,
+            content_type: {"url": asset.uri},
+            "role": asset.role,
+        }
 
     def create_task(self, storyboard: VideoStoryboard) -> VideoGenerationAudit:
         if not self.api_key:
@@ -203,7 +239,10 @@ class MiniMaxH3Provider:
         request_body = self.compile_request(storyboard)
         response = self.session.post(
             self.create_url,
-            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
             json=request_body,
             timeout=self.timeout_seconds,
         )
@@ -214,7 +253,9 @@ class MiniMaxH3Provider:
             storyboard_id=storyboard.storyboard_id,
             provider=self.name,
             model=self.model,
-            request_parameters={key: value for key, value in request_body.items() if key != "content"},
+            request_parameters={
+                key: value for key, value in request_body.items() if key != "content"
+            },
             compiled_prompt=request_body["content"][0]["text"],
             task_id=task_id,
             response=payload,
