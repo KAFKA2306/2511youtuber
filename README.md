@@ -58,6 +58,25 @@ youtube:
   default_visibility: private
 ```
 
+## 動画生成の正準境界
+
+生成AI動画を使う場合も、ベンダー固有promptを正準データにはしません。正準線は次です。
+
+```text
+News / Evidence
+  → Script
+  → VideoStoryboard
+  → Shot
+  → Provider Adapter / deterministic renderer
+  → Rendered Artifact
+  → Audit
+  → Publish
+```
+
+`src/storyboard.py` の `VideoStoryboard` / `Shot` が時間軸、構図、動き、文字演出、参照素材、禁止事項を保持します。`src/providers/video_generation.py` の `StoryboardPromptCompiler` が同じStoryboardをprovider向けpromptへ決定論的にcompileし、`MiniMaxH3Provider` はMiniMax H3 V2境界だけを担当します。既存のFFmpeg/Remotionレンダリング経路は削除せず、生成AI providerとは別のrendererとして残します。
+
+MiniMaxを実呼び出しする場合のみ`MINIMAX_API_KEY`が必要です。テストは`compile_request()`までで停止し、外部APIやYouTubeへ送信しません。
+
 ## 基本フロー
 
 ```text
@@ -89,6 +108,9 @@ task check
 - OAuth資格情報不足時に公開成功扱いしないこと
 - API応答にvideo IDがない場合に失敗すること
 - YAMLに`steps.news`が重複していないこと
+- Storyboardのtimeline overlap / gap policy / duration overflowをfail closedすること
+- 1 Shot 1 messageの最小lintが動くこと
+- 12秒・5 Shot fixtureをprovider requestへ決定論的にcompileできること
 
 ## 運用上の注意
 
@@ -98,4 +120,4 @@ task check
 - LLM生成文を一次情報として扱わないでください
 - 公開前確認が必要な実行では必ず`--dry-run`を使用してください
 
-**README最終更新:** 2026-08-02
+**README最終更新:** 2026-08-12
