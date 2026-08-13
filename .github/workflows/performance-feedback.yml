@@ -1,0 +1,38 @@
+name: Performance feedback contract
+
+on:
+  pull_request:
+    paths:
+      - "src/services/performance_feedback.py"
+      - "tests/test_performance_feedback.py"
+      - "docs/performance-feedback.md"
+      - ".github/workflows/performance-feedback.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/services/performance_feedback.py"
+      - "tests/test_performance_feedback.py"
+      - "docs/performance-feedback.md"
+      - ".github/workflows/performance-feedback.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install focused test dependencies
+        run: python -m pip install pytest
+      - name: Compile feedback contract
+        run: python -m py_compile src/services/performance_feedback.py tests/test_performance_feedback.py
+      - name: Run feedback contract tests
+        run: python -m pytest -q tests/test_performance_feedback.py
+      - name: Remove Python runtime residue
+        run: find . -type d -name __pycache__ -prune -exec rm -rf {} +
+      - name: Verify clean checkout
+        run: test -z "$(git status --porcelain --untracked-files=all)"
