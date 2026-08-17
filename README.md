@@ -1,5 +1,9 @@
 # 2511youtuber — 金融ニュース動画の生成・公開パイプライン
 
+[![Default config safety](https://github.com/KAFKA2306/2511youtuber/actions/workflows/default-config-safety.yml/badge.svg)](https://github.com/KAFKA2306/2511youtuber/actions/workflows/default-config-safety.yml)
+[![Storyboard contract](https://github.com/KAFKA2306/2511youtuber/actions/workflows/storyboard-contract.yml/badge.svg)](https://github.com/KAFKA2306/2511youtuber/actions/workflows/storyboard-contract.yml)
+[![Provider internet boundary](https://github.com/KAFKA2306/2511youtuber/actions/workflows/provider-internet-boundary.yml/badge.svg)](https://github.com/KAFKA2306/2511youtuber/actions/workflows/provider-internet-boundary.yml)
+
 ニュース取得、台本生成、VOICEVOX音声、字幕、FFmpeg動画、メタデータ生成、YouTube公開までを一つの実行で処理します。
 
 ## 現在の既定動作
