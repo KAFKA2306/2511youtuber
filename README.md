@@ -6,6 +6,16 @@
 
 ニュース取得、台本生成、VOICEVOX音声、字幕、FFmpeg動画、メタデータ生成、YouTube公開までを一つの実行で処理します。
 
+## 金融メディア向け動画制作
+
+顧客別のブランド設定を指定すると、ブランド名と開示文をYouTube用メタデータへ反映した**外部公開なしのレビュー用run**を生成できます。通常設定がpublic公開でも、ブランド設定を指定したrunは既存のdry-run経路へ固定します。
+
+```bash
+task run -- --brand-config config/brands/example.yaml --news-query "半導体 AI 決算"
+```
+
+提供範囲と相談窓口は [`docs/business/branded-video-bulletin.md`](docs/business/branded-video-bulletin.md) にまとめています。
+
 ## 現在の既定動作
 
 `task run`または`python -m src.main`を通常実行すると、生成完了後にYouTubeへ**public公開**します。
@@ -108,6 +118,8 @@ task check
 
 - 通常実行がYouTube public公開設定であること
 - `--dry-run`が外部投稿承認を除去すること
+- 顧客別ブランド設定を指定したrunがdry-run/privateへ固定されること
+- ブランド名・開示文・設定SHA-256・ニュース出典がレビュー用`youtube.json`へ残ること
 - 空動画・空タイトル・空説明文を拒否すること
 - OAuth資格情報不足時に公開成功扱いしないこと
 - API応答にvideo IDがない場合に失敗すること
@@ -124,4 +136,4 @@ task check
 - LLM生成文を一次情報として扱わないでください
 - 公開前確認が必要な実行では必ず`--dry-run`を使用してください
 
-**README最終更新:** 2026-08-12
+**README最終更新:** 2026-08-18
