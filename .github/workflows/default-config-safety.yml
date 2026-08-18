@@ -50,6 +50,8 @@ jobs:
           assert marker
           assert marker in footer
           PY
+      - name: Validate branded review safety
+        run: python -m unittest tests/unit/test_brand_profile.py -v
       - name: Validate prompt version provenance
         run: python -m unittest tests/unit/test_prompt_version.py -v
       - name: Validate context-note history

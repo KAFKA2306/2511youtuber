@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict
 
+from src.brand import active_brand, apply_active_brand_to_metadata
 from src.core.media_utils import resolve_video_input
 from src.core.step import Step
 from src.providers.youtube import YouTubeClient
@@ -21,7 +22,10 @@ class YouTubeUploader(Step):
         youtube_config: Dict | None = None,
     ) -> None:
         super().__init__(run_id, run_dir)
-        youtube_config = youtube_config or {}
+        youtube_config = dict(youtube_config or {})
+        if active_brand() is not None:
+            youtube_config["dry_run"] = True
+            youtube_config["default_visibility"] = "private"
 
         self.client = YouTubeClient(
             dry_run=bool(youtube_config.get("dry_run", True)),
@@ -43,14 +47,28 @@ class YouTubeUploader(Step):
             raise ValueError("Metadata file not found for YouTube upload")
 
         with open(metadata_path, encoding="utf-8") as f:
-            metadata = json.load(f)
+            metadata = apply_active_brand_to_metadata(json.load(f))
 
         thumbnail_input = inputs.get("generate_thumbnail")
         thumbnail_path = Path(thumbnail_input) if thumbnail_input else None
-        if thumbnail_path and (not thumbnail_path.exists() or thumbnail_path.stat().st_size == 0):
+        if thumbnail_path and (
+            not thumbnail_path.exists() or thumbnail_path.stat().st_size == 0
+        ):
             thumbnail_path = None
 
-        upload_result = self.client.upload(Path(video_path), metadata, thumbnail_path=thumbnail_path)
+        upload_result = self.client.upload(
+            Path(video_path), metadata, thumbnail_path=thumbnail_path
+        )
+        if brand := active_brand():
+            upload_result["review"] = {
+                "approved": False,
+                "brand": {
+                    "brand_id": brand["brand_id"],
+                    "display_name": brand["display_name"],
+                    "config_sha256": brand["config_sha256"],
+                },
+                "sources": self._source_evidence(inputs.get("collect_news")),
+            }
 
         output_path = self.get_output_path()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,3 +77,30 @@ class YouTubeUploader(Step):
             json.dump(upload_result, f, ensure_ascii=False, indent=2)
 
         return output_path
+
+    @staticmethod
+    def _source_evidence(news_value: Path | None) -> list[dict[str, str]]:
+        if not news_value:
+            return []
+        news_path = Path(news_value)
+        if not news_path.exists():
+            return []
+        items = json.loads(news_path.read_text(encoding="utf-8"))
+        if not isinstance(items, list):
+            return []
+        evidence = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            url = str(item.get("url", "")).strip()
+            if not url:
+                continue
+            row = {"url": url}
+            title = str(item.get("title", "")).strip()
+            published_at = str(item.get("published_at", "")).strip()
+            if title:
+                row["title"] = title
+            if published_at:
+                row["published_at"] = published_at
+            evidence.append(row)
+        return evidence
