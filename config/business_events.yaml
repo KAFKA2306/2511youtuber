@@ -1,0 +1,22 @@
+schema_version: 1
+event_types:
+  - service_page_view
+  - demo_cta_started
+  - poc_cta_started
+  - lead_observed
+  - demo_observed
+  - pilot_observed
+  - repeat_observed
+observation_kinds:
+  - synthetic
+  - actual
+required_fields:
+  - event_id
+  - event_type
+  - occurred_at
+  - observation_kind
+  - source
+rules:
+  actual_requires_provenance: true
+  synthetic_counts_as_business_outcome: false
+  unobserved_outcome: UNVERIFIED
