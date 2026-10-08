@@ -4,35 +4,55 @@ Issue #51 のパフォーマンスフィードバックは、YouTube Analytics �
 
 ## Supported metrics
 
-YouTube Analytics API の一次仕様で確認できる次の metric だけを v1 の必須入力とする。
+v1 は YouTube Analytics の次の metric を扱う。
 
 - `views`
 - `likes`
 - `averageViewDuration`
 - `estimatedMinutesWatched`
 
-取得処理は API credential を repository に保存してはならない。API 応答を正規化した各 observation は `video_id`, `period_start`, `period_end`, `retrieved_at`, `topic`, `evidence_url` と上記4 metric を保持する。
+取得元は `youtubeAnalytics.reports.query`。単一動画の4指標は channel report の Basic user activity statistics を使い、`ids=channel==MINE` と `filters=video==<video_id>` を指定し、dimension は付けない。credential は runtime から渡し、repository、fixture、log、Issue、PR に保存しない。
 
 Primary specifications:
 
 - https://developers.google.com/youtube/analytics/metrics
 - https://developers.google.com/youtube/analytics/reference/reports/query
+- https://developers.google.com/youtube/analytics/channel_reports
 
-## Measurement states
+## Observation ledger
 
-`schema_version` は `youtube-performance.v1` とする。
+`schema_version` は `youtube-performance.v1`。
 
-- `not_instrumented`: まだ実 API 計測を接続していない。`0 views` を意味しない。
-- `measured`: 実 API 由来の observation が存在する。
+各 observation は次へ遡れる。
 
-未知値を0へ変換しない。
+- video ID / topic
+- observation period
+- retrieved_at
+- 4 metrics
+- source provider
+- source endpoint
+- exact query parameters
+
+API response の `columnHeaders` を名前で解決し、列不足、video不一致、重複video ID、負値、整数でない views/likes は fail closed にする。API failure は fixture や0で置換しない。rows が無い場合は observation を生成しない。
+
+`not_instrumented` は未接続状態であり、0 views ではない。`measured` は API query を実行して保存した ledger を表す。
 
 ## Pattern extraction
 
-成功パターンは最低5本の measured observation が揃うまで生成しない。v1 は `averageViewDuration` の標本中央値以上の動画から、2本以上で繰り返された `topic` だけを補助コンテキスト候補とする。
+最低5本の measured observation が揃うまでは `INSUFFICIENT_EVIDENCE`。5本以上でも、`averageViewDuration` が標本中央値以上かつ同一topicが2本以上ある場合だけ `MEASURED` pattern を生成する。それ以外は `NO_SUPPORTED_PATTERN`。
 
-これは因果推論ではない。script generation に渡す場合も補助コンテキストと明記し、元 `video_id` を evidence として併記する。十分な母数がない、または繰り返しパターンがない場合は空文字列を返し、promptへ架空の成功則を追加しない。
+pattern には元 video ID、観測期間、retrieved_at、provider を evidence として保持する。相関を因果として扱わない。
 
-## Remaining integration work
+## ScriptGenerator integration
 
-実 API 取得を行うには OAuth credential を安全な runtime secret として設定し、`reports.query` の実応答をこの contract に正規化する必要がある。実 API 応答が取得できるまでは Issue #51 の「実APIレスポンスで検証」は未完了として扱う。
+`steps.script.performance_feedback_path` が設定された時だけ ledger を読み込む。未設定が既定値であり、従来の生成挙動は変えない。
+
+設定された場合:
+
+1. ledger を検証する。
+2. pattern state と evidence trace を `runs/<run_id>/performance_context.json` に保存する。
+3. state が `MEASURED` の時だけ補助contextを script prompt へ追記する。
+4. `INSUFFICIENT_EVIDENCE` / `NO_SUPPORTED_PATTERN` では prompt を増やさない。
+5. tracker に performance state、sample size、evidence video IDs を残す。
+
+実YouTube Analytics APIをこの環境からまだ観測していない場合、その runtime evidence は `UNVERIFIED` のまま扱う。これはrepository側の adapter、保存、pattern extraction、prompt wiring の完了とは分離する。

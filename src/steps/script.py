@@ -12,6 +12,7 @@ from src.core.step import Step
 from src.models import NewsItem, Script, ScriptContextNotes
 from src.providers.base import Provider
 from src.providers.llm import load_prompt_template
+from src.services.performance_feedback import load_prompt_context, render_prompt_context
 from src.tracking import AimTracker
 from src.utils.history import load_previous_context
 from src.utils.text import extract_code_block
@@ -27,6 +28,8 @@ class ScriptGenerator(Step):
         run_dir: Path,
         llm_provider: Provider,
         speakers_config: Any | None = None,
+        performance_feedback_path: str | Path | None = None,
+        performance_feedback_min_sample_size: int = 5,
     ):
         super().__init__(run_id, run_dir)
         if not speakers_config:
@@ -39,6 +42,14 @@ class ScriptGenerator(Step):
             data = data["speakers"]
         self.speakers = self._extract_speakers(data)
         self.carryover_notes = self._load_previous_context(run_dir)
+        self.performance_feedback_path = (
+            Path(performance_feedback_path) if performance_feedback_path else None
+        )
+        self.performance_feedback_min_sample_size = int(
+            performance_feedback_min_sample_size
+        )
+        self.performance_context: dict[str, Any] | None = None
+        self.performance_prompt_context = ""
         self.provider = llm_provider
 
     def execute(self, inputs: Dict[str, Path]) -> Path:
@@ -48,6 +59,17 @@ class ScriptGenerator(Step):
         news_items = [NewsItem(**item) for item in load_json(news_path)]
         if not self.provider.is_available():
             raise ValueError("Gemini provider is not available")
+
+        self.performance_context = self._load_performance_context()
+        self.performance_prompt_context = render_prompt_context(
+            self.performance_context
+        )
+        if self.performance_feedback_path is not None:
+            context_path = self.get_output_path().with_name("performance_context.json")
+            write_text(
+                context_path,
+                json.dumps(self.performance_context, ensure_ascii=False, indent=2),
+            )
 
         prompt = self._build_prompt(news_items)
         tracker = AimTracker.get_instance(self.run_id)
@@ -60,7 +82,16 @@ class ScriptGenerator(Step):
             step_name="generate_script",
             template_name="script_generation",
             prompt=prompt,
-            inputs={"news_count": len(news_items), "recent_topics": self.carryover_notes.recent_topics_note[:200]},
+            inputs={
+                "news_count": len(news_items),
+                "recent_topics": self.carryover_notes.recent_topics_note[:200],
+                "performance_state": self.performance_context.get("state"),
+                "performance_sample_size": self.performance_context.get("sample_size", 0),
+                "performance_evidence_video_ids": [
+                    item["video_id"]
+                    for item in self.performance_context.get("evidence", [])
+                ],
+            },
             output=raw_output,
             model=self.provider.model,
             duration=duration,
@@ -82,7 +113,7 @@ class ScriptGenerator(Step):
         min_minutes = self.min_duration // 60
         max_minutes = self.max_duration // 60
         duration_instruction = f"{min_minutes}〜{max_minutes}分" if min_minutes != max_minutes else f"約{min_minutes}分"
-        return template.format(
+        prompt = template.format(
             news_items=news_text,
             analyst_name=self.speakers["analyst"],
             reporter_name=self.speakers["reporter"],
@@ -92,6 +123,20 @@ class ScriptGenerator(Step):
             recent_topics_note=self.carryover_notes.recent_topics_note or "直近テーマ情報なし",
             next_theme_note="今日のテーマから派生する新しい視点や発見の余地",
             duration=duration_instruction,
+        )
+        return prompt + self.performance_prompt_context
+
+    def _load_performance_context(self) -> dict[str, Any]:
+        if self.performance_feedback_path is None:
+            return {
+                "state": "NOT_CONFIGURED",
+                "sample_size": 0,
+                "patterns": [],
+                "evidence": [],
+            }
+        return load_prompt_context(
+            self.performance_feedback_path,
+            min_sample_size=self.performance_feedback_min_sample_size,
         )
 
     def _load_previous_context(self, run_dir: Path) -> ScriptContextNotes:

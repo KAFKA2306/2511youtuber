@@ -151,6 +151,8 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
             run_dir=run_dir,
             llm_provider=GeminiProvider(model=Config.get_default_gemini_model()),
             speakers_config=script_cfg.speakers,
+            performance_feedback_path=script_cfg.performance_feedback_path,
+            performance_feedback_min_sample_size=script_cfg.performance_feedback_min_sample_size,
         ),
         AudioSynthesizer(
             run_id=run_id,
