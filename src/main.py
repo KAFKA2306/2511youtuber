@@ -6,7 +6,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from apps.youtube import run as run_youtube
-from src.brand import activate_brand_profile, clear_active_brand
+from src.brand import (
+    activate_brand_profile,
+    clear_active_brand,
+    validate_active_brand_topic,
+)
 
 
 _EXTERNAL_APPROVAL_ENV = "YOUTUBE_EXTERNAL_PUBLISH_APPROVED"
@@ -26,13 +30,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--brand-config",
         type=Path,
-        help="顧客別ブランド設定を読み込み、外部公開しないレビュー用runを生成する",
+        help="顧客別ブランド設定を読み込み、レビュー境界を有効にする",
+    )
+    parser.add_argument(
+        "--brand-approval",
+        type=Path,
+        help="brand_idと設定SHA-256に紐づく明示承認ファイル。brand-configと併用する",
     )
     return parser.parse_args()
 
 
 def _configure_publication_mode(*, dry_run: bool) -> None:
-    """通常実行は公開を許可し、--dry-run時だけ承認を除去する。"""
+    """通常実行は公開を許可し、dry-run時だけ承認を除去する。"""
 
     if dry_run:
         os.environ.pop(_EXTERNAL_APPROVAL_ENV, None)
@@ -51,10 +60,19 @@ def main() -> int:
         load_dotenv(dotenv_path=env_path)
 
     args = parse_args()
+    if args.brand_approval and not args.brand_config:
+        raise ValueError("--brand-approval requires --brand-config")
+
     clear_active_brand()
     if args.brand_config:
-        activate_brand_profile(args.brand_config)
-    review_only = args.dry_run or args.brand_config is not None
+        activate_brand_profile(
+            args.brand_config,
+            approval_path=args.brand_approval,
+        )
+        validate_active_brand_topic(args.news_query)
+
+    brand_pending_review = args.brand_config is not None and args.brand_approval is None
+    review_only = args.dry_run or brand_pending_review
     _configure_publication_mode(dry_run=review_only)
     return run_youtube(news_query=args.news_query, force_dry_run=review_only)
 

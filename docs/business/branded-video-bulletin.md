@@ -1,28 +1,82 @@
-# 金融メディア向け動画制作
+# 金融メディア向け Branded Video Bulletin
 
-このリポジトリの既存フローを使い、金融・経済メディア向けにブランド名と開示文を付けた動画サンプルを生成できます。顧客向けrunは既存のdry-run経路を強制し、YouTubeへ外部送信しません。
+このリポジトリの既存フローを使い、金融・経済メディア向けのブランド付き動画を生成します。ブランド案件は、明示承認が無い限り既存の dry-run 経路に固定され、YouTube へ外部送信しません。
 
-現在実装されているブランド設定は次の3項目です。
+## ブランド設定
 
-- `brand_id` — 設定を識別する小文字のID
-- `display_name` — YouTube用タイトルへ付ける表示名
-- `disclosure_text` — YouTube用説明文へ追加する開示文
+`config/brands/example.yaml` と同じ versioned YAML を使います。
 
-サンプル設定は [`config/brands/example.yaml`](../../config/brands/example.yaml) です。
+- `schema_version`
+- `brand_id`
+- `display_name`
+- `disclosure_text`
+- `allowed_topics`
+- `default_visibility`
+- `intro` / `outro`
+
+intro/outro を使う場合は、repository-relative path と `rights_confirmed: true` を同時に指定します。権利確認が false の素材、絶対パス、`..` を含む参照は fail closed で拒否します。
+
+```yaml
+schema_version: 1
+brand_id: example-financial-media
+display_name: Example Financial Media
+disclosure_text: 公開前レビュー用のサンプルです。
+allowed_topics: [半導体, AI]
+default_visibility: private
+intro:
+  path: assets/brand/intro.mp4
+  rights_confirmed: true
+outro: null
+```
+
+`allowed_topics` が設定されている場合、ブランドrunは `--news-query` を必須にし、許可トピックを1つも含まない query を拒否します。
+
+## 1. レビュー用 run
 
 ```bash
 task run -- --brand-config config/brands/example.yaml --news-query "半導体 AI 決算"
 ```
 
-`--brand-config`を指定すると、通常設定がpublic公開でも、このrunでは既存の`--dry-run`と同じ非公開検証経路を使用します。`runs/<run_id>/youtube.json`には、外部副作用がないこと、ブランドID・表示名・ブランド設定のSHA-256、ニュース取得結果にURLがある場合はそのURLと公表日時を保存します。`review.approved`は`false`で生成されます。
+承認ファイルが無いブランドrunは必ず dry-run/private です。既存の `youtube.json` に `review` を追加し、次を追跡します。
 
-YouTube Data APIの動画リソースで指定できる`status.privacyStatus`は`private`、`public`、`unlisted`です。API仕様は [Google for Developers — Videos](https://developers.google.com/youtube/v3/docs/videos) を参照してください。
+- review status: `pending`
+- brand schema version / brand ID / config SHA-256
+- source URL / source date
+- script / rendered video / metadata の path、SHA-256、size
+- intended visibility
+- external side effect が無いこと
 
-## 提供できる範囲
+## 2. 明示承認後の既存公開経路
 
-現時点では、既存のニュース取得、台本、VOICEVOX音声、字幕、動画レンダリング、YouTube用メタデータ生成を再利用し、公開前に確認できるブランド付きサンプルを作るところまでを対象にします。顧客ロゴ、顧客別intro/outro、顧客YouTubeチャンネルへの承認付き公開、継続案件管理はまだ実装していません。
+公開を許可する場合だけ、ローカルの承認ファイルを作ります。承認は brand ID と brand config の exact SHA-256 に紐づきます。別設定への流用は拒否します。
 
-顧客名、受注件数、売上、成果指標は実績が確認できるまで掲載しません。
+```json
+{
+  "schema_version": 1,
+  "brand_id": "example-financial-media",
+  "brand_config_sha256": "<exact 64-char sha256>",
+  "approved": true,
+  "approved_by": "<reviewer>",
+  "approved_at": "2026-10-08T20:00:00+09:00"
+}
+```
+
+```bash
+task run -- \
+  --brand-config config/brands/example.yaml \
+  --brand-approval /secure/local/example.approval.json \
+  --news-query "半導体 AI 決算"
+```
+
+承認済みrunだけが既存 `YouTubeClient` の公開工程へ進みます。別 uploader は作りません。公開範囲は brand config の `default_visibility` を使います。sample は `private` です。
+
+承認ファイルには credential を入れず、repository へ commit しないでください。
+
+## 提供範囲と責任境界
+
+既存のニュース取得、台本、VOICEVOX音声、字幕、動画レンダリング、metadata、YouTube uploader を再利用します。ブランド固有 intro/outro は権利確認済み参照だけを受け付けます。顧客名、契約、売上、継続利用などは実データで観測できた場合だけ記録し、未観測は `UNVERIFIED` のまま扱います。
+
+CTA/event contract は `config/business_events.yaml` を正本とし、synthetic/test と actual observation を分離します。synthetic を売上や顧客成果として数えません。
 
 ## 相談
 

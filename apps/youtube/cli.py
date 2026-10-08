@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
+from src.brand import active_brand
 from src.core.orchestrator import WorkflowOrchestrator
 from src.providers.llm import GeminiProvider
 from src.providers.news import GeminiNewsProvider, PerplexityNewsProvider
@@ -24,7 +25,7 @@ from src.steps.thumbnail import ThumbnailGenerator
 from src.steps.twitter import TwitterPoster
 from src.steps.video import VideoRenderer
 from src.steps.youtube import YouTubeUploader
-from src.utils.config import Config
+from src.utils.config import Config, VideoIntroOutroConfig
 from src.utils.discord import post_run_summary
 from src.utils.logger import get_logger
 
@@ -96,6 +97,17 @@ def _build_steps(config: Config, run_id: str, run_dir: Path) -> List:
     script_cfg = config.steps.script
     voicevox_cfg = config.providers.tts.voicevox
     video_cfg = config.steps.video
+    if brand := active_brand():
+        intro = brand.get("intro")
+        outro = brand.get("outro")
+        if intro or outro:
+            if video_cfg.intro_outro is None:
+                video_cfg.intro_outro = VideoIntroOutroConfig(enabled=True)
+            video_cfg.intro_outro.enabled = True
+            if intro:
+                video_cfg.intro_outro.intro_path = intro["path"]
+            if outro:
+                video_cfg.intro_outro.outro_path = outro["path"]
     audio_cfg = config.steps.audio
     metadata_cfg = config.steps.metadata.model_dump()
     voicevox_config = voicevox_cfg.model_dump()
