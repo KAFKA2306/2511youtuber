@@ -45,6 +45,8 @@ class ScriptStepConfig(BaseModel):
     min_duration: int
     max_duration: int
     target_wow_score: float
+    performance_feedback_path: str | None = None
+    performance_feedback_min_sample_size: int = 5
     speakers: ScriptSpeakersConfig
 
 

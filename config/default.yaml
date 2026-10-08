@@ -20,6 +20,8 @@ steps:
     min_duration: 300
     max_duration: 600
     target_wow_score: 5.0
+    performance_feedback_path: null
+    performance_feedback_min_sample_size: 5
     speakers:
       analyst:
         name: "春日部つむぎ"
