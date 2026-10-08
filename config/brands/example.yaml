@@ -1,3 +1,12 @@
+schema_version: 1
 brand_id: example-financial-media
 display_name: Example Financial Media
 disclosure_text: 公開前レビュー用のサンプルです。内容・出典・権利を確認してから公開してください。
+intro_asset: null
+outro_asset: null
+assets: []
+allowed_topics:
+  - 半導体
+  - AI
+  - 決算
+default_visibility: private
