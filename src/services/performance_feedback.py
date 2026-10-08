@@ -126,7 +126,6 @@ def fetch_video_observation(
         "startDate": period_start,
         "endDate": period_end,
         "metrics": ",".join(REQUIRED_METRICS),
-        "dimensions": "video",
         "filters": f"video=={video_id}",
     }
     response = service.reports().query(**query).execute()
@@ -214,7 +213,7 @@ def normalize_report_response(
         for header in headers
         if isinstance(header, Mapping)
     ]
-    required_columns = ["video", *REQUIRED_METRICS]
+    required_columns = list(REQUIRED_METRICS)
     missing = [name for name in required_columns if name not in names]
     if missing:
         raise ValueError(
@@ -235,8 +234,6 @@ def normalize_report_response(
         raise ValueError("YouTube Analytics response row does not match headers")
 
     mapped = dict(zip(names, row))
-    if str(mapped["video"]) != video_id:
-        raise ValueError("YouTube Analytics response video does not match request")
 
     return PerformanceObservation.from_mapping(
         {

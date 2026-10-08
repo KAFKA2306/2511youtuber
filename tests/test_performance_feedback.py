@@ -34,7 +34,6 @@ def _row(video_id: str, topic: str, duration: float = 120.0) -> dict:
             "startDate": "2026-08-01",
             "endDate": "2026-08-07",
             "metrics": "views,likes,averageViewDuration,estimatedMinutesWatched",
-            "dimensions": "video",
             "filters": f"video=={video_id}",
         },
     }
@@ -43,13 +42,12 @@ def _row(video_id: str, topic: str, duration: float = 120.0) -> dict:
 def _response(video_id: str, *, duration: float = 120.0) -> dict:
     return {
         "columnHeaders": [
-            {"name": "video"},
             {"name": "views"},
             {"name": "likes"},
             {"name": "averageViewDuration"},
             {"name": "estimatedMinutesWatched"},
         ],
-        "rows": [[video_id, 100, 10, duration, 200]],
+        "rows": [[100, 10, duration, 200]],
     }
 
 
@@ -156,12 +154,11 @@ def test_api_response_is_normalized_by_column_name() -> None:
     response = {
         "columnHeaders": [
             {"name": "likes"},
-            {"name": "video"},
             {"name": "estimatedMinutesWatched"},
             {"name": "views"},
             {"name": "averageViewDuration"},
         ],
-        "rows": [[10, "vid-1", 200, 100, 123.5]],
+        "rows": [[10, 200, 100, 123.5]],
     }
     observation = normalize_report_response(
         response,
@@ -197,7 +194,7 @@ def test_collection_writes_traceable_measured_ledger(tmp_path: Path) -> None:
     assert payload["source_provider"] == SOURCE_PROVIDER
     assert [row["video_id"] for row in payload["observations"]] == ["a", "b"]
     assert service._reports.calls[0]["ids"] == "channel==MINE"
-    assert service._reports.calls[0]["dimensions"] == "video"
+    assert "dimensions" not in service._reports.calls[0]
     assert service._reports.calls[0]["filters"] == "video==a"
 
 

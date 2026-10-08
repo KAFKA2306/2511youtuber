@@ -15,6 +15,10 @@ on:
     branches: [main]
     paths:
       - "src/services/performance_feedback.py"
+      - "src/steps/script.py"
+      - "src/utils/config.py"
+      - "apps/youtube/cli.py"
+      - "config/default.yaml"
       - "tests/test_performance_feedback.py"
       - "docs/performance-feedback.md"
       - ".github/workflows/performance-feedback.yml"

@@ -11,7 +11,7 @@ v1 は YouTube Analytics の次の metric を扱う。
 - `averageViewDuration`
 - `estimatedMinutesWatched`
 
-取得元は `youtubeAnalytics.reports.query`。channel owner 向け query は `ids=channel==MINE`、`dimensions=video`、`filters=video==<video_id>` を使用する。credential は runtime から渡し、repository、fixture、log、Issue、PR に保存しない。
+取得元は `youtubeAnalytics.reports.query`。単一動画の4指標は channel report の Basic user activity statistics を使い、`ids=channel==MINE` と `filters=video==<video_id>` を指定し、dimension は付けない。credential は runtime から渡し、repository、fixture、log、Issue、PR に保存しない。
 
 Primary specifications:
 
