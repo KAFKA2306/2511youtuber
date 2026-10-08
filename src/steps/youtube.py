@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 from src.brand import active_brand, apply_active_brand_to_metadata
 from src.core.media_utils import resolve_video_input
@@ -23,9 +24,13 @@ class YouTubeUploader(Step):
     ) -> None:
         super().__init__(run_id, run_dir)
         youtube_config = dict(youtube_config or {})
-        if active_brand() is not None:
-            youtube_config["dry_run"] = True
-            youtube_config["default_visibility"] = "private"
+        brand = active_brand()
+        if brand is not None:
+            if brand["approved"]:
+                youtube_config["default_visibility"] = brand["default_visibility"]
+            else:
+                youtube_config["dry_run"] = True
+                youtube_config["default_visibility"] = "private"
 
         self.client = YouTubeClient(
             dry_run=bool(youtube_config.get("dry_run", True)),
@@ -60,14 +65,26 @@ class YouTubeUploader(Step):
             Path(video_path), metadata, thumbnail_path=thumbnail_path
         )
         if brand := active_brand():
+            approved = bool(brand["approved"])
+            if not approved and upload_result.get("external_side_effect") is True:
+                raise RuntimeError("Unapproved branded run attempted an external publish")
             upload_result["review"] = {
-                "approved": False,
+                "status": "approved" if approved else "pending",
+                "approved": approved,
                 "brand": {
+                    "schema_version": brand["schema_version"],
                     "brand_id": brand["brand_id"],
                     "display_name": brand["display_name"],
                     "config_sha256": brand["config_sha256"],
+                    "default_visibility": brand["default_visibility"],
                 },
+                "approval": brand.get("approval"),
                 "sources": self._source_evidence(inputs.get("collect_news")),
+                "artifacts": {
+                    "script": self._artifact_evidence(inputs.get("generate_script")),
+                    "video": self._artifact_evidence(Path(video_path)),
+                    "metadata": self._artifact_evidence(metadata_path),
+                },
             }
 
         output_path = self.get_output_path()
@@ -77,6 +94,23 @@ class YouTubeUploader(Step):
             json.dump(upload_result, f, ensure_ascii=False, indent=2)
 
         return output_path
+
+    @staticmethod
+    def _artifact_evidence(value: Path | None) -> dict[str, Any] | None:
+        if not value:
+            return None
+        path = Path(value)
+        if not path.exists() or not path.is_file():
+            return None
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return {
+            "path": str(path),
+            "sha256": digest.hexdigest(),
+            "size_bytes": path.stat().st_size,
+        }
 
     @staticmethod
     def _source_evidence(news_value: Path | None) -> list[dict[str, str]]:
