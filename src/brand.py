@@ -198,6 +198,17 @@ def validate_active_brand_topic(news_query: str | None) -> None:
         )
 
 
+def brand_publication_policy() -> dict[str, Any] | None:
+    brand = active_brand()
+    if brand is None:
+        return None
+    approved = bool(brand["approved"])
+    return {
+        "force_dry_run": not approved,
+        "visibility": brand["default_visibility"] if approved else "private",
+    }
+
+
 def apply_active_brand_to_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     brand = active_brand()
     if brand is None:

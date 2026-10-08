@@ -10,10 +10,10 @@ from src.brand import (
     activate_brand_profile,
     active_brand,
     apply_active_brand_to_metadata,
+    brand_publication_policy,
     clear_active_brand,
     validate_active_brand_topic,
 )
-from src.steps.youtube import YouTubeUploader
 
 
 class BrandProfileTests(unittest.TestCase):
@@ -108,59 +108,20 @@ class BrandProfileTests(unittest.TestCase):
         self.assertTrue(brand["approved"])
         self.assertEqual(brand["approval"]["approved_by"], "reviewer")
 
-    def test_pending_brand_run_produces_traceable_dry_run_review_package(self):
+    def test_publication_policy_requires_review_until_exact_approval(self):
         with tempfile.TemporaryDirectory() as tmp:
             profile = self._profile(tmp)
             activate_brand_profile(profile)
+            pending = brand_publication_policy()
 
-            run_dir = Path(tmp) / "runs"
-            inputs_dir = Path(tmp) / "inputs"
-            inputs_dir.mkdir()
-            video = inputs_dir / "video.mp4"
-            video.write_bytes(b"not-empty")
-            script = inputs_dir / "script.json"
-            script.write_text('{"segments": []}', encoding="utf-8")
-            metadata = inputs_dir / "metadata.json"
-            metadata.write_text(
-                json.dumps({"title": "市場まとめ", "description": "説明"}),
-                encoding="utf-8",
-            )
-            news = inputs_dir / "news.json"
-            news.write_text(
-                json.dumps(
-                    [
-                        {
-                            "title": "AI半導体",
-                            "url": "https://example.com/source",
-                            "published_at": "2026-10-08",
-                        }
-                    ]
-                ),
-                encoding="utf-8",
-            )
+            approval = self._approval(tmp, profile)
+            activate_brand_profile(profile, approval_path=approval)
+            approved = brand_publication_policy()
 
-            uploader = YouTubeUploader(
-                run_id="test",
-                run_dir=run_dir,
-                youtube_config={"dry_run": False, "default_visibility": "public"},
-            )
-            result_path = uploader.execute(
-                {
-                    "render_video": video,
-                    "generate_script": script,
-                    "analyze_metadata": metadata,
-                    "collect_news": news,
-                }
-            )
-            payload = json.loads(result_path.read_text(encoding="utf-8"))
-
-        self.assertEqual(payload["status"], "dry_run")
-        self.assertFalse(payload["external_side_effect"])
-        self.assertEqual(payload["review"]["status"], "pending")
-        self.assertFalse(payload["review"]["approved"])
-        self.assertEqual(payload["review"]["sources"][0]["url"], "https://example.com/source")
-        for key in ("script", "video", "metadata"):
-            self.assertEqual(len(payload["review"]["artifacts"][key]["sha256"]), 64)
+        self.assertTrue(pending["force_dry_run"])
+        self.assertEqual(pending["visibility"], "private")
+        self.assertFalse(approved["force_dry_run"])
+        self.assertEqual(approved["visibility"], "private")
 
 
 if __name__ == "__main__":

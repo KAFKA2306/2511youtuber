@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from src.brand import active_brand, apply_active_brand_to_metadata
+from src.brand import active_brand, apply_active_brand_to_metadata, brand_publication_policy
 from src.core.media_utils import resolve_video_input
 from src.core.step import Step
 from src.providers.youtube import YouTubeClient
@@ -24,13 +24,11 @@ class YouTubeUploader(Step):
     ) -> None:
         super().__init__(run_id, run_dir)
         youtube_config = dict(youtube_config or {})
-        brand = active_brand()
-        if brand is not None:
-            if brand["approved"]:
-                youtube_config["default_visibility"] = brand["default_visibility"]
-            else:
+        policy = brand_publication_policy()
+        if policy is not None:
+            if policy["force_dry_run"]:
                 youtube_config["dry_run"] = True
-                youtube_config["default_visibility"] = "private"
+            youtube_config["default_visibility"] = policy["visibility"]
 
         self.client = YouTubeClient(
             dry_run=bool(youtube_config.get("dry_run", True)),
